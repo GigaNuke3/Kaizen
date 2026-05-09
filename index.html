@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaizen</title>
+  <link rel="stylesheet" href="src/css/style.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <h1>改善</h1>
+        <span>Kaizen</span>
+      </div>
+
+      <ul class="nav-links">
+        <li class="active" onclick="loadPage('dashboard')">
+          📊 Dashboard
+        </li>
+        <li onclick="loadPage('habits')">
+          📋 Habits
+        </li>
+        <li onclick="loadPage('journal')">
+          📓 Journal
+        </li>
+        <li onclick="loadPage('goals')">
+          🎯 Goals
+        </li>
+        <li onclick="loadPage('todo')">
+          📝 Todo
+        </li>
+      </ul>
+
+      <div class="sidebar-footer" onclick="loadPage('profile')">
+        👤 Profile
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="content" id="main-content">
+      <h2>Welcome to Kaizen 🚀</h2>
+      <p>Your self-improvement journey starts here.</p>
+    </main>
+
+  </div>
+
+ <script>
+  function loadPage(page) {
+    // Highlight active nav
+    document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'))
+    
+    // Find and highlight the clicked item
+    const items = document.querySelectorAll('.nav-links li')
+    items.forEach(li => {
+      if (li.getAttribute('onclick').includes(page)) {
+        li.classList.add('active')
+      }
+    })
+
+    // Load page content
+    const content = document.getElementById('main-content')
+    content.innerHTML = `<h2>${capitalize(page)}</h2><p>${page} page coming soon...</p>`
+  }
+
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1)
+  }
+
+  // Load dashboard by default on startup
+  window.onload = () => loadPage('dashboard')
+</script>
+</body>
+</html>
