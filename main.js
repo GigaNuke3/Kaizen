@@ -1,8 +1,9 @@
-require('./database/db')
-
+const initDB = require('./database/db')
 const { app, BrowserWindow } = require('electron')
 
-function createWindow() {
+async function createWindow() {
+  await initDB()
+
   const win = new BrowserWindow({
     width: 800,
     height: 600,
