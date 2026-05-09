@@ -47,29 +47,22 @@
 
   </div>
 
- <script>
+ <script src="src/js/dashboard.js"></script>
+<script>
   function loadPage(page) {
-    // Highlight active nav
     document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'))
-    
-    // Find and highlight the clicked item
-    const items = document.querySelectorAll('.nav-links li')
-    items.forEach(li => {
-      if (li.getAttribute('onclick').includes(page)) {
-        li.classList.add('active')
-      }
+    document.querySelectorAll('.nav-links li').forEach(li => {
+      if (li.getAttribute('onclick').includes(page)) li.classList.add('active')
     })
 
-    // Load page content
-    const content = document.getElementById('main-content')
-    content.innerHTML = `<h2>${capitalize(page)}</h2><p>${page} page coming soon...</p>`
+    if (page === 'dashboard') {
+      renderDashboard()
+    } else {
+      const content = document.getElementById('main-content')
+      content.innerHTML = `<h2>${page.charAt(0).toUpperCase() + page.slice(1)}</h2><p>Coming soon...</p>`
+    }
   }
 
-  function capitalize(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1)
-  }
-
-  // Load dashboard by default on startup
   window.onload = () => loadPage('dashboard')
 </script>
 </body>
