@@ -311,33 +311,6 @@ body {
   margin-top: 20px;
 }
 
-/* ===== COLOR PICKER ===== */
-.color-picker {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.color-option {
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s;
-  opacity: 0.6;
-}
-
-.color-option:hover {
-  opacity: 1;
-}
-
-.color-option.selected {
-  border-color: #fff;
-  opacity: 1;
-  transform: scale(1.1);
-}
-
 /* ===== MODALS ===== */
 .modal {
   display: none;
@@ -592,27 +565,27 @@ body {
   border-color: #6ee7b7;
 }
 
-/* ===== GOALS PAGE ===== */
-.goals-container {
+/* ===== CHECKMARKS PAGE ===== */
+.checkmarks-container {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.goals-header {
+.checkmarks-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
 }
 
-.goals-section {
+.checkmarks-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.goals-section h3 {
+.checkmarks-section h3 {
   color: #aaa;
   font-size: 0.95rem;
   text-transform: uppercase;
@@ -620,227 +593,12 @@ body {
   margin: 0;
 }
 
-.goals-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
-}
-
-.goal-card {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: all 0.2s;
-}
-
-.goal-card:hover {
-  border-color: #6ee7b7;
-}
-
-.goal-card.completed {
-  opacity: 0.6;
-  border-color: #2a2a2a;
-}
-
-.goal-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.goal-card-header h4 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #fff;
-  flex: 1;
-}
-
-.goal-desc {
-  color: #888;
-  font-size: 0.85rem;
-  margin: 0;
-}
-
-.progress-container {
+.checkmarks-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.progress-bar {
-  width: 100%;
-  height: 6px;
-  background: #2a2a2a;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #6ee7b7, #39d353);
-  transition: width 0.3s;
-}
-
-.progress-text {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.8rem;
-  color: #888;
-}
-
-.progress-text input[type="range"] {
-  flex: 1;
-  margin-left: 8px;
-}
-
-.goal-date {
-  font-size: 0.8rem;
-  color: #666;
-}
-
-.goal-footer {
-  margin-top: 8px;
-}
-
-.goal-footer .btn {
-  width: 100%;
-  justify-content: center;
-}
-
-.goal-badge {
-  display: inline-block;
-  background: #6ee7b7;
-  color: #000;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-/* ===== TODOS PAGE ===== */
-.todos-container {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.todos-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.todos-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.todos-section h3 {
-  color: #aaa;
-  font-size: 0.95rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0;
-}
-
-.todos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.todo-item {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  transition: all 0.2s;
-}
-
-.todo-item:hover {
-  border-color: #6ee7b7;
-  background: #1f1f1f;
-}
-
-.todo-item.completed {
-  opacity: 0.6;
-}
-
-.todo-check {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.todo-check input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: #6ee7b7;
-}
-
-.todo-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.todo-title {
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 4px;
-}
-
-.todo-item.completed .todo-title {
-  text-decoration: line-through;
-  color: #888;
-}
-
-.todo-desc {
-  color: #888;
-  font-size: 0.85rem;
-  margin-bottom: 6px;
-}
-
-.todo-meta {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 0.75rem;
-}
-
-.todo-tag {
-  background: #2a2a2a;
-  color: #aaa;
-  padding: 2px 6px;
-  border-radius: 3px;
-  text-transform: capitalize;
-}
-
-.todo-priority {
-  padding: 2px 6px;
-  border-radius: 3px;
-  color: #fff;
-  font-weight: 600;
-}
-
-.todo-date {
-  color: #666;
-}
-
-.todo-actions {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
 
 /* ===== PROFILE PAGE ===== */
 .profile-container {

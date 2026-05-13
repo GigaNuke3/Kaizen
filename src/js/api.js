@@ -62,6 +62,9 @@ const api = {
   addGoal: (title, description = '', targetDate = null) => 
     ipcRenderer.invoke('add-goal', title, description, targetDate),
   
+  updateGoal: (id, title, description = '', targetDate = null) => 
+    ipcRenderer.invoke('update-goal', id, title, description, targetDate),
+  
   getAllGoals: () => 
     ipcRenderer.invoke('get-all-goals'),
   
@@ -76,6 +79,16 @@ const api = {
   
   deleteGoal: (id) => 
     ipcRenderer.invoke('delete-goal', id),
+
+  // ==================== GOAL LABELS ====================
+  getAllLabels: () => 
+    ipcRenderer.invoke('get-all-labels'),
+  
+  addCustomLabel: (name) => 
+    ipcRenderer.invoke('add-custom-label', name),
+  
+  deleteLabel: (id) => 
+    ipcRenderer.invoke('delete-label', id),
 
   // ==================== GOAL TRACKING GRID ====================
   getGoalTrackingGrid: (daysBack = 365) => 
@@ -100,30 +113,30 @@ const api = {
   getHabitStatsFromJournal: () => 
     ipcRenderer.invoke('get-habit-stats-from-journal'),
 
-  // ==================== TODOS ====================
-  addTodo: (title, category = 'general', priority = 0, dueDate = null, description = '') => 
-    ipcRenderer.invoke('add-todo', title, category, priority, dueDate, description),
+  // ==================== CHECKMARKS ====================
+  addCheckmark: (title, category = 'general', priority = 0, dueDate = null, description = '') => 
+    ipcRenderer.invoke('add-checkmark', title, category, priority, dueDate, description),
   
-  getAllTodos: () => 
-    ipcRenderer.invoke('get-all-todos'),
+  getAllCheckmarks: () => 
+    ipcRenderer.invoke('get-all-checkmarks'),
   
-  getActiveTodos: () => 
-    ipcRenderer.invoke('get-active-todos'),
+  getActiveCheckmarks: () => 
+    ipcRenderer.invoke('get-active-checkmarks'),
   
-  getTodosByCategory: (category) => 
-    ipcRenderer.invoke('get-todos-by-category', category),
+  getCheckmarksByCategory: (category) => 
+    ipcRenderer.invoke('get-checkmarks-by-category', category),
   
-  completeTodo: (id) => 
-    ipcRenderer.invoke('complete-todo', id),
+  completeCheckmark: (id) => 
+    ipcRenderer.invoke('complete-checkmark', id),
   
-  uncompleteTodo: (id) => 
-    ipcRenderer.invoke('uncomplete-todo', id),
+  uncompleteCheckmark: (id) => 
+    ipcRenderer.invoke('uncomplete-checkmark', id),
   
-  updateTodo: (id, title, category = 'general', priority = 0, dueDate = null, description = '') => 
-    ipcRenderer.invoke('update-todo', id, title, category, priority, dueDate, description),
+  updateCheckmark: (id, title, category = 'general', priority = 0, dueDate = null, description = '') => 
+    ipcRenderer.invoke('update-checkmark', id, title, category, priority, dueDate, description),
   
-  deleteTodo: (id) => 
-    ipcRenderer.invoke('delete-todo', id),
+  deleteCheckmark: (id) => 
+    ipcRenderer.invoke('delete-checkmark', id),
 
   // ==================== STATS ====================
   getDashboardStats: () => 

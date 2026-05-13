@@ -15,7 +15,7 @@ async function renderProfile() {
       <div class="profile-header">
         <div class="profile-avatar">👤</div>
         <div class="profile-info">
-          <h2 id="profile-name">Eco</h2>
+          <h2 id="profile-name">Warrior</h2>
           <p class="profile-tagline">Self-improvement enthusiast</p>
           <button class="btn btn-primary" onclick="openEditProfileModal()">Edit Profile</button>
         </div>
@@ -24,18 +24,10 @@ async function renderProfile() {
       <!-- Statistics -->
       <div class="profile-stats">
         <div class="stat-item">
-          <span class="stat-icon">📋</span>
-          <div class="stat-details">
-            <span class="stat-value">${stats.habits}</span>
-            <span class="stat-name">Habits</span>
-          </div>
-        </div>
-
-        <div class="stat-item">
           <span class="stat-icon">📝</span>
           <div class="stat-details">
-            <span class="stat-value">${stats.todos_done}</span>
-            <span class="stat-name">Todos Completed</span>
+            <span class="stat-value">${stats.checkmarked_done}</span>
+            <span class="stat-name">Checkmarks</span>
           </div>
         </div>
 
@@ -196,7 +188,7 @@ async function saveProfile(event) {
 function clearAllData() {
   const confirmed = confirm('Are you sure you want to delete ALL your data? This cannot be undone.')
   if (confirmed) {
-    const doubleConfirm = confirm('This will delete all habits, entries, goals, and todos. Are you absolutely sure?')
+    const doubleConfirm = confirm('This will delete all habits, entries, goals, and checkmarks. Are you absolutely sure?')
     if (doubleConfirm) {
       alert('Data deletion feature not yet implemented. Please contact support.')
     }

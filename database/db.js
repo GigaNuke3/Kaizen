@@ -37,7 +37,7 @@ async function initDB() {
       created_at TEXT DEFAULT (date('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS todos (
+    CREATE TABLE IF NOT EXISTS checkmarks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       completed INTEGER DEFAULT 0,

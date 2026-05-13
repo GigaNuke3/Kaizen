@@ -67,11 +67,17 @@ ipcMain.handle('delete-journal-entry', (event, id) => backend.deleteJournalEntry
 
 // Goals
 ipcMain.handle('add-goal', (event, title, description, targetDate) => backend.addGoal(title, description, targetDate))
+ipcMain.handle('update-goal', (event, id, title, description, targetDate) => backend.updateGoal(id, title, description, targetDate))
 ipcMain.handle('get-all-goals', () => backend.getAllGoals())
 ipcMain.handle('get-active-goals', () => backend.getActiveGoals())
 ipcMain.handle('update-goal-progress', (event, id, progress) => backend.updateGoalProgress(id, progress))
 ipcMain.handle('complete-goal', (event, id) => backend.completeGoal(id))
 ipcMain.handle('delete-goal', (event, id) => backend.deleteGoal(id))
+
+// Goal Labels
+ipcMain.handle('get-all-labels', () => backend.getAllLabels())
+ipcMain.handle('add-custom-label', (event, name) => backend.addCustomLabel(name))
+ipcMain.handle('delete-label', (event, id) => backend.deleteLabel(id))
 
 // Goal Tracking Grid
 ipcMain.handle('get-goal-tracking-grid', (event, daysBack = 365) => backend.getGoalTrackingGrid(daysBack))
@@ -84,17 +90,17 @@ ipcMain.handle('get-habit-keywords', (event, habitId) => backend.getHabitKeyword
 ipcMain.handle('detect-habits-from-journal', (event, content) => backend.detectHabitsFromJournal(content))
 ipcMain.handle('get-habit-stats-from-journal', () => backend.getHabitStatsFromJournal())
 
-// Todos
-ipcMain.handle('add-todo', (event, title, category, priority, dueDate, description) => 
-  backend.addTodo(title, category, priority, dueDate, description))
-ipcMain.handle('get-all-todos', () => backend.getAllTodos())
-ipcMain.handle('get-active-todos', () => backend.getActiveTodos())
-ipcMain.handle('get-todos-by-category', (event, category) => backend.getTodosByCategory(category))
-ipcMain.handle('complete-todo', (event, id) => backend.completeTodo(id))
-ipcMain.handle('uncomplete-todo', (event, id) => backend.uncompleteTodo(id))
-ipcMain.handle('update-todo', (event, id, title, category, priority, dueDate, description) => 
-  backend.updateTodo(id, title, category, priority, dueDate, description))
-ipcMain.handle('delete-todo', (event, id) => backend.deleteTodo(id))
+// Checkmarks
+ipcMain.handle('add-checkmark', (event, title, category, priority, dueDate, description) => 
+  backend.addCheckmark(title, category, priority, dueDate, description))
+ipcMain.handle('get-all-checkmarks', () => backend.getAllCheckmarks())
+ipcMain.handle('get-active-checkmarks', () => backend.getActiveCheckmarks())
+ipcMain.handle('get-checkmarks-by-category', (event, category) => backend.getCheckmarksByCategory(category))
+ipcMain.handle('complete-checkmark', (event, id) => backend.completeCheckmark(id))
+ipcMain.handle('uncomplete-checkmark', (event, id) => backend.uncompleteCheckmark(id))
+ipcMain.handle('update-checkmark', (event, id, title, category, priority, dueDate, description) => 
+  backend.updateCheckmark(id, title, category, priority, dueDate, description))
+ipcMain.handle('delete-checkmark', (event, id) => backend.deleteCheckmark(id))
 
 // Stats
 ipcMain.handle('get-dashboard-stats', () => backend.getDashboardStats())

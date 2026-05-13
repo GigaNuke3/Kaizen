@@ -4,6 +4,7 @@
  */
 
 let allGoals = []
+let allLabels = []
 let selectedGoalForEdit = null
 
 async function renderGoals() {
@@ -11,8 +12,9 @@ async function renderGoals() {
   content.innerHTML = ''
   
   try {
-    // Load goals
+    // Load goals and labels
     allGoals = await window.api.getAllGoals()
+    allLabels = await window.api.getAllLabels()
     const activeGoals = allGoals.filter(g => g[4] === 0)
     const completedGoals = allGoals.filter(g => g[4] === 1)
     
@@ -24,8 +26,11 @@ async function renderGoals() {
     const header = document.createElement('div')
     header.className = 'goals-header'
     header.innerHTML = `
-      <h2>🎯 Goals Management</h2>
-      <button class="btn-primary" onclick="openAddGoalModal()">+ Create Goal</button>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <h2>🎯 Goals Management</h2>
+        <button class="btn-primary" onclick="openAddGoalModal()">+ Create Goal</button>
+        <button class="btn-primary" onclick="openCustomLabelModal()">+ Manage Labels</button>
+      </div>
     `
     container.appendChild(header)
     
@@ -55,20 +60,7 @@ async function renderGoals() {
     
     container.appendChild(activeSection)
     
-    // Completed goals section
-    if (completedGoals.length > 0) {
-      const completedSection = document.createElement('div')
-      completedSection.className = 'goals-section'
-      completedSection.innerHTML = `<h3>Completed (${completedGoals.length})</h3>`
-      
-      const goalsGrid = document.createElement('div')
-      goalsGrid.className = 'goals-grid'
-      for (const goal of completedGoals) {
-        goalsGrid.appendChild(createGoalCard(goal, true))
-      }
-      completedSection.appendChild(goalsGrid)
-      container.appendChild(completedSection)
-    }
+
     
     content.appendChild(container)
     ensureGoalModalExists()
@@ -99,37 +91,23 @@ function createGoalCard(goal, isCompleted = false) {
         <h4>${isCompleted ? '✓' : ''} ${title}</h4>
       </div>
       <div class="goal-actions">
-        ${!isCompleted ? `<button class="icon-btn" onclick="editGoal(${id})" title="Edit">✏️</button>` : ''}
+        <button class="icon-btn" onclick="editGoal(${id})" title="Edit">✏️</button>
         <button class="icon-btn" onclick="deleteGoalConfirm(${id})" title="Delete">🗑️</button>
       </div>
     </div>
-    ${description ? `<p class="goal-desc">${description}</p>` : ''}
-    ${!isCompleted ? `
-      <div class="progress-container">
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${progress}%"></div>
-        </div>
-        <div class="progress-text">
-          <span>${progress}%</span>
-          <input type="range" min="0" max="100" value="${progress}" onchange="updateGoalProgress(${id}, this.value)">
-        </div>
-      </div>
-    ` : ''}
+    ${description ? `<div class="goal-labels"><span class="goal-label-badge">${description}</span></div>` : ''}
     ${targetDate ? `<span class="goal-date">Target: ${dateStr}</span>` : ''}
-    <div class="goal-footer">
-      ${!isCompleted ? `
-        <button class="btn btn-primary" onclick="markGoalComplete(${id})">✓ Mark Complete</button>
-      ` : `
-        <span class="goal-badge">Completed ✓</span>
-      `}
-    </div>
   `
   
   return card
 }
 
 function ensureGoalModalExists() {
-  if (document.getElementById('goal-modal')) return
+  if (document.getElementById('goal-modal')) {
+    // Update labels in existing modal
+    updateLabelDropdown()
+    return
+  }
   
   const modal = document.createElement('div')
   modal.id = 'goal-modal'
@@ -148,8 +126,11 @@ function ensureGoalModalExists() {
         </div>
         
         <div class="form-group">
-          <label for="goal-desc">Description</label>
-          <textarea id="goal-desc" placeholder="Why is this goal important?"></textarea>
+          <label for="goal-label">Label *</label>
+          <select id="goal-label" required onchange="handleLabelChange()">
+            <option value="">Select a label...</option>
+          </select>
+          <input type="hidden" id="goal-label-value" value="">
         </div>
         
         <div class="form-group">
@@ -189,11 +170,6 @@ function ensureGoalModalExists() {
         </div>
         
         <div class="form-group">
-          <label for="goal-icon">Icon</label>
-          <input type="text" id="goal-icon" placeholder="e.g., 🏃 💪 📚">
-        </div>
-        
-        <div class="form-group">
           <label for="goal-date">Target Date</label>
           <input type="date" id="goal-date">
         </div>
@@ -224,17 +200,132 @@ function ensureGoalModalExists() {
   })
 }
 
+function ensureCustomLabelModalExists() {
+  if (document.getElementById('customlabel-modal')) return
+  
+  const modal = document.createElement('div')
+  modal.id = 'customlabel-modal'
+  modal.className = 'modal'
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Manage Custom Labels</h2>
+        <button class="modal-close" onclick="closeCustomLabelModal()">✕</button>
+      </div>
+      
+      <div class="form-group">
+        <label for="new-custom-label">Create New Label</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="new-custom-label" placeholder="Enter label name..." style="flex: 1;">
+          <button type="button" onclick="addNewCustomLabel()" class="btn btn-primary">+ Add</button>
+        </div>
+      </div>
+      
+      <div style="margin-top: 24px;">
+        <h3 style="font-size: 1rem; margin-bottom: 12px;">Your Custom Labels</h3>
+        <div id="custom-labels-display" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    </div>
+  `
+  
+  document.body.appendChild(modal)
+  
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeCustomLabelModal()
+  })
+}
+
+function openCustomLabelModal() {
+  ensureCustomLabelModalExists()
+  displayCustomLabels()
+  document.getElementById('customlabel-modal').classList.add('active')
+}
+
+function closeCustomLabelModal() {
+  const modal = document.getElementById('customlabel-modal')
+  if (modal) modal.classList.remove('active')
+  document.getElementById('new-custom-label').value = ''
+}
+
+function displayCustomLabels() {
+  const customLabels = allLabels.filter(l => l[2] === 1)
+  const display = document.getElementById('custom-labels-display')
+  
+  if (customLabels.length === 0) {
+    display.innerHTML = '<p style="color: #666;">No custom labels yet. Create one above!</p>'
+    return
+  }
+  
+  let html = ''
+  for (const label of customLabels) {
+    const labelId = label[0]
+    const labelName = label[1]
+    html += `
+      <div style="display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 12px; border-radius: 6px; border-left: 3px solid #6ee7b7;">
+        <span style="color: #fff;">${labelName}</span>
+        <button type="button" onclick="deleteCustomLabelFromModal(${labelId})" class="btn-delete" title="Delete">🗑️</button>
+      </div>
+    `
+  }
+  display.innerHTML = html
+}
+
+function addNewCustomLabel() {
+  const input = document.getElementById('new-custom-label')
+  const labelValue = input.value.trim()
+  
+  if (!labelValue) {
+    alert('Please enter a label name')
+    return
+  }
+  
+  // Check if label already exists
+  const existingLabel = allLabels.find(l => l[1].toLowerCase() === labelValue.toLowerCase())
+  if (existingLabel) {
+    alert('This label already exists!')
+    input.value = ''
+    return
+  }
+  
+  // Add custom label to database
+  window.api.addCustomLabel(labelValue).then(() => {
+    window.api.getAllLabels().then(labels => {
+      allLabels = labels
+      updateLabelDropdown()
+      displayCustomLabels()
+      input.value = ''
+    })
+  })
+}
+
+function deleteCustomLabelFromModal(labelId) {
+  const label = allLabels.find(l => l[0] === labelId)
+  if (!label) return
+  
+  if (confirm(`Delete custom label "${label[1]}"?`)) {
+    window.api.deleteLabel(labelId).then(() => {
+      window.api.getAllLabels().then(labels => {
+        allLabels = labels
+        updateLabelDropdown()
+        displayCustomLabels()
+      })
+    })
+  }
+}
+
 function openAddGoalModal() {
   ensureGoalModalExists()
   selectedGoalForEdit = null
   document.getElementById('goal-modal-title').textContent = 'Create New Goal'
   document.getElementById('goal-form').reset()
-  document.getElementById('goal-modal').style.display = 'flex'
+  document.getElementById('goal-label-value').value = ''
+  updateLabelDropdown()
+  document.getElementById('goal-modal').classList.add('active')
 }
 
 function closeGoalModal() {
   const modal = document.getElementById('goal-modal')
-  if (modal) modal.style.display = 'none'
+  if (modal) modal.classList.remove('active')
   selectedGoalForEdit = null
 }
 
@@ -246,16 +337,21 @@ async function editGoal(goalId) {
   ensureGoalModalExists()
   document.getElementById('goal-modal-title').textContent = 'Edit Goal'
   document.getElementById('goal-title').value = goal[1]
-  document.getElementById('goal-desc').value = goal[2] || ''
+  const label = goal[2] || ''
+  document.getElementById('goal-label-value').value = label
   document.getElementById('goal-date').value = goal[3] || ''
-  document.getElementById('goal-modal').style.display = 'flex'
+  
+  updateLabelDropdown()
+  document.getElementById('goal-label').value = label || ''
+  
+  document.getElementById('goal-modal').classList.add('active')
 }
 
 async function saveGoal(event) {
   event.preventDefault()
   
   const title = document.getElementById('goal-title').value
-  const description = document.getElementById('goal-desc').value
+  const label = document.getElementById('goal-label-value').value
   const targetDate = document.getElementById('goal-date').value
   
   if (!title.trim()) {
@@ -263,8 +359,19 @@ async function saveGoal(event) {
     return
   }
   
+  if (!label) {
+    alert('Please select or create a label!')
+    return
+  }
+  
   try {
-    await window.api.addGoal(title, description || '', targetDate || null)
+    if (selectedGoalForEdit) {
+      // Update existing goal
+      await window.api.updateGoal(selectedGoalForEdit, title, label, targetDate || null)
+    } else {
+      // Create new goal
+      await window.api.addGoal(title, label, targetDate || null)
+    }
     closeGoalModal()
     renderGoals()
   } catch (error) {
@@ -295,4 +402,51 @@ function deleteGoalConfirm(goalId) {
 async function deleteGoal(goalId) {
   await window.api.deleteGoal(goalId)
   renderGoals()
+}
+
+function addCustomLabel() {
+  // This function is kept for backward compatibility but is no longer used
+  // Custom labels are now managed through the Manage Labels modal
+}
+
+function updateLabelDropdown() {
+  const select = document.getElementById('goal-label')
+  if (!select) return
+  
+  const currentValue = select.value
+  select.innerHTML = '<option value="">Select a label...</option>'
+  
+  // Add all labels to dropdown
+  for (const label of allLabels) {
+    const labelId = label[0]
+    const labelName = label[1]
+    const isCustom = label[2]
+    const option = document.createElement('option')
+    option.value = labelName
+    option.textContent = labelName
+    option.dataset.isCustom = isCustom
+    option.dataset.labelId = labelId
+    select.appendChild(option)
+  }
+  
+  // Restore previous value if it still exists
+  if (currentValue) {
+    select.value = currentValue
+  }
+}
+
+function updateCustomLabelsDisplay() {
+  // This function is kept for backward compatibility but is no longer used
+  // Custom labels are now managed through the Manage Labels modal
+}
+
+async function deleteCustomLabel(labelId) {
+  // This function is kept for backward compatibility but is no longer used
+  // Use deleteCustomLabelFromModal() instead for the new modal-based management
+}
+
+function handleLabelChange() {
+  const selectElement = document.getElementById('goal-label')
+  const selectedValue = selectElement.value
+  document.getElementById('goal-label-value').value = selectedValue
 }

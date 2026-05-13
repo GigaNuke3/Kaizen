@@ -9,7 +9,7 @@ async function renderDashboard() {
   content.innerHTML = `
     <div class="dashboard">
       <div class="dash-header">
-        <h2>Good ${getGreeting()}, Eco 👋</h2>
+        <h2>Good ${getGreeting()}, Warrior</h2>
         <p class="date">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </div>
 
@@ -19,8 +19,8 @@ async function renderDashboard() {
           <span class="stat-label">Habits Tracked</span>
         </div>
         <div class="stat-card">
-          <span class="stat-num">${stats.todos_done}</span>
-          <span class="stat-label">Todos Done</span>
+          <span class="stat-num">${stats.checkmarks_done}</span>
+          <span class="stat-label">Checkmarks Done</span>
         </div>
         <div class="stat-card">
           <span class="stat-num">${stats.contributions_today}</span>

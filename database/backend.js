@@ -61,7 +61,7 @@ async function getDB() {
       FOREIGN KEY(goal_id) REFERENCES goals(id) ON DELETE CASCADE
     );
 
-    CREATE TABLE IF NOT EXISTS todos (
+    CREATE TABLE IF NOT EXISTS checkmarks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       description TEXT,
@@ -95,6 +95,13 @@ async function getDB() {
       email TEXT,
       created_at TEXT DEFAULT (date('now')),
       last_login TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS goal_labels (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      is_custom INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (date('now'))
     );
   `)
 
@@ -336,6 +343,13 @@ async function addGoal(title, description = '', targetDate = null) {
   return getAllGoals()
 }
 
+async function updateGoal(id, title, description = '', targetDate = null) {
+  const database = await getDB()
+  database.run('UPDATE goals SET title = ?, description = ?, target_date = ? WHERE id = ?', [title, description, targetDate, id])
+  saveDB()
+  return getAllGoals()
+}
+
 async function getAllGoals() {
   const database = await getDB()
   const result = database.exec('SELECT * FROM goals ORDER BY created_at DESC')
@@ -370,62 +384,119 @@ async function deleteGoal(id) {
 }
 
 /**
- * ==================== TODOS ====================
+ * ==================== GOAL LABELS ====================
  */
 
-async function addTodo(title, category = 'general', priority = 0, dueDate = null, description = '') {
+async function initializeDefaultLabels() {
   const database = await getDB()
-  database.run('INSERT INTO todos (title, category, priority, due_date, description) VALUES (?, ?, ?, ?, ?)', 
+  const defaultLabels = ['Workout', 'Learning', 'Coding']
+  
+  for (const label of defaultLabels) {
+    // Check if label already exists
+    const result = database.exec('SELECT * FROM goal_labels WHERE name = ?', [label])
+    if (result.length === 0) {
+      database.run('INSERT INTO goal_labels (name, is_custom) VALUES (?, ?)', [label, 0])
+    }
+  }
+  saveDB()
+}
+
+async function getAllLabels() {
+  const database = await getDB()
+  // Initialize default labels if table is empty
+  const result = database.exec('SELECT COUNT(*) FROM goal_labels')
+  if (result.length > 0 && result[0].values[0][0] === 0) {
+    const defaultLabels = ['Workout', 'Learning', 'Coding']
+    for (const label of defaultLabels) {
+      database.run('INSERT INTO goal_labels (name, is_custom) VALUES (?, ?)', [label, 0])
+    }
+    saveDB()
+  }
+  
+  const labelsResult = database.exec('SELECT * FROM goal_labels ORDER BY is_custom ASC, name ASC')
+  return labelsResult.length > 0 ? labelsResult[0].values : []
+}
+
+async function addCustomLabel(name) {
+  const database = await getDB()
+  try {
+    database.run('INSERT INTO goal_labels (name, is_custom) VALUES (?, ?)', [name, 1])
+    saveDB()
+    return getAllLabels()
+  } catch (error) {
+    console.error('Error adding label:', error)
+    return getAllLabels()
+  }
+}
+
+async function deleteLabel(id) {
+  const database = await getDB()
+  const result = database.exec('SELECT is_custom FROM goal_labels WHERE id = ?', [id])
+  
+  if (result.length > 0 && result[0].values[0][0] === 1) {
+    database.run('DELETE FROM goal_labels WHERE id = ?', [id])
+    saveDB()
+  }
+  return getAllLabels()
+}
+
+/**
+ * ==================== CHECKMARKS ====================
+ */
+
+async function addCheckmark(title, category = 'general', priority = 0, dueDate = null, description = '') {
+  const database = await getDB()
+  database.run('INSERT INTO checkmarks (title, category, priority, due_date, description) VALUES (?, ?, ?, ?, ?)', 
     [title, category, priority, dueDate, description])
   saveDB()
-  return getAllTodos()
+  return getAllCheckmarks()
 }
 
-async function getAllTodos() {
+async function getAllCheckmarks() {
   const database = await getDB()
-  const result = database.exec('SELECT * FROM todos ORDER BY priority DESC, created_at DESC')
+  const result = database.exec('SELECT * FROM checkmarks ORDER BY priority DESC, created_at DESC')
   return result.length > 0 ? result[0].values : []
 }
 
-async function getActiveTodos() {
+async function getActiveCheckmarks() {
   const database = await getDB()
-  const result = database.exec('SELECT * FROM todos WHERE completed = 0 ORDER BY priority DESC, created_at DESC')
+  const result = database.exec('SELECT * FROM checkmarks WHERE completed = 0 ORDER BY priority DESC, created_at DESC')
   return result.length > 0 ? result[0].values : []
 }
 
-async function getTodosByCategory(category) {
+async function getCheckmarksByCategory(category) {
   const database = await getDB()
-  const result = database.exec('SELECT * FROM todos WHERE category = ? AND completed = 0 ORDER BY priority DESC', [category])
+  const result = database.exec('SELECT * FROM checkmarks WHERE category = ? AND completed = 0 ORDER BY priority DESC', [category])
   return result.length > 0 ? result[0].values : []
 }
 
-async function completeTodo(id) {
+async function completeCheckmark(id) {
   const database = await getDB()
-  database.run('UPDATE todos SET completed = 1 WHERE id = ?', [id])
+  database.run('UPDATE checkmarks SET completed = 1 WHERE id = ?', [id])
   saveDB()
-  return getAllTodos()
+  return getAllCheckmarks()
 }
 
-async function uncompleteTodo(id) {
+async function uncompleteCheckmark(id) {
   const database = await getDB()
-  database.run('UPDATE todos SET completed = 0 WHERE id = ?', [id])
+  database.run('UPDATE checkmarks SET completed = 0 WHERE id = ?', [id])
   saveDB()
-  return getAllTodos()
+  return getAllCheckmarks()
 }
 
-async function updateTodo(id, title, category, priority, dueDate, description) {
+async function updateCheckmark(id, title, category, priority, dueDate, description) {
   const database = await getDB()
-  database.run('UPDATE todos SET title = ?, category = ?, priority = ?, due_date = ?, description = ? WHERE id = ?', 
+  database.run('UPDATE checkmarks SET title = ?, category = ?, priority = ?, due_date = ?, description = ? WHERE id = ?', 
     [title, category, priority, dueDate, description, id])
   saveDB()
-  return getAllTodos()
+  return getAllCheckmarks()
 }
 
-async function deleteTodo(id) {
+async function deleteCheckmark(id) {
   const database = await getDB()
-  database.run('DELETE FROM todos WHERE id = ?', [id])
+  database.run('DELETE FROM checkmarks WHERE id = ?', [id])
   saveDB()
-  return getAllTodos()
+  return getAllCheckmarks()
 }
 
 /**
@@ -439,9 +510,9 @@ async function getDashboardStats() {
   const habitsResult = database.exec('SELECT COUNT(*) as count FROM habits')
   const habitCount = habitsResult.length > 0 ? habitsResult[0].values[0][0] : 0
   
-  // Today's todos done
-  const todosResult = database.exec('SELECT COUNT(*) as count FROM todos WHERE completed = 1')
-  const todosCount = todosResult.length > 0 ? todosResult[0].values[0][0] : 0
+  // Today's checkmarks done
+  const checkmarksResult = database.exec('SELECT COUNT(*) as count FROM checkmarks WHERE completed = 1')
+  const checkmarksCount = checkmarksResult.length > 0 ? checkmarksResult[0].values[0][0] : 0
   
   // Journal entries
   const journalResult = database.exec('SELECT COUNT(*) as count FROM journal')
@@ -454,7 +525,7 @@ async function getDashboardStats() {
   
   return {
     habits: habitCount,
-    todos_done: todosCount,
+    checkmarks_done: checkmarksCount,
     journal_entries: journalCount,
     contributions_today: contributionCount
   }
@@ -676,11 +747,17 @@ module.exports = {
   deleteJournalEntry,
   // Goals
   addGoal,
+  updateGoal,
   getAllGoals,
   getActiveGoals,
   updateGoalProgress,
   completeGoal,
   deleteGoal,
+  // Goal Labels
+  initializeDefaultLabels,
+  getAllLabels,
+  addCustomLabel,
+  deleteLabel,
   // Goal Tracking Grid
   getGoalTrackingGrid,
   toggleGoalCompletion,
@@ -690,15 +767,15 @@ module.exports = {
   getHabitKeywords,
   detectHabitsFromJournal,
   getHabitStatsFromJournal,
-  // Todos
-  addTodo,
-  getAllTodos,
-  getActiveTodos,
-  getTodosByCategory,
-  completeTodo,
-  uncompleteTodo,
-  updateTodo,
-  deleteTodo,
+  // Checkmarks
+  addCheckmark,
+  getAllCheckmarks,
+  getActiveCheckmarks,
+  getCheckmarksByCategory,
+  completeCheckmark,
+  uncompleteCheckmark,
+  updateCheckmark,
+  deleteCheckmark,
   // Stats
   getDashboardStats
 }
