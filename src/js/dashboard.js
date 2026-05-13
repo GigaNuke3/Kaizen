@@ -1,5 +1,11 @@
-function renderDashboard() {
+async function renderDashboard() {
   const content = document.getElementById('main-content')
+  
+  // Fetch data
+  const stats = await window.api.getDashboardStats()
+  const todayChecklist = await window.api.getTodayChecklist()
+  const journalEntries = await window.api.getAllJournalEntries(3)
+  
   content.innerHTML = `
     <div class="dashboard">
       <div class="dash-header">
@@ -9,19 +15,19 @@ function renderDashboard() {
 
       <div class="stats-row">
         <div class="stat-card">
-          <span class="stat-num" id="habit-count">0</span>
+          <span class="stat-num">${stats.habits}</span>
           <span class="stat-label">Habits Tracked</span>
         </div>
         <div class="stat-card">
-          <span class="stat-num" id="todo-count">0</span>
+          <span class="stat-num">${stats.todos_done}</span>
           <span class="stat-label">Todos Done</span>
         </div>
         <div class="stat-card">
-          <span class="stat-num" id="streak-count">0</span>
-          <span class="stat-label">Day Streak 🔥</span>
+          <span class="stat-num">${stats.contributions_today}</span>
+          <span class="stat-label">Today's Actions</span>
         </div>
         <div class="stat-card">
-          <span class="stat-num" id="journal-count">0</span>
+          <span class="stat-num">${stats.journal_entries}</span>
           <span class="stat-label">Journal Entries</span>
         </div>
       </div>
@@ -44,18 +50,39 @@ function renderDashboard() {
         <div class="section half">
           <h3>Today's Checklist</h3>
           <div id="today-checklist">
-            <p class="empty-msg">No habits yet. Add some in Habits!</p>
+            ${todayChecklist.length === 0 ? '<p class="empty-msg">No habits yet. Add some in Habits!</p>' : ''}
           </div>
         </div>
         <div class="section half">
           <h3>Recent Journal</h3>
           <div id="recent-journal">
-            <p class="empty-msg">No entries yet. Start writing!</p>
+            ${journalEntries.length === 0 ? '<p class="empty-msg">No entries yet. Start writing!</p>' : ''}
           </div>
         </div>
       </div>
     </div>
   `
+
+  // Render checklist items
+  if (todayChecklist.length > 0) {
+    const checklistHtml = todayChecklist.map(h => `
+      <div class="checklist-item">
+        <input type="checkbox" ${h[4] === 1 ? 'checked' : ''} onchange="toggleHabitFromDash(${h[0]}, this.checked)">
+        <span>${h[1]}</span>
+      </div>
+    `).join('')
+    document.getElementById('today-checklist').innerHTML = checklistHtml
+  }
+
+  // Render recent journal
+  if (journalEntries.length > 0) {
+    const journalHtml = journalEntries.map(j => `
+      <div class="journal-preview">
+        <p><strong>${new Date(j[2]).toLocaleDateString()}:</strong> ${j[1].substring(0, 100)}...</p>
+      </div>
+    `).join('')
+    document.getElementById('recent-journal').innerHTML = journalHtml
+  }
 
   renderContributionGrid()
 }
@@ -67,23 +94,37 @@ function getGreeting() {
   return 'evening'
 }
 
-function renderContributionGrid() {
+/**
+ * Toggle habit completion from dashboard
+ */
+async function toggleHabitFromDash(habitId, isChecked) {
+  if (isChecked) {
+    await window.api.markHabitComplete(habitId)
+  } else {
+    await window.api.unmarkHabitComplete(habitId)
+  }
+  renderDashboard()
+}
+
+async function renderContributionGrid() {
   const grid = document.getElementById('contribution-grid')
   if (!grid) return
 
   const today = new Date()
   const start = new Date(today.getFullYear(), 0, 1)
-  const days = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1
+  
+  // Get real contribution data
+  const contributionData = await window.api.getContributionData(today.getFullYear())
 
   let html = ''
   for (let i = 0; i < 365; i++) {
     const date = new Date(start)
     date.setDate(start.getDate() + i)
     const isPast = date <= today
-    // Random activity for now — will connect to real data later
-    const level = isPast ? Math.floor(Math.random() * 5) : 0
     const dateStr = date.toISOString().split('T')[0]
-    html += `<div class="grid-cell l${level}" title="${dateStr}"></div>`
+    const count = contributionData[dateStr] || 0
+    const level = isPast ? Math.min(Math.floor(count / 2), 4) : 0
+    html += `<div class="grid-cell l${level}" title="${dateStr}: ${count} contributions"></div>`
   }
 
   grid.innerHTML = html

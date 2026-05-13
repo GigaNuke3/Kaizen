@@ -20,17 +20,14 @@
         <li class="active" onclick="loadPage('dashboard')">
           📊 Dashboard
         </li>
-        <li onclick="loadPage('habits')">
-          📋 Habits
+         <li onclick="loadPage('goals')">
+          🎯 Goals
+        </li>
+         <li onclick="loadPage('todo')">
+          📝 CheckMarked
         </li>
         <li onclick="loadPage('journal')">
           📓 Journal
-        </li>
-        <li onclick="loadPage('goals')">
-          🎯 Goals
-        </li>
-        <li onclick="loadPage('todo')">
-          📝 Todo
         </li>
       </ul>
 
@@ -47,7 +44,12 @@
 
   </div>
 
+ <script src="src/js/api.js"></script>
  <script src="src/js/dashboard.js"></script>
+ <script src="src/js/journal.js"></script>
+ <script src="src/js/goals.js"></script>
+ <script src="src/js/todos.js"></script>
+ <script src="src/js/profile.js"></script>
 <script>
   function loadPage(page) {
     document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'))
@@ -57,9 +59,16 @@
 
     if (page === 'dashboard') {
       renderDashboard()
-    } else {
-      const content = document.getElementById('main-content')
-      content.innerHTML = `<h2>${page.charAt(0).toUpperCase() + page.slice(1)}</h2><p>Coming soon...</p>`
+    } else if (page === 'habits') {
+      renderHabits()
+    } else if (page === 'journal') {
+      renderJournal()
+    } else if (page === 'goals') {
+      renderGoals()
+    } else if (page === 'todo') {
+      renderTodos()
+    } else if (page === 'profile') {
+      renderProfile()
     }
   }
 
