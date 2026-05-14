@@ -139,7 +139,6 @@ function ensureGoalModalExists() {
             <option value="daily">Daily (every day)</option>
             <option value="weekdays">Weekdays (Mon-Fri)</option>
             <option value="weekends">Weekends (Sat-Sun)</option>
-            <option value="3x">3 times per week</option>
             <option value="custom">Custom days</option>
           </select>
         </div>
