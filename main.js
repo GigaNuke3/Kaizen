@@ -19,6 +19,7 @@ async function createWindow() {
   })
 
   win.loadFile('index.html')
+  // win.webContents.openDevTools()  // Comment out to hide console
 }
 
 // App event listeners

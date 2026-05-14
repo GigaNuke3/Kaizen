@@ -26,7 +26,7 @@ async function renderGoals() {
     const header = document.createElement('div')
     header.className = 'goals-header'
     header.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 16px;">
+      <div class="goals-header-content">
         <h2>🎯 Goals Management</h2>
         <button class="btn-primary" onclick="openAddGoalModal()">+ Create Goal</button>
         <button class="btn-primary" onclick="openCustomLabelModal()">+ Manage Labels</button>
@@ -86,8 +86,8 @@ function createGoalCard(goal, isCompleted = false) {
   
   card.innerHTML = `
     <div class="goal-card-header">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 1.5rem;">${icon}</span>
+      <div class="goal-card-title">
+        <span class="goal-card-icon">${icon}</span>
         <h4>${isCompleted ? '✓' : ''} ${title}</h4>
       </div>
       <div class="goal-actions">

@@ -39,6 +39,12 @@
   margin-bottom: 12px;
 }
 
+.goals-header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .goals-section {
   display: flex;
   flex-direction: column;
@@ -83,6 +89,16 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+}
+
+.goal-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.goal-card-icon {
+  font-size: 1.5rem;
 }
 
 .goal-card-header h4 {

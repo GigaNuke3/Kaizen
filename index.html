@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kaizen</title>
   <link rel="stylesheet" href="src/css/style.css">
+  <link rel="stylesheet" href="src/css/dashboard.css">
+  <link rel="stylesheet" href="src/css/journal.css">
+  <link rel="stylesheet" href="src/css/checkmarked.css">
+  <link rel="stylesheet" href="src/css/profile.css">
   <link rel="stylesheet" href="src/css/goals.css">
 </head>
 <body>
@@ -49,27 +53,27 @@
  <script src="src/js/dashboard.js"></script>
  <script src="src/js/journal.js"></script>
  <script src="src/js/goals.js"></script>
- <script src="src/js/checkmarks.js"></script>
+ <script src="src/js/checkmarked.js"></script>
  <script src="src/js/profile.js"></script>
 <script>
-  function loadPage(page) {
+  async function loadPage(page) {
     document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'))
     document.querySelectorAll('.nav-links li').forEach(li => {
       if (li.getAttribute('onclick').includes(page)) li.classList.add('active')
     })
 
     if (page === 'dashboard') {
-      renderDashboard()
+      await renderDashboard()
     } else if (page === 'habits') {
-      renderHabits()
+      await renderHabits()
     } else if (page === 'journal') {
-      renderJournal()
+      await renderJournal()
     } else if (page === 'goals') {
-      renderGoals()
+      await renderGoals()
     } else if (page === 'todo') {
-      renderCheckmarks()
+      await renderCheckmarks()
     } else if (page === 'profile') {
-      renderProfile()
+      await renderProfile()
     }
   }
 

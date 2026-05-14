@@ -1,35 +1,43 @@
 /**
  * CheckMarked Page - Goal Tracking Grid (365-Day View)
+ * Displays all active goals with 365-day tracking grid
+ * Data flows from Goals page → Database → API
  */
 
-let allGoals = []
-
 /**
- * Render CheckMarked - Goal tracking grid
+ * Main render function - load and display all goal data
  */
 async function renderCheckmarks() {
   const content = document.getElementById('main-content')
-  content.innerHTML = ''
+  if (!content) {
+    console.error('❌ Error: main-content element not found')
+    return
+  }
   
   try {
-    // Load grid data
+    // Clear content
+    content.innerHTML = ''
+    
+    // Load data
     const gridData = await window.api.getGoalTrackingGrid(365)
     const todayStats = await window.api.getTodayGoalStats()
     
-    // Create container
+    console.log('✅ CheckMarked data loaded:', { goals: gridData.goals.length, dates: gridData.dates.length })
+    
+    // Create main container
     const container = document.createElement('div')
     container.className = 'checkmarked-container'
     
-    // Header
+    // ===== HEADER =====
     const header = document.createElement('div')
     header.className = 'checkmarked-header'
     header.innerHTML = `
       <h2>✅ CheckMarked - Goal Tracker</h2>
-      <p>Track your goals across 365 days</p>
+      <p>Track your goals across 365 days with frequency-based scheduling</p>
     `
     container.appendChild(header)
     
-    // Stats section
+    // ===== TODAY'S STATS =====
     const statsDiv = document.createElement('div')
     statsDiv.className = 'checkmarked-stats'
     statsDiv.innerHTML = `
@@ -44,27 +52,44 @@ async function renderCheckmarks() {
     `
     container.appendChild(statsDiv)
     
+    // ===== EMPTY STATE =====
     if (gridData.goals.length === 0) {
       const emptyState = document.createElement('div')
       emptyState.className = 'empty-state'
       emptyState.innerHTML = `
-        <p>No goals yet. Create goals in the <strong>Goals</strong> page to start tracking!</p>
+        <p style="color: #888; text-align: center; padding: 40px 20px;">
+          📝 No active goals yet. Create goals in the <strong>Goals</strong> page to start tracking!
+        </p>
       `
       container.appendChild(emptyState)
     } else {
-      // Goal tracking grid section
+      // ===== GOALS INFO SECTION =====
+      const goalsInfoSection = document.createElement('div')
+      goalsInfoSection.className = 'goals-section'
+      goalsInfoSection.innerHTML = `<h3>📋 Active Goals (${gridData.goals.length})</h3>`
+      
+      const goalsGrid = document.createElement('div')
+      goalsGrid.className = 'goals-grid'
+      
+      for (const goal of gridData.goals) {
+        goalsGrid.appendChild(createGoalInfoCard(goal))
+      }
+      
+      goalsInfoSection.appendChild(goalsGrid)
+      container.appendChild(goalsInfoSection)
+      
+      // ===== TRACKING GRID SECTION =====
       const gridSection = document.createElement('div')
       gridSection.className = 'goal-grid-section'
-      gridSection.innerHTML = '<h3>📅 Tracking Grid (365 Days)</h3>'
+      gridSection.innerHTML = '<h3>📅 365-Day Tracking Grid</h3>'
       
-      // Create grid HTML
       const gridContainer = document.createElement('div')
       gridContainer.className = 'goal-grid-container'
       
-      // Goal labels on the left
+      // Goal labels column (left side)
       const labelsColumn = document.createElement('div')
       labelsColumn.className = 'goal-labels'
-      labelsColumn.innerHTML = '<div class="label-spacer"></div>'
+      labelsColumn.innerHTML = ''
       
       for (const goal of gridData.goals) {
         const label = document.createElement('div')
@@ -78,48 +103,58 @@ async function renderCheckmarks() {
       
       gridContainer.appendChild(labelsColumn)
       
-      // Create scrollable grid
+      // Scrollable grid (right side)
       const gridScroll = document.createElement('div')
       gridScroll.className = 'goal-grid-scroll'
       
       const grid = document.createElement('div')
       grid.className = 'goal-grid'
+
+      gridScroll.addEventListener('scroll', () => {
+        labelsColumn.scrollTop = gridScroll.scrollTop
+      })
+      labelsColumn.addEventListener('scroll', () => {
+        gridScroll.scrollTop = labelsColumn.scrollTop
+      })
       
       const today = new Date().toISOString().split('T')[0]
-      const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       
-      // Create grid cells
+      // Create one row per goal
       for (const goal of gridData.goals) {
         const row = document.createElement('div')
         row.className = 'grid-row'
         
+        // Create a cell for each date
         for (const date of gridData.dates) {
+          const shouldDisplay = shouldShowDayForGoal(date, goal.frequency, goal.scheduled_days)
+          
           const cell = document.createElement('div')
-          const key = `${goal.id}_${date}`
-          const isCompleted = gridData.completions[key] === 1
-          const canEdit = date >= twoDaysAgo
+          const cellKey = `${goal.id}_${date}`
+          const isCompleted = gridData.completions[cellKey] === 1
           
           cell.className = 'grid-cell'
-          cell.style.backgroundColor = goal.color || '#6ee7b7'
-          cell.title = `${goal.title} - ${date}`
+          cell.title = `${goal.title} - ${date}${!shouldDisplay ? ' (Not scheduled)' : ''}`
           
-          if (isCompleted) {
-            cell.classList.add('completed')
-            cell.textContent = '✓'
-          }
-          
-          if (canEdit && date === today) {
-            cell.classList.add('today')
-          }
-          
-          if (canEdit) {
+          if (!shouldDisplay) {
+            // Not scheduled for this day - gray out
+            cell.style.opacity = '0.15'
+            cell.style.cursor = 'default'
+          } else {
+            // Scheduled for this day
+            if (isCompleted) {
+              cell.classList.add('completed')
+              cell.textContent = '✓'
+            }
+            
+            if (date === today) {
+              cell.classList.add('today')
+            }
+            
             cell.style.cursor = 'pointer'
             cell.addEventListener('click', async () => {
               await window.api.toggleGoalCompletion(goal.id, date)
               renderCheckmarks()
             })
-          } else {
-            cell.style.opacity = '0.6'
           }
           
           row.appendChild(cell)
@@ -136,11 +171,119 @@ async function renderCheckmarks() {
     }
     
     content.appendChild(container)
+    console.log('✅ CheckMarked page rendered successfully!')
     
   } catch (error) {
-    console.error('Error rendering checkmarked:', error)
-    content.innerHTML = '<div class="error">Error loading goals tracker</div>'
+    console.error('❌ Error rendering checkmarked:', error)
+    content.innerHTML = `
+      <div class="error-state" style="padding: 40px; text-align: center;">
+        <h2>❌ Error Loading CheckMarked</h2>
+        <p><strong>${error.message || 'Unknown error'}</strong></p>
+        <pre style="text-align: left; background: #1a1a1a; padding: 12px; border-radius: 6px; overflow-x: auto;">
+${error.stack || 'No stack trace available'}</pre>
+      </div>
+    `
   }
 }
 
+/**
+ * Determine if a goal should be shown on a given date
+ * based on its frequency and scheduled days
+ */
+function shouldShowDayForGoal(dateStr, frequency, scheduledDaysStr) {
+  if (!frequency) return true
+  
+  const date = new Date(dateStr)
+  const dayOfWeek = date.getDay() // 0 = Sunday, 1 = Monday, etc.
+  
+  switch (frequency) {
+    case 'daily':
+      return true
+    
+    case 'weekdays':
+      return dayOfWeek >= 1 && dayOfWeek <= 5 // Mon-Fri
+    
+    case 'weekends':
+      return dayOfWeek === 0 || dayOfWeek === 6 // Sat-Sun
+    
+    case '3x':
+      // Default to Mon, Wed, Fri if no custom days specified
+      if (!scheduledDaysStr) return [1, 3, 5].includes(dayOfWeek)
+      const days = parseScheduledDays(scheduledDaysStr)
+      return days.includes(dayOfWeek)
+    
+    case 'custom':
+      if (!scheduledDaysStr) return true
+      const customDays = parseScheduledDays(scheduledDaysStr)
+      return customDays.includes(dayOfWeek)
+    
+    default:
+      return true
+  }
+}
 
+/**
+ * Parse scheduled days string (JSON format) to array of day numbers
+ */
+function parseScheduledDays(scheduledDaysStr) {
+  try {
+    if (!scheduledDaysStr) return []
+    const parsed = JSON.parse(scheduledDaysStr)
+    return Array.isArray(parsed) ? parsed : []
+  } catch (e) {
+    return []
+  }
+}
+
+/**
+ * Create goal information card showing details
+ */
+function createGoalInfoCard(goal) {
+  const card = document.createElement('div')
+  card.className = 'goal-card'
+  
+  const title = goal.title || 'Untitled Goal'
+  const description = goal.description || ''
+  const targetDate = goal.target_date
+  const progress = goal.progress || 0
+  const icon = goal.icon || '🎯'
+  const frequency = goal.frequency || 'daily'
+  
+  // Format target date
+  const dateStr = targetDate 
+    ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+    : ''
+  
+  // Format frequency for display
+  const frequencyDisplay = {
+    'daily': '📅 Every Day',
+    'weekdays': '💼 Weekdays (Mon-Fri)',
+    'weekends': '🎉 Weekends (Sat-Sun)',
+    '3x': '⭐ 3 times per week',
+    'custom': '📍 Custom days'
+  }[frequency] || frequency
+  
+  card.innerHTML = `
+    <div class="goal-card-header">
+      <div class="goal-card-title">
+        <span class="goal-card-icon">${icon}</span>
+        <h4>${title}</h4>
+      </div>
+    </div>
+    ${description ? `<p class="goal-desc">${description}</p>` : ''}
+    <div class="goal-card-meta">
+      <span class="goal-card-frequency"><strong>${frequencyDisplay}</strong></span>
+      ${targetDate ? `<span class="goal-card-target">🎯 Target: ${dateStr}</span>` : ''}
+    </div>
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: ${progress}%"></div>
+      </div>
+      <div class="progress-text">
+        <span>Progress: ${progress}%</span>
+      </div>
+    </div>
+  `
+  
+  return card
+}
