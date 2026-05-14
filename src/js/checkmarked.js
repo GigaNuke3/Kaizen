@@ -117,6 +117,30 @@ async function renderCheckmarks() {
         gridScroll.scrollTop = labelsColumn.scrollTop
       })
       
+      // Add header spacer in labels column
+      const headerSpacer = document.createElement('div')
+      headerSpacer.className = 'goal-label label-header'
+      headerSpacer.innerHTML = '<span style="color:#555;font-size:0.75rem;">Goal</span>'
+      labelsColumn.insertBefore(headerSpacer, labelsColumn.firstChild)
+      
+      // Add day-of-week header row
+      const headerRow = document.createElement('div')
+      headerRow.className = 'grid-row'
+      
+      for (const date of gridData.dates) {
+        const d = new Date(date)
+        const dayLetter = ['S','M','T','W','T','F','S'][d.getDay()]
+        const headerCell = document.createElement('div')
+        headerCell.className = 'grid-cell grid-header-cell'
+        headerCell.textContent = dayLetter
+        headerCell.title = date
+        if (d.getDay() === 0 || d.getDay() === 6) {
+          headerCell.style.color = '#f472b6'
+        }
+        headerRow.appendChild(headerCell)
+      }
+      grid.appendChild(headerRow)
+      
       const today = new Date().toISOString().split('T')[0]
       
       // Create one row per goal
@@ -136,9 +160,8 @@ async function renderCheckmarks() {
           cell.title = `${goal.title} - ${date}${!shouldDisplay ? ' (Not scheduled)' : ''}`
           
           if (!shouldDisplay) {
-            // Not scheduled for this day - gray out
-            cell.style.opacity = '0.15'
-            cell.style.cursor = 'default'
+            // Not scheduled for this day - mark as disabled
+            cell.classList.add('disabled')
           } else {
             // Scheduled for this day
             if (isCompleted) {

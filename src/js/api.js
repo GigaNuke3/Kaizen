@@ -59,11 +59,11 @@ const api = {
     ipcRenderer.invoke('delete-journal-entry', id),
 
   // ==================== GOALS ====================
-  addGoal: (title, description = '', targetDate = null) => 
-    ipcRenderer.invoke('add-goal', title, description, targetDate),
+  addGoal: (title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null) => 
+    ipcRenderer.invoke('add-goal', title, description, targetDate, frequency, scheduledDays),
   
-  updateGoal: (id, title, description = '', targetDate = null) => 
-    ipcRenderer.invoke('update-goal', id, title, description, targetDate),
+  updateGoal: (id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null) => 
+    ipcRenderer.invoke('update-goal', id, title, description, targetDate, frequency, scheduledDays),
   
   getAllGoals: () => 
     ipcRenderer.invoke('get-all-goals'),

@@ -139,6 +139,7 @@ function ensureGoalModalExists() {
             <option value="daily">Daily (every day)</option>
             <option value="weekdays">Weekdays (Mon-Fri)</option>
             <option value="weekends">Weekends (Sat-Sun)</option>
+            <option value="3x">3x per week (Mon, Wed, Fri)</option>
             <option value="custom">Custom days</option>
           </select>
         </div>
@@ -349,11 +350,12 @@ async function editGoal(goalId) {
 async function saveGoal(event) {
   event.preventDefault()
   
-  const title = document.getElementById('goal-title').value
+  const title = document.getElementById('goal-title').value.trim()
   const label = document.getElementById('goal-label-value').value
   const targetDate = document.getElementById('goal-date').value
+  const frequency = document.getElementById('goal-frequency').value
   
-  if (!title.trim()) {
+  if (!title) {
     alert('Goal title is required!')
     return
   }
@@ -363,13 +365,26 @@ async function saveGoal(event) {
     return
   }
   
+  // Collect custom days if applicable
+  let scheduledDays = null
+  if (frequency === 'custom') {
+    const checked = [...document.querySelectorAll('input[name="day"]:checked')]
+    if (checked.length === 0) {
+      alert('Select at least one day!')
+      return
+    }
+    scheduledDays = JSON.stringify(checked.map(cb => parseInt(cb.value)))
+  } else if (frequency === '3x') {
+    scheduledDays = JSON.stringify([1, 3, 5]) // Mon, Wed, Fri
+  }
+  
   try {
     if (selectedGoalForEdit) {
       // Update existing goal
-      await window.api.updateGoal(selectedGoalForEdit, title, label, targetDate || null)
+      await window.api.updateGoal(selectedGoalForEdit, title, label, targetDate || null, frequency, scheduledDays)
     } else {
       // Create new goal
-      await window.api.addGoal(title, label, targetDate || null)
+      await window.api.addGoal(title, label, targetDate || null, frequency, scheduledDays)
     }
     closeGoalModal()
     renderGoals()

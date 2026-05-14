@@ -172,6 +172,33 @@
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
 }
 
+.grid-header-cell {
+  cursor: default !important;
+  color: #555;
+  font-size: 0.65rem;
+  border-color: transparent;
+  background: #0f0f0f;
+}
+
+.grid-header-cell:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.grid-cell.disabled {
+  opacity: 0.08;
+  cursor: not-allowed !important;
+  background: #111;
+  border-color: #222;
+}
+
+.label-header {
+  background: #0f0f0f;
+  border-bottom: 1px solid #2a2a2a;
+  color: #555;
+}
+
 /* Loading and error states */
 .loading-state {
   width: 100%;

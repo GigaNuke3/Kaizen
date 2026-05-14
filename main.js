@@ -67,8 +67,8 @@ ipcMain.handle('get-all-journal-entries', (event, limit) => backend.getAllJourna
 ipcMain.handle('delete-journal-entry', (event, id) => backend.deleteJournalEntry(id))
 
 // Goals
-ipcMain.handle('add-goal', (event, title, description, targetDate) => backend.addGoal(title, description, targetDate))
-ipcMain.handle('update-goal', (event, id, title, description, targetDate) => backend.updateGoal(id, title, description, targetDate))
+ipcMain.handle('add-goal', (event, title, description, targetDate, frequency, scheduledDays) => backend.addGoal(title, description, targetDate, frequency, scheduledDays))
+ipcMain.handle('update-goal', (event, id, title, description, targetDate, frequency, scheduledDays) => backend.updateGoal(id, title, description, targetDate, frequency, scheduledDays))
 ipcMain.handle('get-all-goals', () => backend.getAllGoals())
 ipcMain.handle('get-active-goals', () => backend.getActiveGoals())
 ipcMain.handle('update-goal-progress', (event, id, progress) => backend.updateGoalProgress(id, progress))

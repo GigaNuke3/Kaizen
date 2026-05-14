@@ -104,7 +104,22 @@ async function getDB() {
       created_at TEXT DEFAULT (date('now'))
     );
   `)
-
+  // Migration: add missing columns if they don't exist
+  const goalColumns = db.exec("PRAGMA table_info(goals)")[0]?.values?.map(r => r[1]) || []
+  if (!goalColumns.includes('frequency'))
+    db.run("ALTER TABLE goals ADD COLUMN frequency TEXT DEFAULT 'daily'")
+  if (!goalColumns.includes('scheduled_days'))
+    db.run("ALTER TABLE goals ADD COLUMN scheduled_days TEXT")
+  if (!goalColumns.includes('icon'))
+    db.run("ALTER TABLE goals ADD COLUMN icon TEXT DEFAULT '🎯'")
+  if (!goalColumns.includes('description'))
+    db.run("ALTER TABLE goals ADD COLUMN description TEXT")
+  if (!goalColumns.includes('target_date'))
+    db.run("ALTER TABLE goals ADD COLUMN target_date TEXT")
+  if (!goalColumns.includes('progress'))
+    db.run("ALTER TABLE goals ADD COLUMN progress INTEGER DEFAULT 0")
+  if (!goalColumns.includes('color'))
+    db.run("ALTER TABLE goals ADD COLUMN color TEXT DEFAULT '#6ee7b7'")
   saveDB()
   console.log('✅ Database initialized')
   return db
@@ -336,16 +351,18 @@ async function deleteJournalEntry(id) {
  * ==================== GOALS ====================
  */
 
-async function addGoal(title, description = '', targetDate = null) {
+async function addGoal(title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null) {
   const database = await getDB()
-  database.run('INSERT INTO goals (title, description, target_date) VALUES (?, ?, ?)', [title, description, targetDate])
+  database.run('INSERT INTO goals (title, description, target_date, frequency, scheduled_days) VALUES (?, ?, ?, ?, ?)', 
+    [title, description, targetDate, frequency, scheduledDays])
   saveDB()
   return getAllGoals()
 }
 
-async function updateGoal(id, title, description = '', targetDate = null) {
+async function updateGoal(id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null) {
   const database = await getDB()
-  database.run('UPDATE goals SET title = ?, description = ?, target_date = ? WHERE id = ?', [title, description, targetDate, id])
+  database.run('UPDATE goals SET title = ?, description = ?, target_date = ?, frequency = ?, scheduled_days = ? WHERE id = ?', 
+    [title, description, targetDate, frequency, scheduledDays, id])
   saveDB()
   return getAllGoals()
 }
