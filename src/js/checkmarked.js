@@ -143,6 +143,7 @@ async function renderCheckmarks() {
       grid.appendChild(headerRow)
       
       const today = new Date().toISOString().split('T')[0]
+      const todayJournal = await window.api.getTodayJournal();
       
       // Create one row per goal
       for (const goal of gridData.goals) {

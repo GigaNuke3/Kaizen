@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="src/css/checkmarked.css">
   <link rel="stylesheet" href="src/css/profile.css">
   <link rel="stylesheet" href="src/css/goals.css">
+  <link rel="stylesheet" href="src/css/failed_goals.css">
+  <link rel="stylesheet" href="src/css/notification.css">
 </head>
 <body>
   <div class="app">
@@ -34,6 +36,13 @@
         <li onclick="loadPage('completed_goals')">
           ✅ Completed Goals
         </li>
+        <li onclick="loadPage('failed_goals')">
+          ❌ Failed Goals
+        </li>
+        <li onclick="loadPage('notifications')">
+          🔔 Notifications
+        </li>
+"
         <li onclick="loadPage('journal')">
           📓 Journal
         </li>
@@ -58,6 +67,8 @@
  <script src="src/js/goals.js"></script>
  <script src="src/js/checkmarked.js"></script>
  <script src="src/js/completed_goals.js"></script>
+ <script src="src/js/failed_goals.js"></script>
+ <script src="src/js/notification.js"></script>
  <script src="src/js/profile.js"></script>
 <script>
   async function loadPage(page) {
@@ -74,6 +85,10 @@
       await renderJournal()
     } else if (page === 'goals') {
       await renderGoals()
+    } else if (page === 'failed_goals') {
+      await renderFailedGoals()
+    } else if (page === 'notifications') {
+      await renderNotifications()
     } else if (page === 'todo') {
       await renderCheckmarks()
     } else if (page === 'completed_goals') {

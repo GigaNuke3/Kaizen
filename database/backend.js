@@ -34,6 +34,7 @@ async function getDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       content TEXT NOT NULL,
       date TEXT DEFAULT (date('now')),
+      time TEXT,
       mood TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -45,6 +46,7 @@ async function getDB() {
       start_date TEXT,
       target_date TEXT,
       completed INTEGER DEFAULT 0,
+      failed INTEGER DEFAULT 0,
       progress INTEGER DEFAULT 0,
       frequency TEXT DEFAULT 'daily',
       scheduled_days TEXT,
@@ -59,6 +61,7 @@ async function getDB() {
       goal_id INTEGER NOT NULL,
       date TEXT NOT NULL,
       is_completed INTEGER DEFAULT 0,
+      is_failed INTEGER DEFAULT 0,
       UNIQUE(goal_id, date),
       FOREIGN KEY(goal_id) REFERENCES goals(id) ON DELETE CASCADE
     );
@@ -69,6 +72,7 @@ async function getDB() {
       description TEXT,
       category TEXT,
       completed INTEGER DEFAULT 0,
+      failed INTEGER DEFAULT 0,
       priority INTEGER DEFAULT 0,
       due_date TEXT,
       created_at TEXT DEFAULT (date('now'))
@@ -79,6 +83,7 @@ async function getDB() {
       habit_id INTEGER NOT NULL,
       date TEXT DEFAULT (date('now')),
       completed INTEGER DEFAULT 0,
+      failed INTEGER DEFAULT 0,
       UNIQUE(habit_id, date),
       FOREIGN KEY(habit_id) REFERENCES habits(id)
     );
@@ -187,9 +192,9 @@ async function markHabitComplete(habitId, date = null) {
   const targetDate = date || new Date().toISOString().split('T')[0]
   
   try {
-    database.run('INSERT OR REPLACE INTO daily_checklist (habit_id, date, completed) VALUES (?, ?, 1)', [habitId, targetDate])
+    database.run('INSERT OR REPLACE INTO daily_checklist (habit_id, date, completed, failed) VALUES (?, ?, 1)', [habitId, targetDate, targetDate])
   } catch (e) {
-    database.run('UPDATE daily_checklist SET completed = 1 WHERE habit_id = ? AND date = ?', [habitId, targetDate])
+    database.run('UPDATE daily_checklist SET completed = 1 WHERE habit_id = ? AND date = ?', [habitId, targetDate, targetDate])
   }
   
   saveDB()
@@ -316,10 +321,10 @@ async function getStreakAcrossAllHabits() {
  * ==================== JOURNAL ====================
  */
 
-async function addJournalEntry(content, mood = 'neutral') {
+async function addJournalEntry(content, mood, time) {
   const database = await getDB()
   const date = new Date().toISOString().split('T')[0]
-  database.run('INSERT INTO journal (content, date, mood) VALUES (?, ?, ?)', [content, date, mood])
+  database.run('INSERT INTO journal (content, mood, date, time) VALUES (?, ?, ?, ?)', [content, mood, date, time])
   saveDB()
   return getTodayJournal()
 }

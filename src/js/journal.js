@@ -68,6 +68,11 @@ function ensureJournalModalExists() {
           
           <form onsubmit="saveJournalEntry(event)">
             <div class="form-group">
+              <label for="journal-time">Time *</label>
+              <input type="time" id="journal-time" required>
+            </div>
+
+            <div class="form-group">
               <label for="journal-mood">How are you feeling?</label>
               <div class="mood-selector">
                 <span class="mood-option" data-mood="😢" onclick="selectMood('sad')">😢 Sad</span>

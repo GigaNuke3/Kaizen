@@ -1,0 +1,48 @@
+/* 
+    Notifications CSS
+    Author: Kaizen
+    Date: May 15, 2026
+*/
+
+.notifications-container {
+    padding: 20px;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.notifications-header h2 {
+    font-size: 1.8rem;
+    color: #57a9ff;
+}
+
+.notification-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.notification-item {
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    padding: 15px;
+    border-left: 5px solid #57a9ff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notification-item p {
+    margin: 0;
+    color: #ccc;
+}
+
+.notification-item .timestamp {
+    font-size: 0.8rem;
+    color: #888;
+}
