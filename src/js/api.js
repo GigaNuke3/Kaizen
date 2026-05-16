@@ -59,11 +59,11 @@ const api = {
     ipcRenderer.invoke('delete-journal-entry', id),
 
   // ==================== GOALS ====================
-  addGoal: (title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null) => 
-    ipcRenderer.invoke('add-goal', title, description, targetDate, frequency, scheduledDays),
+  addGoal: (title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null) => 
+    ipcRenderer.invoke('add-goal', title, description, targetDate, frequency, scheduledDays, startDate),
   
-  updateGoal: (id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null) => 
-    ipcRenderer.invoke('update-goal', id, title, description, targetDate, frequency, scheduledDays),
+  updateGoal: (id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null) => 
+    ipcRenderer.invoke('update-goal', id, title, description, targetDate, frequency, scheduledDays, startDate),
   
   getAllGoals: () => 
     ipcRenderer.invoke('get-all-goals'),
@@ -91,8 +91,8 @@ const api = {
     ipcRenderer.invoke('delete-label', id),
 
   // ==================== GOAL TRACKING GRID ====================
-  getGoalTrackingGrid: (daysBack = 365) => 
-    ipcRenderer.invoke('get-goal-tracking-grid', daysBack),
+  getGoalTrackingGrid: () => 
+    ipcRenderer.invoke('get-goal-tracking-grid'),
   
   toggleGoalCompletion: (goalId, date) => 
     ipcRenderer.invoke('toggle-goal-completion', goalId, date),

@@ -67,8 +67,8 @@ ipcMain.handle('get-all-journal-entries', (event, limit) => backend.getAllJourna
 ipcMain.handle('delete-journal-entry', (event, id) => backend.deleteJournalEntry(id))
 
 // Goals
-ipcMain.handle('add-goal', (event, title, description, targetDate, frequency, scheduledDays) => backend.addGoal(title, description, targetDate, frequency, scheduledDays))
-ipcMain.handle('update-goal', (event, id, title, description, targetDate, frequency, scheduledDays) => backend.updateGoal(id, title, description, targetDate, frequency, scheduledDays))
+ipcMain.handle('add-goal', (event, title, description, targetDate, frequency, scheduledDays, startDate) => backend.addGoal(title, description, targetDate, frequency, scheduledDays, startDate))
+ipcMain.handle('update-goal', (event, id, title, description, targetDate, frequency, scheduledDays, startDate) => backend.updateGoal(id, title, description, targetDate, frequency, scheduledDays, startDate))
 ipcMain.handle('get-all-goals', () => backend.getAllGoals())
 ipcMain.handle('get-active-goals', () => backend.getActiveGoals())
 ipcMain.handle('update-goal-progress', (event, id, progress) => backend.updateGoalProgress(id, progress))
@@ -81,7 +81,7 @@ ipcMain.handle('add-custom-label', (event, name) => backend.addCustomLabel(name)
 ipcMain.handle('delete-label', (event, id) => backend.deleteLabel(id))
 
 // Goal Tracking Grid
-ipcMain.handle('get-goal-tracking-grid', (event, daysBack = 365) => backend.getGoalTrackingGrid(daysBack))
+ipcMain.handle('get-goal-tracking-grid', () => backend.getGoalTrackingGrid())
 ipcMain.handle('toggle-goal-completion', (event, goalId, date) => backend.toggleGoalCompletion(goalId, date))
 ipcMain.handle('get-today-goal-stats', () => backend.getTodayGoalStats())
 

@@ -60,7 +60,23 @@ async function renderGoals() {
     
     container.appendChild(activeSection)
     
-
+    // Completed goals section
+    const completedSection = document.createElement('div')
+    completedSection.className = 'goals-section'
+    completedSection.innerHTML = `<h3>✅ Completed (${completedGoals.length})</h3>`
+    
+    if (completedGoals.length === 0) {
+      completedSection.innerHTML += '<p class="empty-msg">No completed goals yet. Keep working!</p>'
+    } else {
+      const completedGrid = document.createElement('div')
+      completedGrid.className = 'goals-grid'
+      for (const goal of completedGoals) {
+        completedGrid.appendChild(createGoalCard(goal, true))
+      }
+      completedSection.appendChild(completedGrid)
+    }
+    
+    container.appendChild(completedSection)
     
     content.appendChild(container)
     ensureGoalModalExists()
@@ -78,11 +94,17 @@ function createGoalCard(goal, isCompleted = false) {
   const id = goal[0]
   const title = goal[1]
   const description = goal[2]
-  const targetDate = goal[3]
-  const progress = goal[5]
-  const icon = goal[10] || '🎯'
+  const startDate = goal[3]
+  const targetDate = goal[4]
+  const progress = goal[6]
+  const completionDate = goal[10]
+  const color = goal[11]
+  const icon = goal[12] || '🎯'
   
-  const dateStr = targetDate ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+  // Format dates as "Month Date, Year"
+  const startStr = startDate ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+  const targetStr = targetDate ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+  const completionStr = completionDate ? new Date(completionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   
   card.innerHTML = `
     <div class="goal-card-header">
@@ -96,7 +118,8 @@ function createGoalCard(goal, isCompleted = false) {
       </div>
     </div>
     ${description ? `<div class="goal-labels"><span class="goal-label-badge">${description}</span></div>` : ''}
-    ${targetDate ? `<span class="goal-date">Target: ${dateStr}</span>` : ''}
+    ${startDate && targetDate ? `<span class="goal-time">⏱️ Window: ${startStr} → ${targetStr}</span>` : ''}
+    ${isCompleted && completionStr ? `<span class="goal-completion">✓ Completed on ${completionStr}</span>` : ''}
   `
   
   return card
@@ -170,8 +193,13 @@ function ensureGoalModalExists() {
         </div>
         
         <div class="form-group">
-          <label for="goal-date">Target Date</label>
-          <input type="date" id="goal-date">
+          <label for="goal-start-date">Checklist Opens (Start Date) *</label>
+          <input type="date" id="goal-start-date" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="goal-date">Checklist Closes (Target Date) *</label>
+          <input type="date" id="goal-date" required>
         </div>
         
         <button type="submit" class="btn btn-primary">Save Goal</button>
@@ -332,17 +360,30 @@ function closeGoalModal() {
 async function editGoal(goalId) {
   const goal = allGoals.find(g => g[0] === goalId)
   if (!goal) return
-  
+
   selectedGoalForEdit = goalId
   ensureGoalModalExists()
   document.getElementById('goal-modal-title').textContent = 'Edit Goal'
-  document.getElementById('goal-title').value = goal[1]
-  const label = goal[2] || ''
-  document.getElementById('goal-label-value').value = label
-  document.getElementById('goal-date').value = goal[3] || ''
+  document.getElementById('goal-title').value = goal[1]        // title
+  document.getElementById('goal-label-value').value = goal[2] || '' // description = label
+  document.getElementById('goal-start-date').value = goal[3] || ''  // start_date
+  document.getElementById('goal-date').value = goal[4] || ''         // target_date
+  document.getElementById('goal-frequency').value = goal[7] || 'daily'
+  document.getElementById('goal-color').value = goal[11] || '#6ee7b7'
   
+  // Restore custom days if applicable
+  if (goal[7] === 'custom' && goal[8]) {
+    document.getElementById('custom-days-group').style.display = 'block'
+    const days = JSON.parse(goal[8] || '[]')
+    document.querySelectorAll('input[name="day"]').forEach(cb => {
+      cb.checked = days.includes(parseInt(cb.value))
+    })
+  } else {
+    document.getElementById('custom-days-group').style.display = 'none'
+  }
+
   updateLabelDropdown()
-  document.getElementById('goal-label').value = label || ''
+  document.getElementById('goal-label').value = goal[2] || ''
   
   document.getElementById('goal-modal').classList.add('active')
 }
@@ -352,6 +393,7 @@ async function saveGoal(event) {
   
   const title = document.getElementById('goal-title').value.trim()
   const label = document.getElementById('goal-label-value').value
+  const startDate = document.getElementById('goal-start-date').value
   const targetDate = document.getElementById('goal-date').value
   const frequency = document.getElementById('goal-frequency').value
   
@@ -362,6 +404,21 @@ async function saveGoal(event) {
   
   if (!label) {
     alert('Please select or create a label!')
+    return
+  }
+  
+  if (!startDate) {
+    alert('Start date is required!')
+    return
+  }
+
+  if (!targetDate) {
+    alert('Target date is required!')
+    return
+  }
+
+  if (new Date(startDate) > new Date(targetDate)) {
+    alert('Start date must be before target date!')
     return
   }
   
@@ -381,10 +438,10 @@ async function saveGoal(event) {
   try {
     if (selectedGoalForEdit) {
       // Update existing goal
-      await window.api.updateGoal(selectedGoalForEdit, title, label, targetDate || null, frequency, scheduledDays)
+      await window.api.updateGoal(selectedGoalForEdit, title, label, targetDate, frequency, scheduledDays, startDate)
     } else {
       // Create new goal
-      await window.api.addGoal(title, label, targetDate || null, frequency, scheduledDays)
+      await window.api.addGoal(title, label, targetDate, frequency, scheduledDays, startDate)
     }
     closeGoalModal()
     renderGoals()

@@ -19,7 +19,7 @@ async function renderCheckmarks() {
     content.innerHTML = ''
     
     // Load data
-    const gridData = await window.api.getGoalTrackingGrid(365)
+    const gridData = await window.api.getGoalTrackingGrid()
     const todayStats = await window.api.getTodayGoalStats()
     
     console.log('✅ CheckMarked data loaded:', { goals: gridData.goals.length, dates: gridData.dates.length })
@@ -81,7 +81,8 @@ async function renderCheckmarks() {
       // ===== TRACKING GRID SECTION =====
       const gridSection = document.createElement('div')
       gridSection.className = 'goal-grid-section'
-      gridSection.innerHTML = '<h3>📅 365-Day Tracking Grid</h3>'
+      const latestDate = gridData.dates.length > 0 ? gridData.dates[gridData.dates.length - 1] : 'N/A'
+      gridSection.innerHTML = `<h3>📅 Tracking Grid (Today → Target Date: ${latestDate})</h3>`
       
       const gridContainer = document.createElement('div')
       gridContainer.className = 'goal-grid-container'
@@ -151,19 +152,22 @@ async function renderCheckmarks() {
         // Create a cell for each date
         for (const date of gridData.dates) {
           const shouldDisplay = shouldShowDayForGoal(date, goal.frequency, goal.scheduled_days)
+          const isWithinWindow = isDateWithinChecklistWindow(date, goal.start_date, goal.target_date)
+          const isNotFuture = new Date(date) <= new Date(today)
           
           const cell = document.createElement('div')
           const cellKey = `${goal.id}_${date}`
           const isCompleted = gridData.completions[cellKey] === 1
           
           cell.className = 'grid-cell'
-          cell.title = `${goal.title} - ${date}${!shouldDisplay ? ' (Not scheduled)' : ''}`
+          cell.title = `${goal.title} - ${date}${!shouldDisplay ? ' (Not scheduled)' : ''}${!isWithinWindow ? ' (Outside checklist window)' : ''}${!isNotFuture ? ' (Future date - cannot check)' : ''}`
           
-          if (!shouldDisplay) {
-            // Not scheduled for this day - mark as disabled
+          // Check if cell is disabled (not scheduled OR outside window OR future date)
+          if (!shouldDisplay || !isWithinWindow || !isNotFuture) {
+            // Not scheduled or outside window or future - mark as disabled
             cell.classList.add('disabled')
           } else {
-            // Scheduled for this day
+            // Scheduled for this day AND within window AND not future
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
@@ -207,6 +211,19 @@ ${error.stack || 'No stack trace available'}</pre>
       </div>
     `
   }
+}
+
+/**
+ * Check if a date is within the checklist window (between start_date and target_date)
+ */
+function isDateWithinChecklistWindow(dateStr, startDateStr, targetDateStr) {
+  if (!startDateStr || !targetDateStr) return true
+  
+  const date = new Date(dateStr)
+  const startDate = new Date(startDateStr)
+  const targetDate = new Date(targetDateStr)
+  
+  return date >= startDate && date <= targetDate
 }
 
 /**
@@ -267,13 +284,17 @@ function createGoalInfoCard(goal) {
   
   const title = goal.title || 'Untitled Goal'
   const description = goal.description || ''
+  const startDate = goal.start_date
   const targetDate = goal.target_date
   const progress = goal.progress || 0
   const icon = goal.icon || '🎯'
   const frequency = goal.frequency || 'daily'
   
-  // Format target date
-  const dateStr = targetDate 
+  // Format dates
+  const startStr = startDate 
+    ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+    : ''
+  const targetStr = targetDate 
     ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
     : ''
   
@@ -296,7 +317,7 @@ function createGoalInfoCard(goal) {
     ${description ? `<p class="goal-desc">${description}</p>` : ''}
     <div class="goal-card-meta">
       <span class="goal-card-frequency"><strong>${frequencyDisplay}</strong></span>
-      ${targetDate ? `<span class="goal-card-target">🎯 Target: ${dateStr}</span>` : ''}
+      ${startDate && targetDate ? `<span class="goal-card-target">⏱️ Window: ${startStr} → ${targetStr}</span>` : ''}
     </div>
     <div class="progress-container">
       <div class="progress-bar">

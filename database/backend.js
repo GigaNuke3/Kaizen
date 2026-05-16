@@ -42,12 +42,14 @@ async function getDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       description TEXT,
+      start_date TEXT,
       target_date TEXT,
       completed INTEGER DEFAULT 0,
       progress INTEGER DEFAULT 0,
       frequency TEXT DEFAULT 'daily',
       scheduled_days TEXT,
       created_at TEXT DEFAULT (date('now')),
+      completion_date TEXT,
       color TEXT DEFAULT '#6ee7b7',
       icon TEXT DEFAULT '🎯'
     );
@@ -120,6 +122,10 @@ async function getDB() {
     db.run("ALTER TABLE goals ADD COLUMN progress INTEGER DEFAULT 0")
   if (!goalColumns.includes('color'))
     db.run("ALTER TABLE goals ADD COLUMN color TEXT DEFAULT '#6ee7b7'")
+  if (!goalColumns.includes('start_date'))
+    db.run("ALTER TABLE goals ADD COLUMN start_date TEXT")
+  if (!goalColumns.includes('completion_date'))
+    db.run("ALTER TABLE goals ADD COLUMN completion_date TEXT")
   saveDB()
   console.log('✅ Database initialized')
   return db
@@ -351,18 +357,20 @@ async function deleteJournalEntry(id) {
  * ==================== GOALS ====================
  */
 
-async function addGoal(title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null) {
+async function addGoal(title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null) {
   const database = await getDB()
-  database.run('INSERT INTO goals (title, description, target_date, frequency, scheduled_days) VALUES (?, ?, ?, ?, ?)', 
-    [title, description, targetDate, frequency, scheduledDays])
+  // If no start date provided, use today
+  const start = startDate || new Date().toISOString().split('T')[0]
+  database.run('INSERT INTO goals (title, description, start_date, target_date, frequency, scheduled_days) VALUES (?, ?, ?, ?, ?, ?)', 
+    [title, description, start, targetDate, frequency, scheduledDays])
   saveDB()
   return getAllGoals()
 }
 
-async function updateGoal(id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null) {
+async function updateGoal(id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null) {
   const database = await getDB()
-  database.run('UPDATE goals SET title = ?, description = ?, target_date = ?, frequency = ?, scheduled_days = ? WHERE id = ?', 
-    [title, description, targetDate, frequency, scheduledDays, id])
+  database.run('UPDATE goals SET title = ?, description = ?, target_date = ?, start_date = ?, frequency = ?, scheduled_days = ? WHERE id = ?', 
+    [title, description, targetDate, startDate, frequency, scheduledDays, id])
   saveDB()
   return getAllGoals()
 }
@@ -381,14 +389,23 @@ async function getActiveGoals() {
 
 async function updateGoalProgress(id, progress) {
   const database = await getDB()
-  database.run('UPDATE goals SET progress = ? WHERE id = ?', [progress, id])
+  
+  // If progress reaches 100%, auto-complete the goal
+  if (progress >= 100) {
+    const today = new Date().toISOString().split('T')[0]
+    database.run('UPDATE goals SET progress = 100, completed = 1, completion_date = ? WHERE id = ?', [today, id])
+  } else {
+    database.run('UPDATE goals SET progress = ?, completed = 0, completion_date = NULL WHERE id = ?', [progress, id])
+  }
+  
   saveDB()
   return getAllGoals()
 }
 
 async function completeGoal(id) {
   const database = await getDB()
-  database.run('UPDATE goals SET completed = 1, progress = 100 WHERE id = ?', [id])
+  const today = new Date().toISOString().split('T')[0]
+  database.run('UPDATE goals SET completed = 1, progress = 100, completion_date = ? WHERE id = ?', [today, id])
   saveDB()
   return getAllGoals()
 }
@@ -552,22 +569,48 @@ async function getDashboardStats() {
  * ==================== GOAL TRACKING GRID ====================
  */
 
-async function getGoalTrackingGrid(daysBack = 365) {
+async function getGoalTrackingGrid() {
   const database = await getDB()
   
-  // Get all active goals
-  const goalsResult = database.exec('SELECT * FROM goals WHERE completed = 0 ORDER BY created_at ASC')
+  // Get all active goals with explicit column names to handle migration variations
+  const goalsResult = database.exec(`
+    SELECT 
+      id, title, description, start_date, target_date,
+      completed, progress, frequency, scheduled_days,
+      created_at, completion_date, color, icon
+    FROM goals WHERE completed = 0 ORDER BY created_at ASC
+  `)
   const goals = goalsResult.length > 0 ? goalsResult[0].values.map(row => ({
-    id: row[0], title: row[1], description: row[2], target_date: row[3],
-    completed: row[4], progress: row[5], frequency: row[6], scheduled_days: row[7],
-    created_at: row[8], color: row[9], icon: row[10]
+    id: row[0], title: row[1], description: row[2], start_date: row[3], target_date: row[4],
+    completed: row[5], progress: row[6], frequency: row[7], scheduled_days: row[8],
+    created_at: row[9], completion_date: row[10], color: row[11], icon: row[12]
   })) : []
   
-  // Generate date range (last X days)
+  if (goals.length === 0) {
+    return { goals: [], dates: [], completions: {} }
+  }
+  
+  // Find the earliest start_date and latest target_date across all goals
+  let earliestStart = new Date()
+  let latestEnd = new Date()
+
+  for (const goal of goals) {
+    if (goal.start_date) {
+      const sd = new Date(goal.start_date)
+      if (sd < earliestStart) earliestStart = sd
+    }
+    if (goal.target_date) {
+      const td = new Date(goal.target_date)
+      if (td > latestEnd) latestEnd = td
+    }
+  }
+
+  // Generate date range from earliest start → latest target
   const dates = []
-  for (let i = daysBack - 1; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
+  earliestStart.setHours(0, 0, 0, 0)
+  latestEnd.setHours(0, 0, 0, 0)
+
+  for (let d = new Date(earliestStart); d <= latestEnd; d.setDate(d.getDate() + 1)) {
     dates.push(d.toISOString().split('T')[0])
   }
   
@@ -615,7 +658,79 @@ async function toggleGoalCompletion(goalId, date) {
   }
   
   saveDB()
+  await recalculateGoalProgress(goalId)
   return true
+}
+
+async function recalculateGoalProgress(goalId) {
+  const database = await getDB()
+
+  // Get goal details
+  const goalResult = database.exec(
+    'SELECT start_date, target_date, frequency, scheduled_days FROM goals WHERE id = ?',
+    [goalId]
+  )
+  if (!goalResult.length || !goalResult[0].values.length) return
+
+  const [startDate, targetDate, frequency, scheduledDays] = goalResult[0].values[0]
+  if (!startDate || !targetDate) return
+
+  // Count how many days in the window are scheduled
+  const start = new Date(startDate)
+  const end = new Date(targetDate)
+  const today = new Date()
+  const windowEnd = end < today ? end : today // don't count future days
+
+  let scheduledCount = 0
+  for (let d = new Date(start); d <= windowEnd; d.setDate(d.getDate() + 1)) {
+    if (isDayScheduled(d.getDay(), frequency, scheduledDays)) scheduledCount++
+  }
+
+  if (scheduledCount === 0) return
+
+  // Count completed check-ins within window
+  const completedResult = database.exec(
+    `SELECT COUNT(*) FROM goal_completions
+     WHERE goal_id = ? AND is_completed = 1
+     AND date >= ? AND date <= ?`,
+    [goalId, startDate, targetDate]
+  )
+  const completedCount = completedResult[0]?.values[0][0] || 0
+
+  const progress = Math.min(100, Math.round((completedCount / scheduledCount) * 100))
+
+  // Auto-complete if 100%
+  if (progress >= 100) {
+    const today2 = new Date().toISOString().split('T')[0]
+    database.run(
+      'UPDATE goals SET progress = 100, completed = 1, completion_date = ? WHERE id = ?',
+      [today2, goalId]
+    )
+  } else {
+    database.run(
+      'UPDATE goals SET progress = ?, completed = 0, completion_date = NULL WHERE id = ?',
+      [progress, goalId]
+    )
+  }
+
+  saveDB()
+}
+
+function isDayScheduled(dayOfWeek, frequency, scheduledDaysStr) {
+  switch (frequency) {
+    case 'daily': return true
+    case 'weekdays': return dayOfWeek >= 1 && dayOfWeek <= 5
+    case 'weekends': return dayOfWeek === 0 || dayOfWeek === 6
+    case '3x': {
+      const days = scheduledDaysStr ? JSON.parse(scheduledDaysStr) : [1, 3, 5]
+      return days.includes(dayOfWeek)
+    }
+    case 'custom': {
+      if (!scheduledDaysStr) return true
+      return JSON.parse(scheduledDaysStr).includes(dayOfWeek)
+    }
+    default: return true
+  }
 }
 
 async function getTodayGoalStats() {
@@ -778,6 +893,8 @@ module.exports = {
   // Goal Tracking Grid
   getGoalTrackingGrid,
   toggleGoalCompletion,
+  recalculateGoalProgress,
+  isDayScheduled,
   getTodayGoalStats,
   // Habit Keywords & Detection
   addHabitKeyword,

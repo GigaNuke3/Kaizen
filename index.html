@@ -31,6 +31,9 @@
          <li onclick="loadPage('todo')">
           📝 CheckMarked
         </li>
+        <li onclick="loadPage('completed_goals')">
+          ✅ Completed Goals
+        </li>
         <li onclick="loadPage('journal')">
           📓 Journal
         </li>
@@ -54,6 +57,7 @@
  <script src="src/js/journal.js"></script>
  <script src="src/js/goals.js"></script>
  <script src="src/js/checkmarked.js"></script>
+ <script src="src/js/completed_goals.js"></script>
  <script src="src/js/profile.js"></script>
 <script>
   async function loadPage(page) {
@@ -72,6 +76,8 @@
       await renderGoals()
     } else if (page === 'todo') {
       await renderCheckmarks()
+    } else if (page === 'completed_goals') {
+      await renderCompletedGoals()
     } else if (page === 'profile') {
       await renderProfile()
     }
