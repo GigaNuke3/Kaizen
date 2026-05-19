@@ -1,4 +1,6 @@
-// Global journal variables
+/**
+ * Global journal variables
+ */
 let allJournalEntries = []
 
 /**
@@ -6,53 +8,75 @@ let allJournalEntries = []
  */
 async function renderJournal() {
   const content = document.getElementById('main-content')
-  
-  // Fetch journal entries
-  allJournalEntries = await window.api.getAllJournalEntries(100)
-  
-  let entriesHtml = ''
-  if (allJournalEntries.length > 0) {
-    entriesHtml = allJournalEntries.map(entry => {
-      const date = new Date(entry[2]).toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      })
-      const mood = getMoodEmoji(entry[3])
-      
-      return `
-        <div class="journal-entry">
-          <div class="entry-header">
-            <div class="entry-meta">
-              <span class="entry-mood">${mood}</span>
-              <span class="entry-date">${date}</span>
-            </div>
-            <button class="icon-btn" onclick="deleteJournalEntryConfirm(${entry[0]})" title="Delete">🗑️</button>
-          </div>
-          <div class="entry-content">
-            ${entry[1]}
-          </div>
-        </div>
-      `
-    }).join('')
+  if (!content) {
+    console.error('❌ Error: main-content element not found')
+    return
   }
   
-  content.innerHTML = `
-    <div class="journal-container">
-      <div class="journal-header">
-        <h2>📓 Journal</h2>
-        <button class="btn btn-primary" onclick="openAddJournalModal()">+ New Entry</button>
-      </div>
+  try {
+    // Fetch journal entries
+    allJournalEntries = await window.api.getAllJournalEntries(100)
+    
+    let entriesHtml = ''
+    if (allJournalEntries.length > 0) {
+      entriesHtml = allJournalEntries.map(entry => {
+        const date = new Date(entry[2]).toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })
+        const mood = getMoodEmoji(entry[3])
+        
+        return `
+          <div class="journal-entry">
+            <div class="entry-header">
+              <div class="entry-meta">
+                <span class="entry-mood">${mood}</span>
+                <span class="entry-date">${date}</span>
+              </div>
+              <button class="icon-btn" onclick="deleteJournalEntryConfirm(${entry[0]})" title="Delete">🗑️</button>
+            </div>
+            <div class="entry-content">
+              ${escapeHtml(entry[1])}
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
+    content.innerHTML = `
+      <div class="journal-container">
+        <div class="journal-header">
+          <h2>📓 Journal</h2>
+          <button class="btn btn-primary" onclick="openAddJournalModal()">+ New Entry</button>
+        </div>
 
-      <div class="journal-entries" id="journal-entries">
-        ${allJournalEntries.length === 0 ? `<p class="empty-msg">No journal entries yet. Start your first reflection! 🌟</p>` : entriesHtml}
+        <div class="journal-entries" id="journal-entries">
+          ${allJournalEntries.length === 0 ? `<p class="empty-msg">No journal entries yet. Start your first reflection! 🌟</p>` : entriesHtml}
+        </div>
       </div>
-    </div>
-  `
+    `
 
-  // Ensure modal exists
-  ensureJournalModalExists()
+    ensureJournalModalExists()
+  } catch (err) {
+    console.error('Journal render error:', err)
+    document.getElementById('main-content').innerHTML = '<div class="error">Failed to load journal</div>'
+  }
+}
+
+/**
+ * Simple escape to prevent XSS
+ */
+function escapeHtml(str) {
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;'
+    if (m === '<') return '&lt;'
+    if (m === '>') return '&gt;'
+    return m
+  }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+    return c
+  })
 }
 
 /**
@@ -75,11 +99,11 @@ function ensureJournalModalExists() {
             <div class="form-group">
               <label for="journal-mood">How are you feeling?</label>
               <div class="mood-selector">
-                <span class="mood-option" data-mood="😢" onclick="selectMood('sad')">😢 Sad</span>
-                <span class="mood-option" data-mood="😐" onclick="selectMood('neutral')">😐 Neutral</span>
-                <span class="mood-option" data-mood="🙂" onclick="selectMood('good')">🙂 Good</span>
-                <span class="mood-option" data-mood="😄" onclick="selectMood('happy')">😄 Happy</span>
-                <span class="mood-option" data-mood="🚀" onclick="selectMood('excited')">🚀 Excited</span>
+                <span class="mood-option" data-mood="😢" onclick="selectMood(event, 'sad')">😢 Sad</span>
+                <span class="mood-option" data-mood="😐" onclick="selectMood(event, 'neutral')">😐 Neutral</span>
+                <span class="mood-option" data-mood="🙂" onclick="selectMood(event, 'good')">🙂 Good</span>
+                <span class="mood-option" data-mood="😄" onclick="selectMood(event, 'happy')">😄 Happy</span>
+                <span class="mood-option" data-mood="🚀" onclick="selectMood(event, 'excited')">🚀 Excited</span>
               </div>
               <input type="hidden" id="journal-mood" value="neutral">
             </div>
@@ -127,13 +151,18 @@ async function saveJournalEntry(event) {
 
   const content = document.getElementById('journal-content').value
   const mood = document.getElementById('journal-mood').value
+  const time = document.getElementById('journal-time').value
 
   if (!content.trim()) {
     alert('Please write something!')
     return
   }
+  if (!time) {
+    alert('Please select a time for your journal entry.')
+    return
+  }
 
-  await window.api.addJournalEntry(content, mood)
+  await window.api.addJournalEntry(content, mood, time)
   closeJournalModal()
   renderJournal()
 }
@@ -158,7 +187,7 @@ async function deleteJournalEntry(entryId) {
 /**
  * Select mood for entry
  */
-function selectMood(mood) {
+function selectMood(event, mood) {
   document.getElementById('journal-mood').value = mood
   document.querySelectorAll('.mood-option').forEach(el => {
     el.classList.remove('selected')

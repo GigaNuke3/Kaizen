@@ -9,20 +9,25 @@ let selectedGoalForEdit = null
 
 async function renderGoals() {
   const content = document.getElementById('main-content')
+  if (!content) {
+    console.error('❌ Error: main-content element not found')
+    return
+  }
+  
   content.innerHTML = ''
   
   try {
-    // Load goals and labels
     allGoals = await window.api.getAllGoals()
     allLabels = await window.api.getAllLabels()
-    const activeGoals = allGoals.filter(g => g[4] === 0)
-    const completedGoals = allGoals.filter(g => g[4] === 1)
     
-    // Create container
+    // FIXED: correct column indices
+    // goal[5] = completed, goal[6] = failed
+    const activeGoals = allGoals.filter(g => g[5] === 0 && g[6] === 0)
+    const completedGoals = allGoals.filter(g => g[5] === 1)
+    
     const container = document.createElement('div')
     container.className = 'goals-container'
     
-    // Header
     const header = document.createElement('div')
     header.className = 'goals-header'
     header.innerHTML = `
@@ -34,7 +39,6 @@ async function renderGoals() {
     `
     container.appendChild(header)
     
-    // Info banner
     const banner = document.createElement('div')
     banner.className = 'info-banner'
     banner.innerHTML = `
@@ -57,7 +61,6 @@ async function renderGoals() {
       }
       activeSection.appendChild(goalsGrid)
     }
-    
     container.appendChild(activeSection)
     
     // Completed goals section
@@ -75,7 +78,6 @@ async function renderGoals() {
       }
       completedSection.appendChild(completedGrid)
     }
-    
     container.appendChild(completedSection)
     
     content.appendChild(container)
@@ -91,17 +93,19 @@ function createGoalCard(goal, isCompleted = false) {
   const card = document.createElement('div')
   card.className = `goal-card ${isCompleted ? 'completed' : ''}`
   
+  // FIXED: correct indices
   const id = goal[0]
   const title = goal[1]
   const description = goal[2]
   const startDate = goal[3]
   const targetDate = goal[4]
-  const progress = goal[6]
-  const completionDate = goal[10]
-  const color = goal[11]
-  const icon = goal[12] || '🎯'
+  const completed = goal[5]
+  const failed = goal[6]
+  const progress = goal[7]          // was incorrectly goal[6]
+  const completionDate = goal[11]
+  const color = goal[12]
+  const icon = goal[13] || '🎯'
   
-  // Format dates as "Month Date, Year"
   const startStr = startDate ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   const targetStr = targetDate ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   const completionStr = completionDate ? new Date(completionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
@@ -121,13 +125,11 @@ function createGoalCard(goal, isCompleted = false) {
     ${startDate && targetDate ? `<span class="goal-time">⏱️ Window: ${startStr} → ${targetStr}</span>` : ''}
     ${isCompleted && completionStr ? `<span class="goal-completion">✓ Completed on ${completionStr}</span>` : ''}
   `
-  
   return card
 }
 
 function ensureGoalModalExists() {
   if (document.getElementById('goal-modal')) {
-    // Update labels in existing modal
     updateLabelDropdown()
     return
   }
@@ -209,7 +211,6 @@ function ensureGoalModalExists() {
   
   document.body.appendChild(modal)
   
-  // Setup event listeners
   document.querySelectorAll('.color-option').forEach(option => {
     option.addEventListener('click', () => {
       document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'))
@@ -255,9 +256,7 @@ function ensureCustomLabelModalExists() {
       </div>
     </div>
   `
-  
   document.body.appendChild(modal)
-  
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeCustomLabelModal()
   })
@@ -307,7 +306,6 @@ function addNewCustomLabel() {
     return
   }
   
-  // Check if label already exists
   const existingLabel = allLabels.find(l => l[1].toLowerCase() === labelValue.toLowerCase())
   if (existingLabel) {
     alert('This label already exists!')
@@ -315,7 +313,6 @@ function addNewCustomLabel() {
     return
   }
   
-  // Add custom label to database
   window.api.addCustomLabel(labelValue).then(() => {
     window.api.getAllLabels().then(labels => {
       allLabels = labels
@@ -364,17 +361,16 @@ async function editGoal(goalId) {
   selectedGoalForEdit = goalId
   ensureGoalModalExists()
   document.getElementById('goal-modal-title').textContent = 'Edit Goal'
-  document.getElementById('goal-title').value = goal[1]        // title
-  document.getElementById('goal-label-value').value = goal[2] || '' // description = label
-  document.getElementById('goal-start-date').value = goal[3] || ''  // start_date
-  document.getElementById('goal-date').value = goal[4] || ''         // target_date
-  document.getElementById('goal-frequency').value = goal[7] || 'daily'
-  document.getElementById('goal-color').value = goal[11] || '#6ee7b7'
+  document.getElementById('goal-title').value = goal[1]
+  document.getElementById('goal-label-value').value = goal[2] || ''
+  document.getElementById('goal-start-date').value = goal[3] || ''
+  document.getElementById('goal-date').value = goal[4] || ''
+  document.getElementById('goal-frequency').value = goal[8] || 'daily'   // frequency at index 8
+  document.getElementById('goal-color').value = goal[12] || '#6ee7b7'
   
-  // Restore custom days if applicable
-  if (goal[7] === 'custom' && goal[8]) {
+  if (goal[8] === 'custom' && goal[9]) {  // scheduled_days at index 9
     document.getElementById('custom-days-group').style.display = 'block'
-    const days = JSON.parse(goal[8] || '[]')
+    const days = JSON.parse(goal[9] || '[]')
     document.querySelectorAll('input[name="day"]').forEach(cb => {
       cb.checked = days.includes(parseInt(cb.value))
     })
@@ -384,7 +380,6 @@ async function editGoal(goalId) {
 
   updateLabelDropdown()
   document.getElementById('goal-label').value = goal[2] || ''
-  
   document.getElementById('goal-modal').classList.add('active')
 }
 
@@ -401,28 +396,23 @@ async function saveGoal(event) {
     alert('Goal title is required!')
     return
   }
-  
   if (!label) {
     alert('Please select or create a label!')
     return
   }
-  
   if (!startDate) {
     alert('Start date is required!')
     return
   }
-
   if (!targetDate) {
     alert('Target date is required!')
     return
   }
-
   if (new Date(startDate) > new Date(targetDate)) {
     alert('Start date must be before target date!')
     return
   }
   
-  // Collect custom days if applicable
   let scheduledDays = null
   if (frequency === 'custom') {
     const checked = [...document.querySelectorAll('input[name="day"]:checked')]
@@ -432,15 +422,13 @@ async function saveGoal(event) {
     }
     scheduledDays = JSON.stringify(checked.map(cb => parseInt(cb.value)))
   } else if (frequency === '3x') {
-    scheduledDays = JSON.stringify([1, 3, 5]) // Mon, Wed, Fri
+    scheduledDays = JSON.stringify([1, 3, 5])
   }
   
   try {
     if (selectedGoalForEdit) {
-      // Update existing goal
       await window.api.updateGoal(selectedGoalForEdit, title, label, targetDate, frequency, scheduledDays, startDate)
     } else {
-      // Create new goal
       await window.api.addGoal(title, label, targetDate, frequency, scheduledDays, startDate)
     }
     closeGoalModal()
@@ -451,20 +439,9 @@ async function saveGoal(event) {
   }
 }
 
-async function updateGoalProgress(goalId, progress) {
-  await window.api.updateGoalProgress(goalId, parseInt(progress))
-  renderGoals()
-}
-
-async function markGoalComplete(goalId) {
-  await window.api.completeGoal(goalId)
-  renderGoals()
-}
-
 function deleteGoalConfirm(goalId) {
   const goal = allGoals.find(g => g[0] === goalId)
   if (!goal) return
-  
   if (confirm(`Delete goal "${goal[1]}"? This action cannot be undone.`)) {
     deleteGoal(goalId)
   }
@@ -475,11 +452,6 @@ async function deleteGoal(goalId) {
   renderGoals()
 }
 
-function addCustomLabel() {
-  // This function is kept for backward compatibility but is no longer used
-  // Custom labels are now managed through the Manage Labels modal
-}
-
 function updateLabelDropdown() {
   const select = document.getElementById('goal-label')
   if (!select) return
@@ -487,33 +459,17 @@ function updateLabelDropdown() {
   const currentValue = select.value
   select.innerHTML = '<option value="">Select a label...</option>'
   
-  // Add all labels to dropdown
   for (const label of allLabels) {
-    const labelId = label[0]
     const labelName = label[1]
-    const isCustom = label[2]
     const option = document.createElement('option')
     option.value = labelName
     option.textContent = labelName
-    option.dataset.isCustom = isCustom
-    option.dataset.labelId = labelId
     select.appendChild(option)
   }
   
-  // Restore previous value if it still exists
   if (currentValue) {
     select.value = currentValue
   }
-}
-
-function updateCustomLabelsDisplay() {
-  // This function is kept for backward compatibility but is no longer used
-  // Custom labels are now managed through the Manage Labels modal
-}
-
-async function deleteCustomLabel(labelId) {
-  // This function is kept for backward compatibility but is no longer used
-  // Use deleteCustomLabelFromModal() instead for the new modal-based management
 }
 
 function handleLabelChange() {

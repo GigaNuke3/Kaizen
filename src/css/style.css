@@ -9,7 +9,7 @@ body {
   background: #0f0f0f;
   color: #ffffff;
   height: 100vh;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .app {
@@ -450,135 +450,6 @@ body {
 }
 
 /* Goals grid section */
-.goal-grid-section {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
-  padding: 30px;
-  margin-bottom: 30px;
-}
-
-.goal-grid-section h3 {
-  color: #6ee7b7;
-  margin-bottom: 20px;
-  font-size: 1.1rem;
-}
-
-.goal-grid-container {
-  display: flex;
-  gap: 10px;
-  overflow: hidden;
-}
-
-.goal-labels {
-  display: flex;
-  flex-direction: column;
-  min-width: 180px;
-}
-
-.label-spacer {
-  height: 40px; /* Match month header height */
-  border-bottom: 1px solid #2a2a2a;
-}
-
-.goal-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border-bottom: 1px solid #2a2a2a;
-  font-size: 0.85rem;
-  height: 40px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.goal-icon {
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-.goal-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #ccc;
-}
-
-.goal-grid-scroll {
-  flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-}
-
-.goal-grid {
-  display: inline-block;
-  min-width: 100%;
-}
-
-.month-headers {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 30px;
-  gap: 1px;
-  background: #2a2a2a;
-  padding: 8px;
-  border-bottom: 1px solid #2a2a2a;
-}
-
-.month-header {
-  font-size: 0.75rem;
-  color: #888;
-  text-align: center;
-  padding: 4px;
-  white-space: nowrap;
-}
-
-.grid-row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 30px;
-  gap: 1px;
-  padding: 8px;
-  background: #1a1a1a;
-  border-bottom: 1px solid #2a2a2a;
-}
-
-.grid-cell {
-  width: 30px;
-  height: 30px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  color: #000;
-  font-weight: bold;
-  opacity: 0.8;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.grid-cell:hover {
-  transform: scale(1.1);
-  opacity: 1;
-  box-shadow: 0 0 8px rgba(110, 231, 183, 0.3);
-}
-
-.grid-cell.completed {
-  opacity: 1;
-  color: #000;
-  text-shadow: none;
-}
-
-.grid-cell.today {
-  border: 2px solid #fff;
-}
-
 /* Habit stats section */
 .habit-stats-section {
   background: #1a1a1a;
@@ -667,28 +538,6 @@ body {
   cursor: pointer;
 }
 
-.color-picker {
-  display: flex;
-  gap: 12px;
-  margin-top: 10px;
-}
-
-.color-option {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s;
-}
-
-.color-option:hover,
-.color-option.selected {
-  border-color: #fff;
-  box-shadow: 0 0 10px rgba(110, 231, 183, 0.4);
-  transform: scale(1.1);
-}
-
 /* FAB button */
 .fab {
   position: fixed;
@@ -709,5 +558,65 @@ body {
 .fab:hover {
   box-shadow: 0 6px 16px rgba(110, 231, 183, 0.5);
   transform: scale(1.1);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid #2a2a2a;
+    padding: 10px 0;
+  }
+
+  .sidebar-header {
+    width: 100%;
+    padding: 10px 20px;
+    margin-bottom: 0;
+  }
+
+  .sidebar-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .nav-links {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow-x: auto;
+    flex: 1;
+  }
+
+  .nav-links li {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+
+  .nav-links li.active {
+    border-left: none;
+    border-bottom: 3px solid #6ee7b7;
+  }
+
+  .sidebar-footer {
+    padding: 10px 16px;
+    border-top: none;
+    border-left: 1px solid #2a2a2a;
+    font-size: 0.85rem;
+  }
+
+  .content {
+    padding: 20px;
+    overflow-y: auto;
+    height: calc(100vh - 0px);
+  }
 }
 

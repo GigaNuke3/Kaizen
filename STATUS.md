@@ -21,7 +21,7 @@ The Kaizen self-improvement application is **complete and operational**. All fea
 - ✅ Habits page with completion tracking
 - ✅ Journal page with mood tracking
 - ✅ Goals page with progress bars
-- ✅ Todos page with categories and priorities
+- ✅ CheckMarked page with 365-day goal tracking grid
 - ✅ Profile page with user info and stats
 
 #### Architecture
@@ -66,7 +66,7 @@ npm start
 │   │   ├── habits.js         # Habits page
 │   │   ├── journal.js        # Journal page
 │   │   ├── goals.js          # Goals page
-│   │   ├── todos.js          # Todos page
+│   │   ├── checkmarked.js    # CheckMarked page (365-day goal tracking)
 │   │   └── profile.js        # Profile page
 │   └── css/
 │       └── style.css         # Complete styling (800+ lines)
@@ -87,7 +87,7 @@ npm start
 2. **daily_checklist** - Daily habit completion tracking
 3. **journal** - Journal entries with mood tracking
 4. **goals** - Goals with progress tracking
-5. **todos** - Tasks with categories and priorities
+5. **checkmarks** - Goal tracking with 365-day completion grid
 6. **user_profile** - User information (name, email, login info)
 
 ### Technology Stack
@@ -162,9 +162,9 @@ ls -lah database/kaizen.db
 ✅ Write journal entries with mood  
 ✅ View contribution grid  
 ✅ Create and track goals  
-✅ Create todos with categories  
-✅ Set priorities and due dates  
-✅ Toggle todo completion  
+✅ Track goals with frequency-based scheduling  
+✅ Display 365-day completion grid  
+✅ Toggle goal completion per date  
 ✅ View dashboard statistics  
 ✅ Edit profile information  
 ✅ Navigate between all pages  

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain } = require('electron')
+const { app, BrowserWindow, Menu, ipcMain, Notification } = require('electron')
 const backend = require('./database/backend.js')
 
 async function createWindow() {
@@ -20,6 +20,26 @@ async function createWindow() {
 
   win.loadFile('index.html')
   // win.webContents.openDevTools()  // Comment out to hide console
+
+  // Periodic goal evaluation every 60 seconds
+  setInterval(async () => {
+    try {
+      const result = await backend.evaluateGoals()
+      if (result.failed > 0 || result.completed > 0) {
+        // Show desktop notification
+        if (Notification.isSupported()) {
+          new Notification({
+            title: 'Kaizen Goals Update',
+            body: `${result.completed} goal(s) completed, ${result.failed} goal(s) failed.`
+          }).show()
+        }
+        // Notify frontend to refresh CheckMarked page if needed
+        win.webContents.send('goals-updated')
+      }
+    } catch (err) {
+      console.error('Goal evaluation error:', err)
+    }
+  }, 60000) // every 60 seconds
 }
 
 // App event listeners
@@ -60,20 +80,23 @@ ipcMain.handle('get-contribution-data', (event, year) => backend.getContribution
 ipcMain.handle('get-streak-all-habits', () => backend.getStreakAcrossAllHabits())
 
 // Journal
-ipcMain.handle('add-journal-entry', (event, content, mood) => backend.addJournalEntry(content, mood))
+ipcMain.handle('add-journal-entry', (event, content, mood, time) => backend.addJournalEntry(content, mood, time))
 ipcMain.handle('get-today-journal', () => backend.getTodayJournal())
 ipcMain.handle('get-journal-by-date', (event, date) => backend.getJournalByDate(date))
 ipcMain.handle('get-all-journal-entries', (event, limit) => backend.getAllJournalEntries(limit))
 ipcMain.handle('delete-journal-entry', (event, id) => backend.deleteJournalEntry(id))
 
 // Goals
-ipcMain.handle('add-goal', (event, title, description, targetDate, frequency, scheduledDays, startDate) => backend.addGoal(title, description, targetDate, frequency, scheduledDays, startDate))
-ipcMain.handle('update-goal', (event, id, title, description, targetDate, frequency, scheduledDays, startDate) => backend.updateGoal(id, title, description, targetDate, frequency, scheduledDays, startDate))
+ipcMain.handle('add-goal', (event, title, description, targetDate, frequency, scheduledDays, startDate) => 
+  backend.addGoal(title, description, targetDate, frequency, scheduledDays, startDate))
+ipcMain.handle('update-goal', (event, id, title, description, targetDate, frequency, scheduledDays, startDate) => 
+  backend.updateGoal(id, title, description, targetDate, frequency, scheduledDays, startDate))
 ipcMain.handle('get-all-goals', () => backend.getAllGoals())
 ipcMain.handle('get-active-goals', () => backend.getActiveGoals())
 ipcMain.handle('update-goal-progress', (event, id, progress) => backend.updateGoalProgress(id, progress))
 ipcMain.handle('complete-goal', (event, id) => backend.completeGoal(id))
 ipcMain.handle('delete-goal', (event, id) => backend.deleteGoal(id))
+ipcMain.handle('restore-goal', (event, id) => backend.restoreGoal(id))
 
 // Goal Labels
 ipcMain.handle('get-all-labels', () => backend.getAllLabels())
@@ -84,6 +107,11 @@ ipcMain.handle('delete-label', (event, id) => backend.deleteLabel(id))
 ipcMain.handle('get-goal-tracking-grid', () => backend.getGoalTrackingGrid())
 ipcMain.handle('toggle-goal-completion', (event, goalId, date) => backend.toggleGoalCompletion(goalId, date))
 ipcMain.handle('get-today-goal-stats', () => backend.getTodayGoalStats())
+
+// Notifications
+ipcMain.handle('get-notifications', (event, unreadOnly) => backend.getNotifications(unreadOnly))
+ipcMain.handle('mark-notification-read', (event, id) => backend.markNotificationRead(id))
+ipcMain.handle('evaluate-goals', () => backend.evaluateGoals())
 
 // Habit Keywords & Detection
 ipcMain.handle('add-habit-keyword', (event, habitId, keyword) => backend.addHabitKeyword(habitId, keyword))

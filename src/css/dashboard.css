@@ -75,7 +75,7 @@
   gap: 3px;
 }
 
-.grid-cell {
+.contrib-cell {
   width: 12px;
   height: 12px;
   border-radius: 2px;
@@ -83,28 +83,28 @@
   transition: opacity 0.2s;
 }
 
-.grid-cell:hover { 
+.contrib-cell:hover { 
   opacity: 0.7; 
 }
 
-.l0 { 
+.contrib-cell.l0 { 
   background: #1e1e1e; 
   border: 1px solid #2a2a2a; 
 }
 
-.l1 { 
+.contrib-cell.l1 { 
   background: #0d4429; 
 }
 
-.l2 { 
+.contrib-cell.l2 { 
   background: #006d32; 
 }
 
-.l3 { 
+.contrib-cell.l3 { 
   background: #26a641; 
 }
 
-.l4 { 
+.contrib-cell.l4 { 
   background: #39d353; 
 }
 
@@ -181,4 +181,29 @@
   color: #ccc;
   font-size: 0.9rem;
   line-height: 1.4;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dash-bottom {
+    grid-template-columns: 1fr;
+  }
+
+  .contribution-grid {
+    grid-template-columns: repeat(26, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .contribution-grid {
+    grid-template-columns: repeat(13, 1fr);
+  }
 }

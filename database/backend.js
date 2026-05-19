@@ -110,7 +110,18 @@ async function getDB() {
       is_custom INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (date('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      goal_id INTEGER,
+      message TEXT NOT NULL,
+      type TEXT NOT NULL, -- 'completed' or 'failed'
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      read INTEGER DEFAULT 0,
+      FOREIGN KEY(goal_id) REFERENCES goals(id) ON DELETE SET NULL
+    );
   `)
+
   // Migration: add missing columns if they don't exist
   const goalColumns = db.exec("PRAGMA table_info(goals)")[0]?.values?.map(r => r[1]) || []
   if (!goalColumns.includes('frequency'))
@@ -192,9 +203,9 @@ async function markHabitComplete(habitId, date = null) {
   const targetDate = date || new Date().toISOString().split('T')[0]
   
   try {
-    database.run('INSERT OR REPLACE INTO daily_checklist (habit_id, date, completed, failed) VALUES (?, ?, 1)', [habitId, targetDate, targetDate])
+    database.run('INSERT OR REPLACE INTO daily_checklist (habit_id, date, completed, failed) VALUES (?, ?, 1, 0)', [habitId, targetDate])
   } catch (e) {
-    database.run('UPDATE daily_checklist SET completed = 1 WHERE habit_id = ? AND date = ?', [habitId, targetDate, targetDate])
+    database.run('UPDATE daily_checklist SET completed = 1 WHERE habit_id = ? AND date = ?', [habitId, targetDate])
   }
   
   saveDB()
@@ -359,12 +370,86 @@ async function deleteJournalEntry(id) {
 }
 
 /**
+ * ==================== NOTIFICATION FUNCTIONS ====================
+ */
+
+async function addNotification(goalId, message, type) {
+  const database = await getDB()
+  database.run(
+    'INSERT INTO notifications (goal_id, message, type) VALUES (?, ?, ?)',
+    [goalId, message, type]
+  )
+  saveDB()
+}
+
+async function getNotifications(unreadOnly = false) {
+  const database = await getDB()
+  const query = unreadOnly
+    ? 'SELECT * FROM notifications WHERE read = 0 ORDER BY created_at DESC'
+    : 'SELECT * FROM notifications ORDER BY created_at DESC'
+  const result = database.exec(query)
+  return result.length > 0 ? result[0].values : []
+}
+
+async function markNotificationRead(id) {
+  const database = await getDB()
+  database.run('UPDATE notifications SET read = 1 WHERE id = ?', [id])
+  saveDB()
+}
+
+/**
+ * ==================== GOAL EVALUATION (AUTO COMPLETE/FAIL) ====================
+ */
+async function evaluateGoals() {
+  const database = await getDB()
+  const today = new Date().toISOString().split('T')[0]
+  let failedCount = 0
+  let completedCount = 0
+
+  // 1. Mark goals as failed if target_date < today, not completed and not failed
+  const failedResult = database.exec(`
+    SELECT id, title FROM goals
+    WHERE target_date < ? AND completed = 0 AND failed = 0
+  `, [today])
+  
+  if (failedResult.length > 0) {
+    for (const goal of failedResult[0].values) {
+      const goalId = goal[0]
+      const title = goal[1]
+      database.run('UPDATE goals SET failed = 1, progress = 0 WHERE id = ?', [goalId])
+      const message = `Goal "${title}" has failed (deadline passed).`
+      await addNotification(goalId, message, 'failed')
+      failedCount++
+    }
+  }
+  
+  // 2. Mark goals as completed if progress >= 100 AND not already completed
+  const completedResult = database.exec(`
+    SELECT id, title FROM goals
+    WHERE progress >= 100 AND completed = 0
+  `)
+  
+  if (completedResult.length > 0) {
+    for (const goal of completedResult[0].values) {
+      const goalId = goal[0]
+      const title = goal[1]
+      database.run('UPDATE goals SET completed = 1, completion_date = ? WHERE id = ?', [today, goalId])
+      const message = `Congratulations! You completed the goal "${title}".`
+      await addNotification(goalId, message, 'completed')
+      completedCount++
+    }
+  }
+  
+  saveDB()
+  return { failed: failedCount, completed: completedCount }
+}
+
+/**
  * ==================== GOALS ====================
  */
 
 async function addGoal(title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null) {
   const database = await getDB()
-  // If no start date provided, use today
   const start = startDate || new Date().toISOString().split('T')[0]
   database.run('INSERT INTO goals (title, description, start_date, target_date, frequency, scheduled_days) VALUES (?, ?, ?, ?, ?, ?)', 
     [title, description, start, targetDate, frequency, scheduledDays])
@@ -388,14 +473,13 @@ async function getAllGoals() {
 
 async function getActiveGoals() {
   const database = await getDB()
-  const result = database.exec('SELECT * FROM goals WHERE completed = 0 ORDER BY created_at DESC')
+  const result = database.exec('SELECT * FROM goals WHERE completed = 0 AND failed = 0 ORDER BY created_at DESC')
   return result.length > 0 ? result[0].values : []
 }
 
 async function updateGoalProgress(id, progress) {
   const database = await getDB()
   
-  // If progress reaches 100%, auto-complete the goal
   if (progress >= 100) {
     const today = new Date().toISOString().split('T')[0]
     database.run('UPDATE goals SET progress = 100, completed = 1, completion_date = ? WHERE id = ?', [today, id])
@@ -422,6 +506,13 @@ async function deleteGoal(id) {
   return getAllGoals()
 }
 
+async function restoreGoal(id) {
+  const database = await getDB()
+  database.run('UPDATE goals SET completed = 0, completion_date = NULL WHERE id = ?', [id])
+  saveDB()
+  return getAllGoals()
+}
+
 /**
  * ==================== GOAL LABELS ====================
  */
@@ -431,7 +522,6 @@ async function initializeDefaultLabels() {
   const defaultLabels = ['Workout', 'Learning', 'Coding']
   
   for (const label of defaultLabels) {
-    // Check if label already exists
     const result = database.exec('SELECT * FROM goal_labels WHERE name = ?', [label])
     if (result.length === 0) {
       database.run('INSERT INTO goal_labels (name, is_custom) VALUES (?, ?)', [label, 0])
@@ -442,7 +532,6 @@ async function initializeDefaultLabels() {
 
 async function getAllLabels() {
   const database = await getDB()
-  // Initialize default labels if table is empty
   const result = database.exec('SELECT COUNT(*) FROM goal_labels')
   if (result.length > 0 && result[0].values[0][0] === 0) {
     const defaultLabels = ['Workout', 'Learning', 'Coding']
@@ -477,6 +566,300 @@ async function deleteLabel(id) {
     saveDB()
   }
   return getAllLabels()
+}
+
+/**
+ * ==================== GOAL TRACKING GRID ====================
+ */
+
+async function getGoalTrackingGrid() {
+  const database = await getDB()
+  
+  // Exclude completed AND failed goals
+  const goalsResult = database.exec(`
+    SELECT 
+      id, title, description, start_date, target_date,
+      completed, failed, progress, frequency, scheduled_days,
+      created_at, completion_date, color, icon
+    FROM goals WHERE completed = 0 AND failed = 0 ORDER BY created_at ASC
+  `)
+  const goals = goalsResult.length > 0 ? goalsResult[0].values.map(row => ({
+    id: row[0], title: row[1], description: row[2], start_date: row[3], target_date: row[4],
+    completed: row[5], failed: row[6], progress: row[7], frequency: row[8], scheduled_days: row[9],
+    created_at: row[10], completion_date: row[11], color: row[12], icon: row[13]
+  })) : []
+  
+  if (goals.length === 0) {
+    return { goals: [], dates: [], completions: {} }
+  }
+  
+  let earliestStart = new Date()
+  let latestEnd = new Date()
+
+  for (const goal of goals) {
+    if (goal.start_date) {
+      const sd = new Date(goal.start_date)
+      if (sd < earliestStart) earliestStart = sd
+    }
+    if (goal.target_date) {
+      const td = new Date(goal.target_date)
+      if (td > latestEnd) latestEnd = td
+    }
+  }
+
+  const dates = []
+  earliestStart.setHours(0, 0, 0, 0)
+  latestEnd.setHours(0, 0, 0, 0)
+
+  for (let d = new Date(earliestStart); d <= latestEnd; d.setDate(d.getDate() + 1)) {
+    dates.push(d.toISOString().split('T')[0])
+  }
+  
+  const completionsResult = database.exec(
+    'SELECT goal_id, date, is_completed FROM goal_completions WHERE date IN (' + 
+    dates.map(() => '?').join(',') + ') ORDER BY date DESC',
+    dates
+  )
+  const completions = {}
+  if (completionsResult.length > 0) {
+    completionsResult[0].values.forEach(row => {
+      const key = `${row[0]}_${row[1]}`
+      completions[key] = row[2]
+    })
+  }
+  
+  return {
+    goals,
+    dates,
+    completions
+  }
+}
+
+async function toggleGoalCompletion(goalId, date) {
+  const database = await getDB()
+  
+  // *** JOURNAL REQUIREMENT ***
+  // Check if there is a journal entry for this date with a non-empty time
+  const journalCheck = database.exec(
+    'SELECT id FROM journal WHERE date = ? AND time IS NOT NULL AND time != "" LIMIT 1',
+    [date]
+  )
+  if (!journalCheck.length || journalCheck[0].values.length === 0) {
+    throw new Error('You must write a journal entry with a time for this day before checking a goal.')
+  }
+  
+  const existsResult = database.exec(
+    'SELECT id, is_completed FROM goal_completions WHERE goal_id = ? AND date = ?',
+    [goalId, date]
+  )
+  
+  if (existsResult.length > 0 && existsResult[0].values.length > 0) {
+    const currentState = existsResult[0].values[0][1]
+    database.run(
+      'UPDATE goal_completions SET is_completed = ? WHERE goal_id = ? AND date = ?',
+      [1 - currentState, goalId, date]
+    )
+  } else {
+    database.run(
+      'INSERT INTO goal_completions (goal_id, date, is_completed) VALUES (?, ?, 1)',
+      [goalId, date]
+    )
+  }
+  
+  saveDB()
+  await recalculateGoalProgress(goalId)
+  return true
+}
+
+async function addJournalEntry(content, mood, time) {
+  const database = await getDB();
+  const date = new Date().toISOString().split('T')[0];
+  database.run(
+    'INSERT INTO journal (content, mood, date, time) VALUES (?, ?, ?, ?)',
+    [content, mood, date, time || null]
+  );
+  saveDB();
+  return getTodayJournal();
+}
+
+async function recalculateGoalProgress(goalId) {
+  const database = await getDB()
+
+  const goalResult = database.exec(
+    'SELECT start_date, target_date, frequency, scheduled_days FROM goals WHERE id = ?',
+    [goalId]
+  )
+  if (!goalResult.length || !goalResult[0].values.length) return
+
+  const [startDate, targetDate, frequency, scheduledDays] = goalResult[0].values[0]
+  if (!startDate || !targetDate) return
+
+  const start = new Date(startDate)
+  const end = new Date(targetDate)
+  const today = new Date()
+  const windowEnd = end < today ? end : today
+
+  let scheduledCount = 0
+  for (let d = new Date(start); d <= windowEnd; d.setDate(d.getDate() + 1)) {
+    if (isDayScheduled(d.getDay(), frequency, scheduledDays)) scheduledCount++
+  }
+
+  if (scheduledCount === 0) return
+
+  const completedResult = database.exec(
+    `SELECT COUNT(*) FROM goal_completions
+     WHERE goal_id = ? AND is_completed = 1
+     AND date >= ? AND date <= ?`,
+    [goalId, startDate, targetDate]
+  )
+  const completedCount = completedResult[0]?.values[0][0] || 0
+
+  const progress = Math.min(100, Math.round((completedCount / scheduledCount) * 100))
+
+  if (progress >= 100) {
+    const today2 = new Date().toISOString().split('T')[0]
+    database.run(
+      'UPDATE goals SET progress = 100, completed = 1, completion_date = ? WHERE id = ?',
+      [today2, goalId]
+    )
+  } else {
+    database.run(
+      'UPDATE goals SET progress = ?, completed = 0, completion_date = NULL WHERE id = ?',
+      [progress, goalId]
+    )
+  }
+
+  saveDB()
+}
+
+function isDayScheduled(dayOfWeek, frequency, scheduledDaysStr) {
+  switch (frequency) {
+    case 'daily': return true
+    case 'weekdays': return dayOfWeek >= 1 && dayOfWeek <= 5
+    case 'weekends': return dayOfWeek === 0 || dayOfWeek === 6
+    case '3x': {
+      const days = scheduledDaysStr ? JSON.parse(scheduledDaysStr) : [1, 3, 5]
+      return days.includes(dayOfWeek)
+    }
+    case 'custom': {
+      if (!scheduledDaysStr) return true
+      return JSON.parse(scheduledDaysStr).includes(dayOfWeek)
+    }
+    default: return true
+  }
+}
+
+async function getTodayGoalStats() {
+  const database = await getDB()
+  const today = new Date().toISOString().split('T')[0]
+  
+  const goalsResult = database.exec('SELECT id FROM goals WHERE completed = 0 AND failed = 0')
+  const goalIds = goalsResult.length > 0 ? goalsResult[0].values.map(row => row[0]) : []
+  
+  if (goalIds.length === 0) {
+    return { completed: 0, scheduled: 0, percentage: 0 }
+  }
+  
+  const completedResult = database.exec(
+    'SELECT COUNT(*) as count FROM goal_completions WHERE goal_id IN (' + 
+    goalIds.map(() => '?').join(',') + ') AND date = ? AND is_completed = 1',
+    [...goalIds, today]
+  )
+  const completed = completedResult.length > 0 ? completedResult[0].values[0][0] : 0
+  
+  return {
+    completed: completed,
+    scheduled: goalIds.length,
+    percentage: goalIds.length > 0 ? Math.round((completed / goalIds.length) * 100) : 0
+  }
+}
+
+async function addHabitKeyword(habitId, keyword) {
+  const database = await getDB()
+  try {
+    database.run('INSERT OR IGNORE INTO habit_keywords (habit_id, keyword) VALUES (?, ?)', 
+      [habitId, keyword.toLowerCase()])
+    saveDB()
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+async function getHabitKeywords(habitId) {
+  const database = await getDB()
+  const result = database.exec('SELECT keyword FROM habit_keywords WHERE habit_id = ?', [habitId])
+  return result.length > 0 ? result[0].values.map(row => row[0]) : []
+}
+
+async function detectHabitsFromJournal(content) {
+  const database = await getDB()
+  
+  const habitsResult = database.exec(`
+    SELECT DISTINCT h.id, h.name FROM habits h
+    LEFT JOIN habit_keywords hk ON h.id = hk.habit_id
+  `)
+  
+  if (habitsResult.length === 0) return []
+  
+  const detectedHabits = []
+  const contentLower = content.toLowerCase()
+  
+  for (const row of habitsResult[0].values) {
+    const habitId = row[0]
+    const habitName = row[1]
+    
+    if (contentLower.includes(habitName.toLowerCase())) {
+      detectedHabits.push(habitId)
+      continue
+    }
+    
+    const keywordsResult = database.exec(
+      'SELECT keyword FROM habit_keywords WHERE habit_id = ?',
+      [habitId]
+    )
+    
+    if (keywordsResult.length > 0) {
+      for (const kwRow of keywordsResult[0].values) {
+        if (contentLower.includes(kwRow[0])) {
+          detectedHabits.push(habitId)
+          break
+        }
+      }
+    }
+  }
+  
+  return [...new Set(detectedHabits)]
+}
+
+async function getHabitStatsFromJournal() {
+  const database = await getDB()
+  
+  const journalResult = database.exec('SELECT content FROM journal')
+  const journalEntries = journalResult.length > 0 ? journalResult[0].values.map(row => row[0]) : []
+  
+  const habitMentions = {}
+  const habitsResult = database.exec('SELECT id, name FROM habits')
+  
+  if (habitsResult.length > 0) {
+    for (const row of habitsResult[0].values) {
+      const habitId = row[0]
+      const habitName = row[1]
+      let count = 0
+      
+      for (const entry of journalEntries) {
+        if (entry.toLowerCase().includes(habitName.toLowerCase())) {
+          count++
+        }
+      }
+      
+      if (count > 0) {
+        habitMentions[habitId] = { name: habitName, count }
+      }
+    }
+  }
+  
+  return habitMentions
 }
 
 /**
@@ -545,19 +928,15 @@ async function deleteCheckmark(id) {
 async function getDashboardStats() {
   const database = await getDB()
   
-  // Total habits
   const habitsResult = database.exec('SELECT COUNT(*) as count FROM habits')
   const habitCount = habitsResult.length > 0 ? habitsResult[0].values[0][0] : 0
   
-  // Today's checkmarks done
   const checkmarksResult = database.exec('SELECT COUNT(*) as count FROM checkmarks WHERE completed = 1')
   const checkmarksCount = checkmarksResult.length > 0 ? checkmarksResult[0].values[0][0] : 0
   
-  // Journal entries
   const journalResult = database.exec('SELECT COUNT(*) as count FROM journal')
   const journalCount = journalResult.length > 0 ? journalResult[0].values[0][0] : 0
   
-  // Contribution today
   const today = new Date().toISOString().split('T')[0]
   const contributionResult = database.exec('SELECT COUNT(*) as count FROM daily_checklist WHERE date = ? AND completed = 1', [today])
   const contributionCount = contributionResult.length > 0 ? contributionResult[0].values[0][0] : 0
@@ -568,294 +947,6 @@ async function getDashboardStats() {
     journal_entries: journalCount,
     contributions_today: contributionCount
   }
-}
-
-/**
- * ==================== GOAL TRACKING GRID ====================
- */
-
-async function getGoalTrackingGrid() {
-  const database = await getDB()
-  
-  // Get all active goals with explicit column names to handle migration variations
-  const goalsResult = database.exec(`
-    SELECT 
-      id, title, description, start_date, target_date,
-      completed, progress, frequency, scheduled_days,
-      created_at, completion_date, color, icon
-    FROM goals WHERE completed = 0 ORDER BY created_at ASC
-  `)
-  const goals = goalsResult.length > 0 ? goalsResult[0].values.map(row => ({
-    id: row[0], title: row[1], description: row[2], start_date: row[3], target_date: row[4],
-    completed: row[5], progress: row[6], frequency: row[7], scheduled_days: row[8],
-    created_at: row[9], completion_date: row[10], color: row[11], icon: row[12]
-  })) : []
-  
-  if (goals.length === 0) {
-    return { goals: [], dates: [], completions: {} }
-  }
-  
-  // Find the earliest start_date and latest target_date across all goals
-  let earliestStart = new Date()
-  let latestEnd = new Date()
-
-  for (const goal of goals) {
-    if (goal.start_date) {
-      const sd = new Date(goal.start_date)
-      if (sd < earliestStart) earliestStart = sd
-    }
-    if (goal.target_date) {
-      const td = new Date(goal.target_date)
-      if (td > latestEnd) latestEnd = td
-    }
-  }
-
-  // Generate date range from earliest start → latest target
-  const dates = []
-  earliestStart.setHours(0, 0, 0, 0)
-  latestEnd.setHours(0, 0, 0, 0)
-
-  for (let d = new Date(earliestStart); d <= latestEnd; d.setDate(d.getDate() + 1)) {
-    dates.push(d.toISOString().split('T')[0])
-  }
-  
-  // Get all goal completions for this period
-  const completionsResult = database.exec(
-    'SELECT goal_id, date, is_completed FROM goal_completions WHERE date IN (' + 
-    dates.map(() => '?').join(',') + ') ORDER BY date DESC',
-    dates
-  )
-  const completions = {}
-  if (completionsResult.length > 0) {
-    completionsResult[0].values.forEach(row => {
-      const key = `${row[0]}_${row[1]}`
-      completions[key] = row[2]
-    })
-  }
-  
-  return {
-    goals,
-    dates,
-    completions
-  }
-}
-
-async function toggleGoalCompletion(goalId, date) {
-  const database = await getDB()
-  
-  // Check if already exists
-  const existsResult = database.exec(
-    'SELECT id, is_completed FROM goal_completions WHERE goal_id = ? AND date = ?',
-    [goalId, date]
-  )
-  
-  if (existsResult.length > 0 && existsResult[0].values.length > 0) {
-    const currentState = existsResult[0].values[0][1]
-    database.run(
-      'UPDATE goal_completions SET is_completed = ? WHERE goal_id = ? AND date = ?',
-      [1 - currentState, goalId, date]
-    )
-  } else {
-    database.run(
-      'INSERT INTO goal_completions (goal_id, date, is_completed) VALUES (?, ?, 1)',
-      [goalId, date]
-    )
-  }
-  
-  saveDB()
-  await recalculateGoalProgress(goalId)
-  return true
-}
-
-async function recalculateGoalProgress(goalId) {
-  const database = await getDB()
-
-  // Get goal details
-  const goalResult = database.exec(
-    'SELECT start_date, target_date, frequency, scheduled_days FROM goals WHERE id = ?',
-    [goalId]
-  )
-  if (!goalResult.length || !goalResult[0].values.length) return
-
-  const [startDate, targetDate, frequency, scheduledDays] = goalResult[0].values[0]
-  if (!startDate || !targetDate) return
-
-  // Count how many days in the window are scheduled
-  const start = new Date(startDate)
-  const end = new Date(targetDate)
-  const today = new Date()
-  const windowEnd = end < today ? end : today // don't count future days
-
-  let scheduledCount = 0
-  for (let d = new Date(start); d <= windowEnd; d.setDate(d.getDate() + 1)) {
-    if (isDayScheduled(d.getDay(), frequency, scheduledDays)) scheduledCount++
-  }
-
-  if (scheduledCount === 0) return
-
-  // Count completed check-ins within window
-  const completedResult = database.exec(
-    `SELECT COUNT(*) FROM goal_completions
-     WHERE goal_id = ? AND is_completed = 1
-     AND date >= ? AND date <= ?`,
-    [goalId, startDate, targetDate]
-  )
-  const completedCount = completedResult[0]?.values[0][0] || 0
-
-  const progress = Math.min(100, Math.round((completedCount / scheduledCount) * 100))
-
-  // Auto-complete if 100%
-  if (progress >= 100) {
-    const today2 = new Date().toISOString().split('T')[0]
-    database.run(
-      'UPDATE goals SET progress = 100, completed = 1, completion_date = ? WHERE id = ?',
-      [today2, goalId]
-    )
-  } else {
-    database.run(
-      'UPDATE goals SET progress = ?, completed = 0, completion_date = NULL WHERE id = ?',
-      [progress, goalId]
-    )
-  }
-
-  saveDB()
-}
-
-function isDayScheduled(dayOfWeek, frequency, scheduledDaysStr) {
-  switch (frequency) {
-    case 'daily': return true
-    case 'weekdays': return dayOfWeek >= 1 && dayOfWeek <= 5
-    case 'weekends': return dayOfWeek === 0 || dayOfWeek === 6
-    case '3x': {
-      const days = scheduledDaysStr ? JSON.parse(scheduledDaysStr) : [1, 3, 5]
-      return days.includes(dayOfWeek)
-    }
-    case 'custom': {
-      if (!scheduledDaysStr) return true
-      return JSON.parse(scheduledDaysStr).includes(dayOfWeek)
-    }
-    default: return true
-  }
-}
-
-async function getTodayGoalStats() {
-  const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
-  
-  // Get all active goals
-  const goalsResult = database.exec('SELECT id FROM goals WHERE completed = 0')
-  const goalIds = goalsResult.length > 0 ? goalsResult[0].values.map(row => row[0]) : []
-  
-  if (goalIds.length === 0) {
-    return { completed: 0, scheduled: 0, percentage: 0 }
-  }
-  
-  // Get today's completions
-  const completedResult = database.exec(
-    'SELECT COUNT(*) as count FROM goal_completions WHERE goal_id IN (' + 
-    goalIds.map(() => '?').join(',') + ') AND date = ? AND is_completed = 1',
-    [...goalIds, today]
-  )
-  const completed = completedResult.length > 0 ? completedResult[0].values[0][0] : 0
-  
-  return {
-    completed: completed,
-    scheduled: goalIds.length,
-    percentage: goalIds.length > 0 ? Math.round((completed / goalIds.length) * 100) : 0
-  }
-}
-
-async function addHabitKeyword(habitId, keyword) {
-  const database = await getDB()
-  try {
-    database.run('INSERT OR IGNORE INTO habit_keywords (habit_id, keyword) VALUES (?, ?)', 
-      [habitId, keyword.toLowerCase()])
-    saveDB()
-    return true
-  } catch (e) {
-    return false
-  }
-}
-
-async function getHabitKeywords(habitId) {
-  const database = await getDB()
-  const result = database.exec('SELECT keyword FROM habit_keywords WHERE habit_id = ?', [habitId])
-  return result.length > 0 ? result[0].values.map(row => row[0]) : []
-}
-
-async function detectHabitsFromJournal(content) {
-  const database = await getDB()
-  
-  // Get all habits with their keywords
-  const habitsResult = database.exec(`
-    SELECT DISTINCT h.id, h.name FROM habits h
-    LEFT JOIN habit_keywords hk ON h.id = hk.habit_id
-  `)
-  
-  if (habitsResult.length === 0) return []
-  
-  const detectedHabits = []
-  const contentLower = content.toLowerCase()
-  
-  for (const row of habitsResult[0].values) {
-    const habitId = row[0]
-    const habitName = row[1]
-    
-    // Check if habit name appears in content
-    if (contentLower.includes(habitName.toLowerCase())) {
-      detectedHabits.push(habitId)
-      continue
-    }
-    
-    // Check keywords
-    const keywordsResult = database.exec(
-      'SELECT keyword FROM habit_keywords WHERE habit_id = ?',
-      [habitId]
-    )
-    
-    if (keywordsResult.length > 0) {
-      for (const kwRow of keywordsResult[0].values) {
-        if (contentLower.includes(kwRow[0])) {
-          detectedHabits.push(habitId)
-          break
-        }
-      }
-    }
-  }
-  
-  return [...new Set(detectedHabits)]
-}
-
-async function getHabitStatsFromJournal() {
-  const database = await getDB()
-  
-  // Get all journal entries
-  const journalResult = database.exec('SELECT content FROM journal')
-  const journalEntries = journalResult.length > 0 ? journalResult[0].values.map(row => row[0]) : []
-  
-  // Count habit mentions
-  const habitMentions = {}
-  const habitsResult = database.exec('SELECT id, name FROM habits')
-  
-  if (habitsResult.length > 0) {
-    for (const row of habitsResult[0].values) {
-      const habitId = row[0]
-      const habitName = row[1]
-      let count = 0
-      
-      for (const entry of journalEntries) {
-        if (entry.toLowerCase().includes(habitName.toLowerCase())) {
-          count++
-        }
-      }
-      
-      if (count > 0) {
-        habitMentions[habitId] = { name: habitName, count }
-      }
-    }
-  }
-  
-  return habitMentions
 }
 
 module.exports = {
@@ -882,6 +973,12 @@ module.exports = {
   getJournalByDate,
   getAllJournalEntries,
   deleteJournalEntry,
+  // Notifications
+  addNotification,
+  getNotifications,
+  markNotificationRead,
+  // Goal Evaluation
+  evaluateGoals,
   // Goals
   addGoal,
   updateGoal,
@@ -890,6 +987,7 @@ module.exports = {
   updateGoalProgress,
   completeGoal,
   deleteGoal,
+  restoreGoal,
   // Goal Labels
   initializeDefaultLabels,
   getAllLabels,

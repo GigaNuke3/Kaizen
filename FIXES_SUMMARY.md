@@ -10,7 +10,7 @@
 ### 2. **Modal Duplication & DOM Conflicts**
 - ❌ **Problem**: Modals being rendered inline in HTML, causing duplicate DOM elements
 - ✅ **Fix**: Created `ensureXxxModalExists()` functions that dynamically inject modals into DOM
-- ✅ Applied to: Habits, Journal, Goals, Todos, Profile pages
+- ✅ Applied to: Habits, Journal, Goals, CheckMarked, Profile pages
 - ✅ Modals now attach to `document.body` instead of being in content area
 
 ### 3. **Dashboard Data Binding**
@@ -61,7 +61,7 @@ Kaizen/
         ├── habits.js (✅ Modal pattern applied)
         ├── journal.js (✅ Modal pattern applied)
         ├── goals.js (✅ Modal pattern applied)
-        ├── todos.js (✅ Modal pattern applied)
+        ├── checkmarked.js (✅ Goal tracking grid implementation)
         └── profile.js (✅ Modal pattern applied)
 ```
 
@@ -73,7 +73,7 @@ Kaizen/
 | Habits | ✅ WORKING | Full CRUD, today's checklist, completion tracking |
 | Journal | ✅ WORKING | Add entries, mood tracking, delete entries |
 | Goals | ✅ WORKING | Create, set progress (0-100%), mark complete |
-| Todos | ✅ WORKING | Categories, priority levels, due dates, completion |
+| CheckMarked | ✅ WORKING | 365-day tracking grid, frequency scheduling, completion tracking |
 | Profile | ✅ WORKING | Edit name/tagline, view stats |
 | Database | ✅ WORKING | Persistent storage with sql.js |
 | Navigation | ✅ WORKING | Sidebar with active state tracking |
@@ -100,13 +100,11 @@ All pages properly connected to backend:
 - `completeGoal()` → Mark complete
 - `deleteGoal()` → Remove goal
 
-### Todos
-- `getAllTodos()` → Fetch all todos
-- `getActiveTodos()` → Filter active
-- `addTodo()` → Create with category/priority
-- `completeTodo()` → Mark complete
-- `updateTodo()` → Edit todo
-- `deleteTodo()` → Remove todo
+### CheckMarked
+- `getGoalTrackingGrid()` → Fetch 365-day tracking data
+- `getTodayGoalStats()` → Get today's completion statistics
+- `toggleGoalCompletion()` → Mark goal completed/incomplete per date
+- `getActiveGoals()` → Fetch active goals for display
 
 ### Dashboard
 - `getDashboardStats()` → Get all statistics

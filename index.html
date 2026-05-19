@@ -24,31 +24,30 @@
       </div>
 
       <ul class="nav-links">
-        <li class="active" onclick="loadPage('dashboard')">
+        <li class="active" data-page="dashboard" onclick="loadPage('dashboard')">
           📊 Dashboard
         </li>
-         <li onclick="loadPage('goals')">
+        <li data-page="goals" onclick="loadPage('goals')">
           🎯 Goals
         </li>
-         <li onclick="loadPage('todo')">
+        <li data-page="checkmarked" onclick="loadPage('checkmarked')">
           📝 CheckMarked
         </li>
-        <li onclick="loadPage('completed_goals')">
+        <li data-page="completed_goals" onclick="loadPage('completed_goals')">
           ✅ Completed Goals
         </li>
-        <li onclick="loadPage('failed_goals')">
+        <li data-page="failed_goals" onclick="loadPage('failed_goals')">
           ❌ Failed Goals
         </li>
-        <li onclick="loadPage('notifications')">
+        <li data-page="notifications" onclick="loadPage('notifications')">
           🔔 Notifications
         </li>
-"
-        <li onclick="loadPage('journal')">
+        <li data-page="journal" onclick="loadPage('journal')">
           📓 Journal
         </li>
       </ul>
 
-      <div class="sidebar-footer" onclick="loadPage('profile')">
+      <div class="sidebar-footer" data-page="profile" onclick="loadPage('profile')">
         👤 Profile
       </div>
     </nav>
@@ -61,44 +60,78 @@
 
   </div>
 
- <script src="src/js/api.js"></script>
- <script src="src/js/dashboard.js"></script>
- <script src="src/js/journal.js"></script>
- <script src="src/js/goals.js"></script>
- <script src="src/js/checkmarked.js"></script>
- <script src="src/js/completed_goals.js"></script>
- <script src="src/js/failed_goals.js"></script>
- <script src="src/js/notification.js"></script>
- <script src="src/js/profile.js"></script>
-<script>
-  async function loadPage(page) {
-    document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'))
-    document.querySelectorAll('.nav-links li').forEach(li => {
-      if (li.getAttribute('onclick').includes(page)) li.classList.add('active')
+  <script src="src/js/api.js"></script>
+  <script src="src/js/dashboard.js"></script>
+  <script src="src/js/journal.js"></script>
+  <script src="src/js/goals.js"></script>
+  <script src="src/js/checkmarked.js"></script>
+  <script src="src/js/completed_goals.js"></script>
+  <script src="src/js/failed_goals.js"></script>
+  <script src="src/js/notification.js"></script>
+  <script src="src/js/profile.js"></script>
+  <script>
+    const { ipcRenderer } = require('electron')
+
+    // Track current page
+    let currentPage = 'dashboard'
+
+    // Page loading function — defined first so sidebar onclicks can call it immediately
+    async function loadPage(page) {
+      if (!page) return
+
+      const mainContent = document.getElementById('main-content')
+      if (!mainContent) return
+
+      try {
+        mainContent.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:400px;color:#6ee7b7;">Loading...</div>'
+
+        // Update sidebar active state
+        document.querySelectorAll('[data-page]').forEach(el => el.classList.remove('active'))
+        document.querySelector(`[data-page="${page}"]`)?.classList.add('active')
+
+        currentPage = page
+
+        switch(page) {
+          case 'dashboard':     await renderDashboard(); break
+          case 'journal':       await renderJournal(); break
+          case 'goals':         await renderGoals(); break
+          case 'failed_goals':  await renderFailedGoals(); break
+          case 'notifications': await renderNotifications(); break
+          case 'checkmarked':   await renderCheckmarks(); break
+          case 'completed_goals': await renderCompletedGoals(); break
+          case 'profile':       await renderProfile(); break
+          default: throw new Error(`Unknown page: ${page}`)
+        }
+
+      } catch (err) {
+        console.error(`Error loading page ${page}:`, err)
+        mainContent.innerHTML = `
+          <div style="padding:40px;text-align:center;color:#fff;">
+            <h2>❌ Failed to load page</h2>
+            <p><strong>${err.message || 'Unknown error'}</strong></p>
+            <pre style="background:#1a1a1a;padding:12px;border-radius:6px;overflow-x:auto;margin-top:12px;
+                        text-align:left;max-height:200px;font-size:12px;color:#6ee7b7;">
+${err.stack?.substring(0, 500) || ''}</pre>
+            <button class="btn btn-primary" style="margin-top:20px;" onclick="loadPage('dashboard')">Back to Dashboard</button>
+          </div>
+        `
+      }
+    }
+
+    // Expose globally IMMEDIATELY (before DOMContentLoaded) so sidebar onclicks work
+    window.loadPage = loadPage
+
+    // IPC listener for cross-page events
+    ipcRenderer.on('goals-updated', () => {
+      if (currentPage === 'checkmarked') {
+        renderCheckmarks().catch(err => console.error('Error reloading checkmarked:', err))
+      }
     })
 
-    if (page === 'dashboard') {
-      await renderDashboard()
-    } else if (page === 'habits') {
-      await renderHabits()
-    } else if (page === 'journal') {
-      await renderJournal()
-    } else if (page === 'goals') {
-      await renderGoals()
-    } else if (page === 'failed_goals') {
-      await renderFailedGoals()
-    } else if (page === 'notifications') {
-      await renderNotifications()
-    } else if (page === 'todo') {
-      await renderCheckmarks()
-    } else if (page === 'completed_goals') {
-      await renderCompletedGoals()
-    } else if (page === 'profile') {
-      await renderProfile()
-    }
-  }
-
-  window.onload = () => loadPage('dashboard')
-</script>
+    // Load dashboard once DOM is ready — api.js already ran synchronously so window.api is set
+    document.addEventListener('DOMContentLoaded', () => {
+      loadPage('dashboard')
+    })
+  </script>
 </body>
 </html>

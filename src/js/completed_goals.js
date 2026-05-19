@@ -6,6 +6,11 @@
 
 async function renderCompletedGoals() {
   const content = document.getElementById('main-content')
+  if (!content) {
+    console.error('❌ Error: main-content element not found')
+    return
+  }
+  
   content.innerHTML = ''
 
   try {
@@ -13,14 +18,14 @@ async function renderCompletedGoals() {
 
     // goal row indices (matches goals table SELECT * ORDER):
     // [0]=id [1]=title [2]=description [3]=start_date [4]=target_date
-    // [5]=completed [6]=progress [7]=frequency [8]=scheduled_days
-    // [9]=created_at [10]=completion_date [11]=color [12]=icon
+    // [5]=completed [6]=failed [7]=progress [8]=frequency [9]=scheduled_days
+    // [10]=created_at [11]=completion_date [12]=color [13]=icon
     const completedGoals = allGoals.filter(g => g[5] === 1)
 
     const container = document.createElement('div')
     container.className = 'goals-container'
 
-    // ── Header ──────────────────────────────────────────────────────────────
+    // Header
     const header = document.createElement('div')
     header.className = 'goals-header'
     header.innerHTML = `
@@ -30,7 +35,7 @@ async function renderCompletedGoals() {
     `
     container.appendChild(header)
 
-    // ── Summary bar ─────────────────────────────────────────────────────────
+    // Summary bar
     const summary = document.createElement('div')
     summary.style.cssText = `
       display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px;
@@ -47,7 +52,7 @@ async function renderCompletedGoals() {
     `
     container.appendChild(summary)
 
-    // ── Empty state ──────────────────────────────────────────────────────────
+    // Empty state
     if (completedGoals.length === 0) {
       const empty = document.createElement('div')
       empty.className = 'empty-state'
@@ -63,7 +68,7 @@ async function renderCompletedGoals() {
       return
     }
 
-    // ── Goals grid ───────────────────────────────────────────────────────────
+    // Goals grid
     const section = document.createElement('div')
     section.className = 'goals-section'
     section.innerHTML = `<h3>🏅 Completed (${completedGoals.length})</h3>`
@@ -96,27 +101,35 @@ ${err.stack || 'No stack trace'}</pre>
  * Build a single completed-goal card element.
  */
 function buildCompletedGoalCard(goal) {
-  const [
-    id, title, description, startDate, targetDate,
-    , , frequency, , ,
-    completionDate, color, icon
-  ] = goal
+  // Correct indices for the goals table
+  const id = goal[0]
+  const title = goal[1]
+  const description = goal[2]
+  const startDate = goal[3]
+  const targetDate = goal[4]
+  const completed = goal[5]
+  const failed = goal[6]
+  const progress = goal[7]
+  const frequency = goal[8]          // FIXED: index 8 (was incorrectly using index 7)
+  const scheduledDays = goal[9]
+  const createdAt = goal[10]
+  const completionDate = goal[11]
+  const color = goal[12]
+  const icon = goal[13] || '🎯'
 
   const card = document.createElement('div')
   card.className = 'goal-card completed'
   card.style.borderColor = color || '#6ee7b7'
-  card.style.opacity = '1' // override the 0.6 default for completed in goals.css
+  card.style.opacity = '1'
 
-  // Format dates
   const fmt = (d) => d
     ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : null
 
-  const startStr      = fmt(startDate)
-  const targetStr     = fmt(targetDate)
-  const completedStr  = fmt(completionDate)
+  const startStr = fmt(startDate)
+  const targetStr = fmt(targetDate)
+  const completedStr = fmt(completionDate)
 
-  // Frequency label
   const freqMap = {
     daily:    '📅 Every Day',
     weekdays: '💼 Weekdays (Mon–Fri)',
@@ -129,7 +142,7 @@ function buildCompletedGoalCard(goal) {
   card.innerHTML = `
     <div class="goal-card-header">
       <div class="goal-card-title">
-        <span class="goal-card-icon">${icon || '🎯'}</span>
+        <span class="goal-card-icon">${icon}</span>
         <h4 style="color:#fff;">✓ ${title || 'Untitled Goal'}</h4>
       </div>
       <div style="display:flex; gap:6px;">
@@ -161,7 +174,6 @@ function buildCompletedGoalCard(goal) {
         : ''}
     </div>
 
-    <!-- 100% progress bar -->
     <div class="progress-container">
       <div class="progress-bar">
         <div class="progress-fill" style="width:100%; background: linear-gradient(90deg, ${color || '#6ee7b7'}, #39d353);"></div>
@@ -182,26 +194,7 @@ async function restoreGoalConfirm(goalId) {
   if (!confirm('Restore this goal to active? Progress will be reset to 0.')) return
 
   try {
-    const allGoals = await window.api.getAllGoals()
-    const goal = allGoals.find(g => g[0] === goalId)
-    if (!goal) { alert('Goal not found.'); return }
-
-    // Re-save the goal (this does NOT change completed flag, so we
-    // rely on updateGoalProgress(0) to reset it since the backend
-    // only auto-completes at >= 100, setting 0 is safe).
-    await window.api.updateGoal(
-      goalId,
-      goal[1],  // title
-      goal[2],  // description
-      goal[4],  // target_date
-      goal[7],  // frequency
-      goal[8],  // scheduled_days
-      goal[3]   // start_date
-    )
-
-    // Setting progress to 0 resets the completed flag via the backend
-    await window.api.updateGoalProgress(goalId, 0)
-
+    await window.api.restoreGoal(goalId)
     await renderCompletedGoals()
   } catch (err) {
     console.error('Error restoring goal:', err)

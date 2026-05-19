@@ -19,6 +19,14 @@ const api = {
   deleteHabit: (id) => 
     ipcRenderer.invoke('delete-habit', id),
 
+  // ==================== NOTIFICATIONS ====================
+  getNotifications: (unreadOnly = false) => 
+    ipcRenderer.invoke('get-notifications', unreadOnly),
+  markNotificationRead: (id) => 
+    ipcRenderer.invoke('mark-notification-read', id),
+  evaluateGoals: () => 
+    ipcRenderer.invoke('evaluate-goals'),
+
   // ==================== DAILY CHECKLIST ====================
   markHabitComplete: (habitId, date = null) => 
     ipcRenderer.invoke('mark-habit-complete', habitId, date),
@@ -43,8 +51,8 @@ const api = {
     ipcRenderer.invoke('get-streak-all-habits'),
 
   // ==================== JOURNAL ====================
-  addJournalEntry: (content, mood = 'neutral') => 
-    ipcRenderer.invoke('add-journal-entry', content, mood),
+  addJournalEntry: (content, mood = 'neutral', time = null) => 
+    ipcRenderer.invoke('add-journal-entry', content, mood, time),
   
   getTodayJournal: () => 
     ipcRenderer.invoke('get-today-journal'),
@@ -79,6 +87,9 @@ const api = {
   
   deleteGoal: (id) => 
     ipcRenderer.invoke('delete-goal', id),
+  
+  restoreGoal: (id) => 
+    ipcRenderer.invoke('restore-goal', id),
 
   // ==================== GOAL LABELS ====================
   getAllLabels: () => 

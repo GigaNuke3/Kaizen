@@ -22,8 +22,6 @@ async function renderCheckmarks() {
     const gridData = await window.api.getGoalTrackingGrid()
     const todayStats = await window.api.getTodayGoalStats()
     
-    console.log('✅ CheckMarked data loaded:', { goals: gridData.goals.length, dates: gridData.dates.length })
-    
     // Create main container
     const container = document.createElement('div')
     container.className = 'checkmarked-container'
@@ -111,11 +109,20 @@ async function renderCheckmarks() {
       const grid = document.createElement('div')
       grid.className = 'goal-grid'
 
+      // Guard flag to prevent infinite scroll event loops
+      let isSyncing = false
+
       gridScroll.addEventListener('scroll', () => {
+        if (isSyncing) return
+        isSyncing = true
         labelsColumn.scrollTop = gridScroll.scrollTop
+        isSyncing = false
       })
       labelsColumn.addEventListener('scroll', () => {
+        if (isSyncing) return
+        isSyncing = true
         gridScroll.scrollTop = labelsColumn.scrollTop
+        isSyncing = false
       })
       
       // Add header spacer in labels column
@@ -143,7 +150,6 @@ async function renderCheckmarks() {
       grid.appendChild(headerRow)
       
       const today = new Date().toISOString().split('T')[0]
-      const todayJournal = await window.api.getTodayJournal();
       
       // Create one row per goal
       for (const goal of gridData.goals) {
@@ -163,12 +169,9 @@ async function renderCheckmarks() {
           cell.className = 'grid-cell'
           cell.title = `${goal.title} - ${date}${!shouldDisplay ? ' (Not scheduled)' : ''}${!isWithinWindow ? ' (Outside checklist window)' : ''}${!isNotFuture ? ' (Future date - cannot check)' : ''}`
           
-          // Check if cell is disabled (not scheduled OR outside window OR future date)
           if (!shouldDisplay || !isWithinWindow || !isNotFuture) {
-            // Not scheduled or outside window or future - mark as disabled
             cell.classList.add('disabled')
           } else {
-            // Scheduled for this day AND within window AND not future
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
@@ -179,9 +182,14 @@ async function renderCheckmarks() {
             }
             
             cell.style.cursor = 'pointer'
+            // CORRECTED: try/catch for journal requirement
             cell.addEventListener('click', async () => {
-              await window.api.toggleGoalCompletion(goal.id, date)
-              renderCheckmarks()
+              try {
+                await window.api.toggleGoalCompletion(goal.id, date)
+                renderCheckmarks()
+              } catch (error) {
+                alert(error.message)
+              }
             })
           }
           
@@ -199,7 +207,6 @@ async function renderCheckmarks() {
     }
     
     content.appendChild(container)
-    console.log('✅ CheckMarked page rendered successfully!')
     
   } catch (error) {
     console.error('❌ Error rendering checkmarked:', error)
@@ -240,24 +247,18 @@ function shouldShowDayForGoal(dateStr, frequency, scheduledDaysStr) {
   switch (frequency) {
     case 'daily':
       return true
-    
     case 'weekdays':
-      return dayOfWeek >= 1 && dayOfWeek <= 5 // Mon-Fri
-    
+      return dayOfWeek >= 1 && dayOfWeek <= 5
     case 'weekends':
-      return dayOfWeek === 0 || dayOfWeek === 6 // Sat-Sun
-    
+      return dayOfWeek === 0 || dayOfWeek === 6
     case '3x':
-      // Default to Mon, Wed, Fri if no custom days specified
       if (!scheduledDaysStr) return [1, 3, 5].includes(dayOfWeek)
       const days = parseScheduledDays(scheduledDaysStr)
       return days.includes(dayOfWeek)
-    
     case 'custom':
       if (!scheduledDaysStr) return true
       const customDays = parseScheduledDays(scheduledDaysStr)
       return customDays.includes(dayOfWeek)
-    
     default:
       return true
   }
@@ -291,7 +292,6 @@ function createGoalInfoCard(goal) {
   const icon = goal.icon || '🎯'
   const frequency = goal.frequency || 'daily'
   
-  // Format dates
   const startStr = startDate 
     ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
     : ''
@@ -299,7 +299,6 @@ function createGoalInfoCard(goal) {
     ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
     : ''
   
-  // Format frequency for display
   const frequencyDisplay = {
     'daily': '📅 Every Day',
     'weekdays': '💼 Weekdays (Mon-Fri)',

@@ -46,3 +46,11 @@
     font-size: 0.8rem;
     color: #888;
 }
+
+.notification-item.read {
+  opacity: 0.6;
+}
+.notification-item.unread {
+  background-color: #2a3a2a;
+  border-left-color: #6ee7b7;
+}

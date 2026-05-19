@@ -5,7 +5,7 @@ Your personal self-improvement companion built with Electron, featuring habit tr
 ## 🎯 Features
 
 ### 📊 Dashboard
-- **Real-time Statistics**: View your habits tracked, todos completed, journal entries, and today's actions
+- **Real-time Statistics**: View your habits tracked, goals completed, journal entries, and today's actions
 - **GitHub-style Contribution Grid**: Visualize your activity throughout the year
 - **Today's Checklist**: Quick access to today's habits with completion status
 - **Recent Journal**: Preview your latest journal entries
@@ -33,13 +33,12 @@ Your personal self-improvement companion built with Electron, featuring habit tr
 - Mark goals as complete
 - Separate view for active vs completed goals
 
-### 📝 Todo List
-- Create todos with custom categories (Work, Personal, Health, Finance, Learning)
-- Set priority levels (Low, Medium, High)
-- Add due dates
-- Check off completed items
-- Sort by priority automatically
-- View active and completed todos separately
+### 📝 CheckMarked - Goal Tracking
+- Display all active goals in a 365-day tracking grid
+- Support multiple frequency types (daily, weekdays, weekends, 3x, custom)
+- Track completion status for each goal per day
+- Visual contribution-style grid with color coding
+- Today's completion statistics and progress tracking
 
 ### 👤 Profile
 - Edit your name and tagline
@@ -135,7 +134,7 @@ Database (SQLite/sql.js)
 - Click **Habits**: Manage your daily habits
 - Click **Journal**: Write reflections
 - Click **Goals**: Set and track goals
-- Click **Todo**: Manage tasks
+- Click **CheckMarked**: Track goals across 365 days
 - Click **Profile**: Edit profile and view stats
 
 ## 🔄 Workflow Example
@@ -156,7 +155,7 @@ Database (SQLite/sql.js)
 ### Weekly Planning
 1. Navigate to **Goals**
 2. Review progress on active goals
-3. Go to **Todo** to add weekly tasks
+3. Go to **CheckMarked** to monitor goal completion
 4. Set priorities and due dates
 
 ## 🐛 Troubleshooting
@@ -192,7 +191,7 @@ Planned for upcoming versions:
 - **daily_checklist**: Track habit completion by date
 - **journal**: Store journal entries with mood
 - **goals**: Store goals and progress
-- **todos**: Store tasks with categories and priorities
+- **checkmarks**: Store goal completion data per date
 - **user_profile**: Store user information
 
 ## 🤝 Contributing
