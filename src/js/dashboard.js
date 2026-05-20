@@ -163,11 +163,8 @@ async function renderContributionGrid() {
     }
   }
 
-  // Add final week with padding
+  // Add final week WITHOUT padding — just push whatever days are left
   if (currentWeek.length > 0) {
-    while (currentWeek.length < 7) {
-      currentWeek.push(null)
-    }
     weeks.push(currentWeek)
   }
 
@@ -242,11 +239,18 @@ async function renderContributionGrid() {
   cellsGrid.style.gridTemplateColumns = `repeat(${weeks.length}, 22px)`
 
   // Add cells for each week and day
-  for (const week of weeks) {
+  for (let weekIdx = 0; weekIdx < weeks.length; weekIdx++) {
+    const week = weeks[weekIdx]
+    const isLastWeek = weekIdx === weeks.length - 1
+
     for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-      const date = week[dayIndex]
+      const date = week[dayIndex] ?? null  // undefined becomes null for short last week
 
       if (date === null) {
+        // Skip trailing nulls in the last week entirely
+        if (isLastWeek) continue
+
+        // Keep leading nulls in the first week for Sunday alignment
         const paddingCell = document.createElement('div')
         paddingCell.className = 'contrib-cell contrib-cell-padding'
         paddingCell.style.visibility = 'hidden'

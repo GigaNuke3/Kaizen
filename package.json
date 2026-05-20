@@ -4,18 +4,46 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder"
   },
   "keywords": [],
-  "author": "",
+  "author": "User <user@example.com>",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^42.0.0"
+    "electron": "^42.0.0",
+    "electron-builder": "^24.6.4"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
     "electron-store": "^11.0.2",
     "node-cron": "^4.2.1",
     "sql.js": "^1.14.1"
+  },
+  "build": {
+    "appId": "com.kaizen.app",
+    "productName": "Kaizen",
+    "files": [
+      "main.js",
+      "index.html",
+      "src/**",
+      "assets/**",
+      "database/**",
+      "node_modules/**"
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "assets/icons/desktop/kaizen_desktop_icon.png"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/icons/desktop/kaizen_desktop_icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

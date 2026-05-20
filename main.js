@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain, Notification } = require('electron')
+const path = require('path')
 const backend = require('./database/backend.js')
 
 async function createWindow() {
@@ -12,6 +13,7 @@ async function createWindow() {
     width: 1000,
     height: 700,
     title: 'Kaizen',
+    icon: path.join(__dirname, 'assets/icons/desktop/kaizen_desktop_icon.png'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
