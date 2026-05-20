@@ -79,8 +79,9 @@ async function renderCheckmarks() {
       // ===== TRACKING GRID SECTION =====
       const gridSection = document.createElement('div')
       gridSection.className = 'goal-grid-section'
+      const earliestDate = gridData.dates.length > 0 ? gridData.dates[0] : 'N/A'
       const latestDate = gridData.dates.length > 0 ? gridData.dates[gridData.dates.length - 1] : 'N/A'
-      gridSection.innerHTML = `<h3>📅 Tracking Grid (Today → Target Date: ${latestDate})</h3>`
+      gridSection.innerHTML = `<h3>📅 Tracking Grid (${earliestDate} → ${latestDate})</h3>`
       
       const gridContainer = document.createElement('div')
       gridContainer.className = 'goal-grid-container'
@@ -188,7 +189,7 @@ async function renderCheckmarks() {
                 await window.api.toggleGoalCompletion(goal.id, date)
                 renderCheckmarks()
               } catch (error) {
-                alert(error.message)
+                showJournalRequiredModal(error.message)
               }
             })
           }
@@ -251,14 +252,16 @@ function shouldShowDayForGoal(dateStr, frequency, scheduledDaysStr) {
       return dayOfWeek >= 1 && dayOfWeek <= 5
     case 'weekends':
       return dayOfWeek === 0 || dayOfWeek === 6
-    case '3x':
+    case '3x': {
       if (!scheduledDaysStr) return [1, 3, 5].includes(dayOfWeek)
       const days = parseScheduledDays(scheduledDaysStr)
       return days.includes(dayOfWeek)
-    case 'custom':
+    }
+    case 'custom': {
       if (!scheduledDaysStr) return true
       const customDays = parseScheduledDays(scheduledDaysStr)
       return customDays.includes(dayOfWeek)
+    }
     default:
       return true
   }
@@ -330,4 +333,77 @@ function createGoalInfoCard(goal) {
   `
   
   return card
+}
+
+/**
+ * Show a beautiful modal requiring journal entry
+ * with button to navigate to journal page
+ */
+function showJournalRequiredModal(errorMessage) {
+  // Remove any existing modal
+  const existing = document.getElementById('journal-required-modal')
+  if (existing) existing.remove()
+  
+  const modal = document.createElement('div')
+  modal.id = 'journal-required-modal'
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  `
+  
+  const content = document.createElement('div')
+  content.style.cssText = `
+    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+    border: 2px solid #6ee7b7;
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(110, 231, 183, 0.2);
+  `
+  
+  content.innerHTML = `
+    <div style="font-size: 48px; margin-bottom: 20px; animation: pulse 2s infinite;">📓</div>
+    <h2 style="color: #6ee7b7; margin-bottom: 15px; font-size: 24px;">Journal Entry Required</h2>
+    <p style="color: #ccc; line-height: 1.6; margin-bottom: 25px;">
+      ${errorMessage}
+    </p>
+    <p style="color: #888; font-size: 14px; margin-bottom: 30px;">
+      ✍️ Write a journal entry for today with a time to unlock goal tracking
+    </p>
+    <div style="display: flex; gap: 12px; justify-content: center;">
+      <button onclick="document.getElementById('journal-required-modal').remove()" 
+              style="background: #333; color: #fff; border: 1px solid #555; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s;">
+        Cancel
+      </button>
+      <button onclick="loadPage('journal'); document.getElementById('journal-required-modal').remove()" 
+              style="background: #6ee7b7; color: #000; border: none; padding: 12px 32px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.3s;">
+        ➔ Go to Journal
+      </button>
+    </div>
+  `
+  
+  modal.appendChild(content)
+  document.body.appendChild(modal)
+  
+  // Add hover effect to button
+  const button = content.querySelector('button:last-child')
+  if (button) {
+    button.addEventListener('mouseover', () => {
+      button.style.background = '#5ee7b7'
+      button.style.transform = 'scale(1.05)'
+    })
+    button.addEventListener('mouseout', () => {
+      button.style.background = '#6ee7b7'
+      button.style.transform = 'scale(1)'
+    })
+  }
 }

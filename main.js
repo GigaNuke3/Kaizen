@@ -19,7 +19,9 @@ async function createWindow() {
   })
 
   win.loadFile('index.html')
-  // win.webContents.openDevTools()  // Comment out to hide console
+  
+  // Open this Line Code to open the developer tools inside the electron desktop app
+  // zwin.webContents.openDevTools()  // Comment out to hide console
 
   // Periodic goal evaluation every 60 seconds
   setInterval(async () => {
@@ -76,7 +78,7 @@ ipcMain.handle('get-checklist-by-date', (event, date) => backend.getChecklistByD
 
 // Streak & Contributions
 ipcMain.handle('get-current-streak', (event, habitId) => backend.getCurrentStreak(habitId))
-ipcMain.handle('get-contribution-data', (event, year) => backend.getContributionData(year))
+ipcMain.handle('get-contribution-data', () => backend.getContributionData())
 ipcMain.handle('get-streak-all-habits', () => backend.getStreakAcrossAllHabits())
 
 // Journal
@@ -102,6 +104,7 @@ ipcMain.handle('restore-goal', (event, id) => backend.restoreGoal(id))
 ipcMain.handle('get-all-labels', () => backend.getAllLabels())
 ipcMain.handle('add-custom-label', (event, name) => backend.addCustomLabel(name))
 ipcMain.handle('delete-label', (event, id) => backend.deleteLabel(id))
+ipcMain.handle('get-top-labels', (event, limit = 5) => backend.getTopLabels(limit))
 
 // Goal Tracking Grid
 ipcMain.handle('get-goal-tracking-grid', () => backend.getGoalTrackingGrid())

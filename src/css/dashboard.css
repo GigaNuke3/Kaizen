@@ -56,40 +56,103 @@
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px;
+  overflow-x: auto;
+  width: 100%;
 }
 
 .section h3 {
   font-size: 1rem;
   color: #aaa;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
+/* Contribution Grid - GitHub Style */
 .contribution-grid {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 14px 0;
+  overflow-x: auto;
+  padding-bottom: 0;
+  width: 100%;
+}
+
+.github-contribution-container {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+  min-width: fit-content;
+}
+
+.contribution-days-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 36px;
+  flex-shrink: 0;
+}
+
+.day-label {
+  width: 35px;
+  height: 22px;
+  font-size: 0.75rem;
+  color: #888;
+  text-align: right;
+  line-height: 22px;
+  font-weight: 500;
+}
+
+.contribution-grid-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.contribution-months-header {
   display: grid;
-  grid-template-columns: repeat(52, 1fr);
-  grid-template-rows: repeat(7, 1fr);
-  grid-auto-flow: column;
-  gap: 3px;
+  gap: 4px;
+  margin-bottom: 10px;
+  position: relative;
+  height: 22px;
+}
+
+.month-header {
+  font-size: 0.75rem;
+  color: #888;
+  text-align: left;
+  font-weight: 500;
+  padding-right: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contribution-cells-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 22px);
+  gap: 4px;
 }
 
 .contrib-cell {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
+  border: 1px solid rgba(110, 231, 183, 0.1);
 }
 
-.contrib-cell:hover { 
-  opacity: 0.7; 
+.contrib-cell:hover {
+  border: 1px solid #6ee7b7;
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.3);
 }
 
 .contrib-cell.l0 { 
   background: #1e1e1e; 
-  border: 1px solid #2a2a2a; 
 }
 
 .contrib-cell.l1 { 
@@ -111,17 +174,45 @@
 .grid-legend {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   margin-top: 12px;
   justify-content: flex-end;
-  font-size: 0.75rem;
-  color: #555;
+  font-size: 0.85rem;
+  color: #888;
+  padding-right: 0;
 }
 
 .legend-box {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid rgba(110, 231, 183, 0.15);
+  transition: all 0.2s;
+}
+
+.legend-box:hover {
+  border: 1px solid #6ee7b7;
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.3);
+}
+
+.legend-box.l0 { 
+  background: #1e1e1e; 
+}
+
+.legend-box.l1 { 
+  background: #39d353; 
+}
+
+.legend-box.l2 { 
+  background: #26a641; 
+}
+
+.legend-box.l3 { 
+  background: #006d32; 
+}
+
+.legend-box.l4 { 
+  background: #0d4429; 
 }
 
 /* Bottom Row */
@@ -183,6 +274,19 @@
   line-height: 1.4;
 }
 
+/* ===== SPIDER CHART ===== */
+#spiderChart {
+  max-width: 100%;
+  height: auto;
+}
+
+.empty-msg {
+  color: #666;
+  font-size: 0.95rem;
+  padding: 20px;
+  text-align: center;
+}
+
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
   .stats-row {
@@ -193,17 +297,43 @@
     grid-template-columns: 1fr;
   }
 
-  .contribution-grid {
-    grid-template-columns: repeat(26, 1fr);
+  .contribution-cells-grid {
+    grid-template-rows: repeat(7, 16px);
+    gap: 3px;
+  }
+
+  .contribution-months-header {
+    gap: 3px;
+  }
+
+  .contrib-cell {
+    width: 16px;
+    height: 16px;
+  }
+
+  .legend-box {
+    width: 16px;
+    height: 16px;
   }
 }
 
 @media (max-width: 480px) {
-  .stats-row {
-    grid-template-columns: 1fr 1fr;
+  .contribution-cells-grid {
+    grid-template-rows: repeat(7, 12px);
+    gap: 2px;
   }
 
-  .contribution-grid {
-    grid-template-columns: repeat(13, 1fr);
+  .contribution-months-header {
+    gap: 2px;
+  }
+
+  .contrib-cell {
+    width: 12px;
+    height: 12px;
+  }
+
+  .legend-box {
+    width: 12px;
+    height: 12px;
   }
 }

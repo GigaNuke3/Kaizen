@@ -291,27 +291,60 @@ async function getCurrentStreak(habitId) {
   return result.length > 0 ? result[0].values[0][0] : 0
 }
 
-async function getContributionData(year = null) {
+async function getContributionData(startDate = null, endDate = null) {
   const database = await getDB()
-  const targetYear = year || new Date().getFullYear()
   
-  const result = database.exec(`
+  // Default to rolling 12-month window
+  const today = new Date()
+  const end = endDate ? new Date(endDate) : today
+  const start = startDate ? new Date(startDate) : new Date(today)
+  start.setFullYear(start.getFullYear() - 1)
+  
+  const startDateStr = start.toISOString().split('T')[0]
+  const endDateStr = end.toISOString().split('T')[0]
+  
+  // Get habit completions
+  const habitResult = database.exec(`
     SELECT 
       date,
       COUNT(*) as count
     FROM daily_checklist
     WHERE completed = 1
-    AND strftime('%Y', date) = ?
+    AND date >= ?
+    AND date <= ?
     GROUP BY date
     ORDER BY date
-  `, [targetYear.toString()])
+  `, [startDateStr, endDateStr])
   
-  if (result.length === 0) return {}
+  // Get goal completions
+  const goalResult = database.exec(`
+    SELECT 
+      date,
+      COUNT(*) as count
+    FROM goal_completions
+    WHERE is_completed = 1
+    AND date >= ?
+    AND date <= ?
+    GROUP BY date
+    ORDER BY date
+  `, [startDateStr, endDateStr])
   
   const data = {}
-  result[0].values.forEach(([date, count]) => {
-    data[date] = count
-  })
+  
+  // Merge habit contributions
+  if (habitResult.length > 0) {
+    habitResult[0].values.forEach(([date, count]) => {
+      data[date] = (data[date] || 0) + count
+    })
+  }
+  
+  // Merge goal contributions
+  if (goalResult.length > 0) {
+    goalResult[0].values.forEach(([date, count]) => {
+      data[date] = (data[date] || 0) + count
+    })
+  }
+  
   return data
 }
 
@@ -494,6 +527,17 @@ async function updateGoalProgress(id, progress) {
 async function completeGoal(id) {
   const database = await getDB()
   const today = new Date().toISOString().split('T')[0]
+  
+  // *** JOURNAL REQUIREMENT ***
+  // Check if there is a journal entry for today with a non-empty time
+  const journalCheck = database.exec(
+    'SELECT id FROM journal WHERE date = ? AND time IS NOT NULL AND time != "" LIMIT 1',
+    [today]
+  )
+  if (!journalCheck.length || journalCheck[0].values.length === 0) {
+    throw new Error('You must write a journal entry with a time for today before completing a goal.')
+  }
+  
   database.run('UPDATE goals SET completed = 1, progress = 100, completion_date = ? WHERE id = ?', [today, id])
   saveDB()
   return getAllGoals()
@@ -508,7 +552,7 @@ async function deleteGoal(id) {
 
 async function restoreGoal(id) {
   const database = await getDB()
-  database.run('UPDATE goals SET completed = 0, completion_date = NULL WHERE id = ?', [id])
+  database.run('UPDATE goals SET completed = 0, progress = 0, completion_date = NULL WHERE id = ?', [id])
   saveDB()
   return getAllGoals()
 }
@@ -568,6 +612,31 @@ async function deleteLabel(id) {
   return getAllLabels()
 }
 
+async function getTopLabels(limit = 5) {
+  const database = await getDB()
+  try {
+    // Count goals by description (which acts as the label)
+    const result = database.exec(`
+      SELECT description, COUNT(*) as count
+      FROM goals
+      WHERE description IS NOT NULL AND description != ''
+      GROUP BY description
+      ORDER BY count DESC
+      LIMIT ?
+    `, [limit])
+    
+    if (result.length === 0) return []
+    
+    return result[0].values.map(row => ({
+      label: row[0],
+      count: row[1]
+    }))
+  } catch (error) {
+    console.error('Error getting top labels:', error)
+    return []
+  }
+}
+
 /**
  * ==================== GOAL TRACKING GRID ====================
  */
@@ -615,10 +684,15 @@ async function getGoalTrackingGrid() {
     dates.push(d.toISOString().split('T')[0])
   }
   
+  // Guard against empty dates array
+  if (dates.length === 0) {
+    return { goals, dates: [], completions: {} }
+  }
+  
+  // Use range query instead of IN() to avoid SQLite's 999-parameter limit
   const completionsResult = database.exec(
-    'SELECT goal_id, date, is_completed FROM goal_completions WHERE date IN (' + 
-    dates.map(() => '?').join(',') + ') ORDER BY date DESC',
-    dates
+    'SELECT goal_id, date, is_completed FROM goal_completions WHERE date >= ? AND date <= ? ORDER BY date DESC',
+    [dates[0], dates[dates.length - 1]]
   )
   const completions = {}
   if (completionsResult.length > 0) {
@@ -669,17 +743,6 @@ async function toggleGoalCompletion(goalId, date) {
   saveDB()
   await recalculateGoalProgress(goalId)
   return true
-}
-
-async function addJournalEntry(content, mood, time) {
-  const database = await getDB();
-  const date = new Date().toISOString().split('T')[0];
-  database.run(
-    'INSERT INTO journal (content, mood, date, time) VALUES (?, ?, ?, ?)',
-    [content, mood, date, time || null]
-  );
-  saveDB();
-  return getTodayJournal();
 }
 
 async function recalculateGoalProgress(goalId) {
@@ -993,6 +1056,7 @@ module.exports = {
   getAllLabels,
   addCustomLabel,
   deleteLabel,
+  getTopLabels,
   // Goal Tracking Grid
   getGoalTrackingGrid,
   toggleGoalCompletion,

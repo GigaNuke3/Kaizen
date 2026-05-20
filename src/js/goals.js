@@ -33,8 +33,8 @@ async function renderGoals() {
     header.innerHTML = `
       <div class="goals-header-content">
         <h2>🎯 Goals Management</h2>
-        <button class="btn-primary" onclick="openAddGoalModal()">+ Create Goal</button>
-        <button class="btn-primary" onclick="openCustomLabelModal()">+ Manage Labels</button>
+        <button class="btn btn-primary" onclick="openAddGoalModal()">+ Create Goal</button>
+        <button class="btn btn-primary" onclick="openCustomLabelModal()">+ Manage Labels</button>
       </div>
     `
     container.appendChild(header)
@@ -271,7 +271,8 @@ function openCustomLabelModal() {
 function closeCustomLabelModal() {
   const modal = document.getElementById('customlabel-modal')
   if (modal) modal.classList.remove('active')
-  document.getElementById('new-custom-label').value = ''
+  const input = document.getElementById('new-custom-label')
+  if (input) input.value = ''
 }
 
 function displayCustomLabels() {

@@ -44,8 +44,8 @@ const api = {
   getCurrentStreak: (habitId) => 
     ipcRenderer.invoke('get-current-streak', habitId),
   
-  getContributionData: (year = null) => 
-    ipcRenderer.invoke('get-contribution-data', year),
+  getContributionData: () => 
+    ipcRenderer.invoke('get-contribution-data'),
   
   getStreakAllHabits: () => 
     ipcRenderer.invoke('get-streak-all-habits'),
@@ -100,6 +100,9 @@ const api = {
   
   deleteLabel: (id) => 
     ipcRenderer.invoke('delete-label', id),
+  
+  getTopLabels: (limit = 5) => 
+    ipcRenderer.invoke('get-top-labels', limit),
 
   // ==================== GOAL TRACKING GRID ====================
   getGoalTrackingGrid: () => 

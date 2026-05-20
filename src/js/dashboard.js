@@ -20,10 +20,6 @@ async function renderDashboard() {
 
         <div class="stats-row">
           <div class="stat-card">
-            <span class="stat-num">${stats.habits || 0}</span>
-            <span class="stat-label">Habits Tracked</span>
-          </div>
-          <div class="stat-card">
             <span class="stat-num">${stats.checkmarks_done || 0}</span>
             <span class="stat-label">Checkmarks Done</span>
           </div>
@@ -38,7 +34,7 @@ async function renderDashboard() {
         </div>
 
         <div class="section">
-          <h3>Activity This Year</h3>
+          <h3>Activity Last 12 Months</h3>
           <div class="contribution-grid" id="contribution-grid"></div>
           <div class="grid-legend">
             <span>Less</span>
@@ -49,6 +45,11 @@ async function renderDashboard() {
             <div class="legend-box l4"></div>
             <span>More</span>
           </div>
+        </div>
+
+        <div class="section" style="max-width: 500px; margin: 0 auto;">
+          <h3>Top 5 Goal Labels</h3>
+          <canvas id="spiderChart" style="max-height: 400px;"></canvas>
         </div>
 
         <div class="dash-bottom">
@@ -90,6 +91,7 @@ async function renderDashboard() {
     }
 
     renderContributionGrid()
+    renderSpiderChart()
   } catch (err) {
     console.error('❌ Dashboard render error:', err)
     content.innerHTML = `
@@ -126,21 +128,237 @@ async function renderContributionGrid() {
   if (!grid) return
 
   const today = new Date()
-  const start = new Date(today.getFullYear(), 0, 1)
+  
+  // Calculate start date: 12 months ago from today
+  const startDate = new Date(today)
+  startDate.setFullYear(startDate.getFullYear() - 1)
   
   // Get real contribution data
-  const contributionData = await window.api.getContributionData(today.getFullYear())
+  const contributionData = await window.api.getContributionData()
 
-  let html = ''
-  for (let i = 0; i < 365; i++) {
-    const date = new Date(start)
-    date.setDate(start.getDate() + i)
-    const isPast = date <= today
-    const dateStr = date.toISOString().split('T')[0]
-    const count = contributionData[dateStr] || 0
-    const level = isPast ? Math.min(Math.floor(count / 2), 4) : 0
-    html += `<div class="contrib-cell l${level}" title="${dateStr}: ${count} contributions"></div>`
+  // Build array of all dates from startDate to today
+  const allDates = []
+  const current = new Date(startDate)
+  while (current <= today) {
+    allDates.push(new Date(current))
+    current.setDate(current.getDate() + 1)
   }
 
-  grid.innerHTML = html
+  // Group dates into weeks (Sunday to Saturday)
+  const weeks = []
+  let currentWeek = []
+  const firstDayOfWeek = startDate.getDay() // 0 = Sunday
+  
+  // Add padding for the first week if it doesn't start on Sunday
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    currentWeek.push(null)
+  }
+
+  // Add all dates to weeks
+  for (const date of allDates) {
+    currentWeek.push(date)
+    if (currentWeek.length === 7) {
+      weeks.push(currentWeek)
+      currentWeek = []
+    }
+  }
+
+  // Add final week with padding
+  if (currentWeek.length > 0) {
+    while (currentWeek.length < 7) {
+      currentWeek.push(null)
+    }
+    weeks.push(currentWeek)
+  }
+
+  // Create GitHub-like layout
+  const container = document.createElement('div')
+  container.className = 'github-contribution-container'
+
+  // Day labels (left side)
+  const daysLabel = document.createElement('div')
+  daysLabel.className = 'contribution-days-label'
+  daysLabel.innerHTML = `
+    <div class="day-label"></div>
+    <div class="day-label">Mon</div>
+    <div class="day-label"></div>
+    <div class="day-label">Wed</div>
+    <div class="day-label"></div>
+    <div class="day-label">Fri</div>
+    <div class="day-label"></div>
+  `
+  container.appendChild(daysLabel)
+
+  // Main grid container
+  const gridWrapper = document.createElement('div')
+  gridWrapper.className = 'contribution-grid-wrapper'
+
+  // Month headers with proper grid column alignment
+  const monthsHeader = document.createElement('div')
+  monthsHeader.className = 'contribution-months-header'
+  monthsHeader.style.gridTemplateColumns = `repeat(${weeks.length}, 22px)`
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  
+  // Build month labels chronologically using year+month key to avoid duplicates
+  const monthLabels = [] // { label, weekIndex }
+  let prevMonthKey = null
+
+  for (let weekIndex = 0; weekIndex < weeks.length; weekIndex++) {
+    const week = weeks[weekIndex]
+    const firstDate = week.find(d => d !== null)
+    if (firstDate) {
+      const monthKey = `${firstDate.getFullYear()}-${firstDate.getMonth()}`
+      if (monthKey !== prevMonthKey) {
+        monthLabels.push({
+          label: monthNames[firstDate.getMonth()],
+          weekIndex
+        })
+        prevMonthKey = monthKey
+      }
+    }
+  }
+
+  // Create month headers with proper column alignment
+  for (let i = 0; i < monthLabels.length; i++) {
+    const { label, weekIndex } = monthLabels[i]
+    const nextWeekIndex = i + 1 < monthLabels.length 
+      ? monthLabels[i + 1].weekIndex 
+      : weeks.length
+
+    const span = nextWeekIndex - weekIndex
+
+    const monthSpan = document.createElement('div')
+    monthSpan.className = 'month-header'
+    monthSpan.style.gridColumn = `${weekIndex + 1} / span ${span}`
+    monthSpan.textContent = label
+    monthsHeader.appendChild(monthSpan)
+  }
+  gridWrapper.appendChild(monthsHeader)
+
+  // Contribution cells grid
+  const cellsGrid = document.createElement('div')
+  cellsGrid.className = 'contribution-cells-grid'
+  cellsGrid.style.gridTemplateColumns = `repeat(${weeks.length}, 22px)`
+
+  // Add cells for each week and day
+  for (const week of weeks) {
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+      const date = week[dayIndex]
+
+      if (date === null) {
+        const paddingCell = document.createElement('div')
+        paddingCell.className = 'contrib-cell contrib-cell-padding'
+        paddingCell.style.visibility = 'hidden'
+        cellsGrid.appendChild(paddingCell)
+      } else {
+        const isPast = date <= today
+        const dateStr = date.toISOString().split('T')[0]
+        const count = contributionData[dateStr] || 0
+        
+        // Color mapping: fewer contributions = lighter, more = darker
+        let level = 0
+        if (isPast) {
+          if (count === 0) {
+            level = 0  // #1e1e1e - no contribution
+          } else if (count < 2) {
+            level = 4  // #39d353 - 1 contribution (bright)
+          } else if (count < 4) {
+            level = 3  // #26a641 - 2-3 contributions
+          } else if (count < 6) {
+            level = 2  // #006d32 - 4-5 contributions
+          } else {
+            level = 1  // #0d4429 - 6+ contributions (dark)
+          }
+        }
+        
+        const cell = document.createElement('div')
+        cell.className = `contrib-cell l${level}`
+        cell.title = `${dateStr}: ${count} contribution${count !== 1 ? 's' : ''}`
+        cellsGrid.appendChild(cell)
+      }
+    }
+  }
+
+  gridWrapper.appendChild(cellsGrid)
+  container.appendChild(gridWrapper)
+  grid.innerHTML = ''
+  grid.appendChild(container)
+}
+
+async function renderSpiderChart() {
+  const canvas = document.getElementById('spiderChart')
+  if (!canvas) return
+
+  try {
+    // Get top 5 labels with usage counts
+    const topLabels = await window.api.getTopLabels(5)
+    
+    if (!topLabels || topLabels.length === 0) {
+      canvas.parentElement.innerHTML = '<p class="empty-msg">No goal labels yet. Create goals to see stats!</p>'
+      return
+    }
+
+    const labels = topLabels.map(item => item.label)
+    const data = topLabels.map(item => item.count)
+
+    // Destroy existing chart if it exists
+    if (window.spiderChartInstance) {
+      window.spiderChartInstance.destroy()
+    }
+
+    // Create radar chart
+    window.spiderChartInstance = new Chart(canvas, {
+      type: 'radar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Goal Count',
+          data: data,
+          borderColor: '#6ee7b7',
+          backgroundColor: 'rgba(110, 231, 183, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          pointRadius: 5,
+          pointBackgroundColor: '#6ee7b7',
+          pointBorderColor: '#0f0f0f',
+          pointBorderWidth: 2,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: true,
+            labels: {
+              color: '#aaa',
+              font: { size: 12 }
+            }
+          }
+        },
+        scales: {
+          r: {
+            beginAtZero: true,
+            max: Math.max(...data) * 1.2,
+            ticks: {
+              color: '#666',
+              font: { size: 10 }
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            },
+            pointLabels: {
+              color: '#aaa',
+              font: { size: 12 }
+            }
+          }
+        }
+      }
+    })
+  } catch (err) {
+    console.error('❌ Spider chart render error:', err)
+    canvas.parentElement.innerHTML = '<p class="empty-msg">Failed to load chart</p>'
+  }
 }

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kaizen</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="src/css/style.css">
   <link rel="stylesheet" href="src/css/dashboard.css">
   <link rel="stylesheet" href="src/css/journal.css">
@@ -24,6 +25,9 @@
       </div>
 
       <ul class="nav-links">
+         <li data-page="notifications" onclick="loadPage('notifications')">
+          🔔 Notifications
+        </li>
         <li class="active" data-page="dashboard" onclick="loadPage('dashboard')">
           📊 Dashboard
         </li>
@@ -38,9 +42,6 @@
         </li>
         <li data-page="failed_goals" onclick="loadPage('failed_goals')">
           ❌ Failed Goals
-        </li>
-        <li data-page="notifications" onclick="loadPage('notifications')">
-          🔔 Notifications
         </li>
         <li data-page="journal" onclick="loadPage('journal')">
           📓 Journal
@@ -60,6 +61,7 @@
 
   </div>
 
+  <script src="node_modules/chart.js/dist/chart.umd.js"></script>
   <script src="src/js/api.js"></script>
   <script src="src/js/dashboard.js"></script>
   <script src="src/js/journal.js"></script>
@@ -70,7 +72,8 @@
   <script src="src/js/notification.js"></script>
   <script src="src/js/profile.js"></script>
   <script>
-    const { ipcRenderer } = require('electron')
+    // Declare ipcRenderer in global scope
+    //const { ipcRenderer } = require('electron')
 
     // Track current page
     let currentPage = 'dashboard'
