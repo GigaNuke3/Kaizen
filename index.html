@@ -7,6 +7,7 @@
   <link rel="icon" type="image/png" href="assets/icons/desktop/kaizen_desktop_icon.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="src/css/style.css">
+  <link rel="stylesheet" href="src/css/layout.css">
   <link rel="stylesheet" href="src/css/dashboard.css">
   <link rel="stylesheet" href="src/css/journal.css">
   <link rel="stylesheet" href="src/css/checkmarked.css">
@@ -76,9 +77,6 @@
   <script src="src/js/notification.js"></script>
   <script src="src/js/profile.js"></script>
   <script>
-    // Declare ipcRenderer in global scope
-    //const { ipcRenderer } = require('electron')
-
     // Track current page
     let currentPage = 'dashboard'
 
@@ -128,11 +126,39 @@ ${err.stack?.substring(0, 500) || ''}</pre>
     // Expose globally IMMEDIATELY (before DOMContentLoaded) so sidebar onclicks work
     window.loadPage = loadPage
 
-    // IPC listener for cross-page events
-    ipcRenderer.on('goals-updated', () => {
-      if (currentPage === 'checkmarked') {
-        renderCheckmarks().catch(err => console.error('Error reloading checkmarked:', err))
+    // IPC listener for cross-page events (ipcRenderer exposed from api.js)
+    function refreshCurrentGoalPage() {
+      const refreshers = {
+        checkmarked: renderCheckmarks,
+        failed_goals: renderFailedGoals,
+        completed_goals: renderCompletedGoals,
+        goals: renderGoals,
+        notifications: renderNotifications,
+        dashboard: renderDashboard
       }
+      const refresh = refreshers[currentPage]
+      if (refresh) {
+        refresh().catch(err => console.error(`Error reloading ${currentPage}:`, err))
+      }
+    }
+
+    if (window.ipcRenderer) {
+      window.ipcRenderer.on('goals-updated', () => {
+        refreshCurrentGoalPage()
+      })
+    } else {
+      console.error('ipcRenderer not available — goals-updated listener skipped')
+    }
+
+    // Resize charts/layout when window size changes
+    let resizeDebounce
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeDebounce)
+      resizeDebounce = setTimeout(() => {
+        if (window.spiderChartInstance) {
+          window.spiderChartInstance.resize()
+        }
+      }, 120)
     })
 
     // Load dashboard once DOM is ready — api.js already ran synchronously so window.api is set

@@ -47,9 +47,9 @@ async function renderDashboard() {
           </div>
         </div>
 
-        <div class="section" style="max-width: 500px; margin: 0 auto;">
+        <div class="section section--chart">
           <h3>Top 5 Goal Labels</h3>
-          <canvas id="spiderChart" style="max-height: 400px;"></canvas>
+          <canvas id="spiderChart"></canvas>
         </div>
 
         <div class="dash-bottom">
@@ -332,7 +332,7 @@ async function renderSpiderChart() {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             display: true,

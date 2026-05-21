@@ -2,8 +2,13 @@ const initSqlJs = require('sql.js')
 const path = require('path')
 const fs = require('fs')
 
-const DB_PATH = path.join(__dirname, 'kaizen.db')
+let DB_PATH = path.join(__dirname, 'kaizen.db')
 let db = null
+
+function setDBPath(newPath) {
+  DB_PATH = newPath
+  db = null
+}
 
 /**
  * Initialize and return the database instance
@@ -552,7 +557,10 @@ async function deleteGoal(id) {
 
 async function restoreGoal(id) {
   const database = await getDB()
-  database.run('UPDATE goals SET completed = 0, progress = 0, completion_date = NULL WHERE id = ?', [id])
+  database.run(
+    'UPDATE goals SET completed = 0, failed = 0, progress = 0, completion_date = NULL WHERE id = ?',
+    [id]
+  )
   saveDB()
   return getAllGoals()
 }
@@ -1012,9 +1020,32 @@ async function getDashboardStats() {
   }
 }
 
+async function resetAllData() {
+  const database = await getDB()
+  const tables = [
+    'notifications',
+    'goal_completions',
+    'goals',
+    'checkmarks',
+    'daily_checklist',
+    'habit_keywords',
+    'journal',
+    'habits',
+    'goal_labels',
+    'user_profile'
+  ]
+  for (const table of tables) {
+    database.run(`DELETE FROM ${table}`)
+  }
+  await getAllLabels()
+  saveDB()
+  return true
+}
+
 module.exports = {
   getDB,
   saveDB,
+  setDBPath,
   // Habits
   addHabit,
   getAllHabits,
@@ -1078,5 +1109,6 @@ module.exports = {
   updateCheckmark,
   deleteCheckmark,
   // Stats
-  getDashboardStats
+  getDashboardStats,
+  resetAllData
 }

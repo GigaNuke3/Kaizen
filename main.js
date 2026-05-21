@@ -1,8 +1,51 @@
 const { app, BrowserWindow, Menu, ipcMain, Notification } = require('electron')
 const path = require('path')
+const fs = require('fs')
 const backend = require('./database/backend.js')
 
+let goalEvaluationInterval = null
+let settingsCache = null
+
+function settingsFilePath() {
+  return path.join(app.getPath('userData'), 'kaizen-settings.json')
+}
+
+function loadAppSettings() {
+  if (settingsCache) return settingsCache
+  const defaults = { notifications: true }
+  try {
+    const file = settingsFilePath()
+    if (fs.existsSync(file)) {
+      settingsCache = { ...defaults, ...JSON.parse(fs.readFileSync(file, 'utf8')) }
+      return settingsCache
+    }
+  } catch (err) {
+    console.error('Failed to load settings:', err)
+  }
+  settingsCache = { ...defaults }
+  return settingsCache
+}
+
+function saveAppSettings(patch) {
+  const next = { ...loadAppSettings(), ...patch }
+  settingsCache = next
+  const file = settingsFilePath()
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, JSON.stringify(next, null, 2), 'utf8')
+  return next
+}
+
 async function createWindow() {
+  if (app.isPackaged) {
+    const userDb = path.join(app.getPath('userData'), 'kaizen.db')
+    const bundledDb = path.join(__dirname, 'database', 'kaizen.db')
+    if (!fs.existsSync(userDb) && fs.existsSync(bundledDb)) {
+      fs.mkdirSync(path.dirname(userDb), { recursive: true })
+      fs.copyFileSync(bundledDb, userDb)
+    }
+    backend.setDBPath(userDb)
+  }
+
   // Initialize database
   await backend.getDB()
 
@@ -10,8 +53,10 @@ async function createWindow() {
   Menu.setApplicationMenu(null)
 
   const win = new BrowserWindow({
-    width: 1000,
-    height: 700,
+    width: 1280,
+    height: 800,
+    minWidth: 900,
+    minHeight: 600,
     title: 'Kaizen',
     icon: path.join(__dirname, 'assets/icons/desktop/kaizen_desktop_icon.png'),
     webPreferences: {
@@ -25,25 +70,36 @@ async function createWindow() {
   // Open this Line Code to open the developer tools inside the electron desktop app
   // zwin.webContents.openDevTools()  // Comment out to hide console
 
+  if (goalEvaluationInterval) {
+    clearInterval(goalEvaluationInterval)
+  }
+
   // Periodic goal evaluation every 60 seconds
-  setInterval(async () => {
+  goalEvaluationInterval = setInterval(async () => {
     try {
       const result = await backend.evaluateGoals()
       if (result.failed > 0 || result.completed > 0) {
-        // Show desktop notification
-        if (Notification.isSupported()) {
+        if (loadAppSettings().notifications && Notification.isSupported()) {
           new Notification({
             title: 'Kaizen Goals Update',
             body: `${result.completed} goal(s) completed, ${result.failed} goal(s) failed.`
           }).show()
         }
-        // Notify frontend to refresh CheckMarked page if needed
-        win.webContents.send('goals-updated')
+        // Notify frontend to refresh goal-related pages
+        const focused = BrowserWindow.getFocusedWindow() || win
+        focused?.webContents.send('goals-updated', result)
       }
     } catch (err) {
       console.error('Goal evaluation error:', err)
     }
   }, 60000) // every 60 seconds
+
+  win.on('closed', () => {
+    if (BrowserWindow.getAllWindows().length === 0 && goalEvaluationInterval) {
+      clearInterval(goalEvaluationInterval)
+      goalEvaluationInterval = null
+    }
+  })
 }
 
 // App event listeners
@@ -138,3 +194,15 @@ ipcMain.handle('delete-checkmark', (event, id) => backend.deleteCheckmark(id))
 
 // Stats
 ipcMain.handle('get-dashboard-stats', () => backend.getDashboardStats())
+ipcMain.handle('reset-all-data', () => backend.resetAllData())
+ipcMain.handle('get-settings', () => {
+  const { notifications } = loadAppSettings()
+  return { notifications }
+})
+ipcMain.handle('set-settings', (_event, settings) => {
+  if (settings.notifications !== undefined) {
+    saveAppSettings({ notifications: settings.notifications })
+  }
+  const { notifications } = loadAppSettings()
+  return { notifications }
+})

@@ -154,8 +154,18 @@ const api = {
 
   // ==================== STATS ====================
   getDashboardStats: () => 
-    ipcRenderer.invoke('get-dashboard-stats')
+    ipcRenderer.invoke('get-dashboard-stats'),
+
+  resetAllData: () =>
+    ipcRenderer.invoke('reset-all-data'),
+
+  getSettings: () =>
+    ipcRenderer.invoke('get-settings'),
+
+  setSettings: (settings) =>
+    ipcRenderer.invoke('set-settings', settings)
 }
 
 // Make it globally accessible
 window.api = api
+window.ipcRenderer = ipcRenderer

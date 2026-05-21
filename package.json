@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "chart.js": "^4.5.1",
-    "electron-store": "^11.0.2",
     "node-cron": "^4.2.1",
     "sql.js": "^1.14.1"
   },

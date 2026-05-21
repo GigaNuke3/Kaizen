@@ -57,13 +57,6 @@ body {
   font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: #0f0f0f;
   color: #ffffff;
-  height: 100vh;
-  overflow: auto;
-}
-
-.app {
-  display: flex;
-  height: 100vh;
 }
 
 /* Sidebar */
@@ -151,11 +144,13 @@ body {
   background: #252525;
 }
 
-/* Main Content */
+.sidebar-footer.active {
+  color: #6ee7b7;
+  background: #252525;
+}
+
+/* Main Content — sizing/scroll in layout.css */
 .content {
-  flex: 1;
-  padding: 40px;
-  overflow-y: auto;
   background: #0f0f0f;
 }
 
@@ -742,10 +737,8 @@ body {
     font-size: 0.85rem;
   }
 
-  .content {
-    padding: 20px;
-    overflow-y: auto;
-    height: calc(100vh - 0px);
+  .app {
+    height: 100dvh;
   }
 }
 

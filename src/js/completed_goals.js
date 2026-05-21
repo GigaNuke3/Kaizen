@@ -37,15 +37,13 @@ async function renderCompletedGoals() {
 
     // Summary bar
     const summary = document.createElement('div')
-    summary.style.cssText = `
-      display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px;
-    `
+    summary.className = 'stats-row page-summary-stats'
     summary.innerHTML = `
-      <div class="stat-card" style="flex:1; min-width:140px;">
+      <div class="stat-card">
         <span class="stat-num">${completedGoals.length}</span>
         <span class="stat-label">Goals Achieved</span>
       </div>
-      <div class="stat-card" style="flex:1; min-width:140px;">
+      <div class="stat-card">
         <span class="stat-num" style="font-size:1.5rem;">🏆</span>
         <span class="stat-label">Keep it up!</span>
       </div>
