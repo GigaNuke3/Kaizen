@@ -484,105 +484,16 @@ function handleLabelChange() {
 }
 
 /**
- * Initialize date input - allows selection of past dates
+ * Initialize date input - disables past dates
  */
 function initializeDateInputs(inputId) {
   const input = document.getElementById(inputId)
   if (!input) return
   
-  // Remove any restrictions that prevent past dates
-  input.removeAttribute('min')
-  input.removeAttribute('max')
-  
-  // Allow keyboard entry and ensure valid format
-  input.addEventListener('keydown', (e) => {
-    // Allow: backspace, delete, tab, escape, enter
-    if ([46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
-      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-      (e.keyCode === 65 && e.ctrlKey === true) ||
-      (e.keyCode === 67 && e.ctrlKey === true) ||
-      (e.keyCode === 86 && e.ctrlKey === true) ||
-      (e.keyCode === 88 && e.ctrlKey === true)) {
-      return
-    }
-    
-    // If not a number or dash, prevent entry
-    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && 
-        (e.keyCode !== 189 && e.keyCode !== 109)) {
-      e.preventDefault()
-    }
-  })
-  
-  // Format as user types
-  input.addEventListener('input', (e) => {
-    let value = e.target.value.replace(/[^\d-]/g, '')
-    
-    // Auto-format YYYY-MM-DD
-    if (value.length > 0) {
-      if (value.length <= 4) {
-        e.target.value = value
-      } else if (value.length <= 7) {
-        e.target.value = value.slice(0, 4) + '-' + value.slice(4)
-      } else {
-        e.target.value = value.slice(0, 4) + '-' + value.slice(4, 6) + '-' + value.slice(6, 8)
-      }
-    }
-  })
-  
-  // Validate on blur
-  input.addEventListener('blur', (e) => {
-    const value = e.target.value.trim()
-    if (value && !isValidDateFormat(value)) {
-      const parsed = parseFlexibleDate(value)
-      if (parsed) {
-        e.target.value = parsed
-      }
-    }
-  })
-}
-
-/**
- * Check if date string is in valid YYYY-MM-DD format
- */
-function isValidDateFormat(dateStr) {
-  const regex = /^\d{4}-\d{2}-\d{2}$/
-  if (!regex.test(dateStr)) return false
-  
-  const date = new Date(dateStr + 'T00:00:00')
-  return !isNaN(date.getTime())
-}
-
-/**
- * Parse flexible date formats and return YYYY-MM-DD format
- */
-function parseFlexibleDate(dateStr) {
-  // Try various formats
-  const formats = [
-    /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/, // MM/DD/YYYY or M/D/YY
-    /^(\d{1,2})-(\d{1,2})-(\d{2,4})$/, // MM-DD-YYYY
-    /^(\d{1,2})\/(\d{1,2})$/, // MM/DD (assume current year)
-  ]
-  
-  for (const format of formats) {
-    const match = dateStr.match(format)
-    if (match) {
-      let month = parseInt(match[1])
-      let day = parseInt(match[2])
-      let year = match[3] ? parseInt(match[3]) : new Date().getFullYear()
-      
-      // Handle 2-digit years
-      if (year < 100) {
-        year += year < 50 ? 2000 : 1900
-      }
-      
-      const date = new Date(year, month - 1, day)
-      if (!isNaN(date.getTime())) {
-        return formatDate(date)
-      }
-    }
-  }
-  
-  return null
+  // Set minimum date to today to disable past dates
+  const today = new Date()
+  const minDate = formatDate(today)
+  input.setAttribute('min', minDate)
 }
 
 /**
