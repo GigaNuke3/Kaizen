@@ -76,6 +76,7 @@
   <script src="src/js/failed_goals.js"></script>
   <script src="src/js/notification.js"></script>
   <script src="src/js/profile.js"></script>
+  <script src="src/js/sidebar-badges.js"></script>
   <script>
     // Track current page
     let currentPage = 'dashboard'
@@ -98,15 +99,18 @@
 
         switch(page) {
           case 'dashboard':     await renderDashboard(); break
-          case 'journal':       await renderJournal(); break
-          case 'goals':         await renderGoals(); break
-          case 'failed_goals':  await renderFailedGoals(); break
-          case 'notifications': await renderNotifications(); break
-          case 'checkmarked':   await renderCheckmarks(); break
-          case 'completed_goals': await renderCompletedGoals(); break
+          case 'journal':       await renderJournal(); sidebarBadges?.updateJournalBadge(); break
+          case 'goals':         await renderGoals(); sidebarBadges?.updateGoalsBadge(); break
+          case 'failed_goals':  await renderFailedGoals(); sidebarBadges?.updateFailedBadge(); break
+          case 'notifications': await renderNotifications(); sidebarBadges?.updateNotificationsBadge(); break
+          case 'checkmarked':   await renderCheckmarks(); sidebarBadges?.updateCheckmarkedBadge(); break
+          case 'completed_goals': await renderCompletedGoals(); sidebarBadges?.updateCompletedBadge(); break
           case 'profile':       await renderProfile(); break
           default: throw new Error(`Unknown page: ${page}`)
         }
+
+        // Update all other badges in background
+        sidebarBadges?.updateAllBadges()
 
       } catch (err) {
         console.error(`Error loading page ${page}:`, err)
