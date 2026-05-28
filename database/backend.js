@@ -10,6 +10,23 @@ function setDBPath(newPath) {
   db = null
 }
 
+/** Calendar date in local timezone (YYYY-MM-DD) */
+function getLocalDateString(date = new Date()) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+async function hasJournalForDate(date) {
+  const database = await getDB()
+  const result = database.exec(
+    'SELECT id FROM journal WHERE date = ? AND time IS NOT NULL AND time != "" LIMIT 1',
+    [date]
+  )
+  return result.length > 0 && result[0].values.length > 0
+}
+
 /**
  * Initialize and return the database instance
  */
@@ -370,17 +387,17 @@ async function getStreakAcrossAllHabits() {
  * ==================== JOURNAL ====================
  */
 
-async function addJournalEntry(content, mood, time) {
+async function addJournalEntry(content, mood, time, date = null) {
   const database = await getDB()
-  const date = new Date().toISOString().split('T')[0]
-  database.run('INSERT INTO journal (content, mood, date, time) VALUES (?, ?, ?, ?)', [content, mood, date, time])
+  const entryDate = date || getLocalDateString()
+  database.run('INSERT INTO journal (content, mood, date, time) VALUES (?, ?, ?, ?)', [content, mood, entryDate, time])
   saveDB()
-  return getTodayJournal()
+  return getJournalByDate(entryDate)
 }
 
 async function getTodayJournal() {
   const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
   
   const result = database.exec('SELECT * FROM journal WHERE date = ? ORDER BY created_at DESC', [today])
   return result.length > 0 ? result[0].values : []
@@ -720,13 +737,7 @@ async function getGoalTrackingGrid() {
 async function toggleGoalCompletion(goalId, date) {
   const database = await getDB()
   
-  // *** JOURNAL REQUIREMENT ***
-  // Check if there is a journal entry for this date with a non-empty time
-  const journalCheck = database.exec(
-    'SELECT id FROM journal WHERE date = ? AND time IS NOT NULL AND time != "" LIMIT 1',
-    [date]
-  )
-  if (!journalCheck.length || journalCheck[0].values.length === 0) {
+  if (!(await hasJournalForDate(date))) {
     throw new Error('You must write a journal entry with a time for this day before checking a goal.')
   }
   
@@ -1062,6 +1073,8 @@ module.exports = {
   getContributionData,
   getStreakAcrossAllHabits,
   // Journal
+  getLocalDateString,
+  hasJournalForDate,
   addJournalEntry,
   getTodayJournal,
   getJournalByDate,

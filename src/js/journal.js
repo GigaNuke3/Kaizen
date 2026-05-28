@@ -3,6 +3,26 @@
  */
 let allJournalEntries = []
 
+function getLocalDateString(date = new Date()) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function getPendingGoalCheck() {
+  try {
+    const raw = sessionStorage.getItem(PENDING_GOAL_CHECK_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function clearPendingGoalCheck() {
+  sessionStorage.removeItem(PENDING_GOAL_CHECK_KEY)
+}
+
 /**
  * Load and render journal
  */
@@ -12,28 +32,43 @@ async function renderJournal() {
     console.error('❌ Error: main-content element not found')
     return
   }
-  
+
   try {
-    // Fetch journal entries
     allJournalEntries = await window.api.getAllJournalEntries(100)
-    
+
+    const pending = getPendingGoalCheck()
+    let bannerHtml = ''
+    if (pending) {
+      const dateLabel = new Date(pending.date + 'T12:00:00').toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+      bannerHtml = `
+        <div class="journal-pending-banner" style="background:#1a2a1a;border:1px solid #6ee7b7;border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#ccc;">
+          📌 Add a journal entry for <strong style="color:#6ee7b7;">${dateLabel}</strong> to unlock your CheckMarked slot.
+        </div>
+      `
+    }
+
     let entriesHtml = ''
     if (allJournalEntries.length > 0) {
       entriesHtml = allJournalEntries.map(entry => {
-        const date = new Date(entry[2]).toLocaleDateString('en-US', { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
+        const date = new Date(entry[2] + 'T12:00:00').toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
         })
-        const mood = getMoodEmoji(entry[3])
-        
+        const mood = getMoodEmoji(entry[4])
+        const timeStr = entry[3] ? ` · ${entry[3]}` : ''
+
         return `
           <div class="journal-entry">
             <div class="entry-header">
               <div class="entry-meta">
                 <span class="entry-mood">${mood}</span>
-                <span class="entry-date">${date}</span>
+                <span class="entry-date">${date}${timeStr}</span>
               </div>
               <button class="icon-btn" onclick="deleteJournalEntryConfirm(${entry[0]})" title="Delete">🗑️</button>
             </div>
@@ -44,14 +79,14 @@ async function renderJournal() {
         `
       }).join('')
     }
-    
+
     content.innerHTML = `
       <div class="journal-container">
         <div class="journal-header">
           <h2>📓 Journal</h2>
           <button class="btn btn-primary" onclick="openAddJournalModal()">+ New Entry</button>
         </div>
-
+        ${bannerHtml}
         <div class="journal-entries" id="journal-entries">
           ${allJournalEntries.length === 0 ? `<p class="empty-msg">No journal entries yet. Start your first reflection! 🌟</p>` : entriesHtml}
         </div>
@@ -59,9 +94,13 @@ async function renderJournal() {
     `
 
     ensureJournalModalExists()
+
+    if (pending && !document.getElementById('journal-modal')?.classList.contains('active')) {
+      openAddJournalModal(pending.date)
+    }
   } catch (err) {
     console.error('Journal render error:', err)
-    document.getElementById('main-content').innerHTML = '<div class="error">Failed to load journal</div>'
+    content.innerHTML = '<div class="error">Failed to load journal</div>'
   }
 }
 
@@ -69,13 +108,11 @@ async function renderJournal() {
  * Simple escape to prevent XSS
  */
 function escapeHtml(str) {
-  return str.replace(/[&<>]/g, function(m) {
+  return String(str).replace(/[&<>]/g, function (m) {
     if (m === '&') return '&amp;'
     if (m === '<') return '&lt;'
     if (m === '>') return '&gt;'
     return m
-  }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-    return c
   })
 }
 
@@ -88,7 +125,8 @@ function ensureJournalModalExists() {
       <div class="modal" id="journal-modal">
         <div class="modal-content">
           <span class="modal-close" onclick="closeJournalModal()">&times;</span>
-          <h3>Today's Reflection</h3>
+          <h3 id="journal-modal-title">Today's Reflection</h3>
+          <p id="journal-modal-date-hint" style="color:#888;font-size:0.85rem;margin:-8px 0 16px;display:none;"></p>
           
           <form onsubmit="saveJournalEntry(event)">
             <div class="form-group">
@@ -113,6 +151,8 @@ function ensureJournalModalExists() {
               <textarea id="journal-content" placeholder="Write about your day, feelings, achievements, or goals..." required></textarea>
             </div>
 
+            <input type="hidden" id="journal-entry-date" value="">
+
             <div class="form-actions">
               <button type="button" class="btn btn-secondary" onclick="closeJournalModal()">Cancel</button>
               <button type="submit" class="btn btn-primary">Save Entry</button>
@@ -126,12 +166,33 @@ function ensureJournalModalExists() {
 }
 
 /**
- * Open modal to add journal entry
+ * Open modal to add journal entry (optional date for CheckMarked unlock)
  */
-function openAddJournalModal() {
+function openAddJournalModal(forDate = null) {
   ensureJournalModalExists()
+
+  const pending = getPendingGoalCheck()
+  const entryDate = forDate || pending?.date || getLocalDateString()
+
   document.getElementById('journal-content').value = ''
   document.getElementById('journal-mood').value = 'neutral'
+  document.getElementById('journal-entry-date').value = entryDate
+
+  const now = new Date()
+  document.getElementById('journal-time').value =
+    `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+
+  const titleEl = document.getElementById('journal-modal-title')
+  const hintEl = document.getElementById('journal-modal-date-hint')
+  if (entryDate === getLocalDateString()) {
+    titleEl.textContent = "Today's Reflection"
+    hintEl.style.display = 'none'
+  } else {
+    titleEl.textContent = 'Journal Entry'
+    hintEl.style.display = 'block'
+    hintEl.textContent = `Entry will be saved for ${new Date(entryDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+  }
+
   resetMoodSelector()
   document.getElementById('journal-modal').classList.add('active')
 }
@@ -140,11 +201,11 @@ function openAddJournalModal() {
  * Close journal modal
  */
 function closeJournalModal() {
-  document.getElementById('journal-modal').classList.remove('active')
+  document.getElementById('journal-modal')?.classList.remove('active')
 }
 
 /**
- * Save journal entry
+ * Save journal entry; if opened from CheckMarked, auto-check the pending cell.
  */
 async function saveJournalEntry(event) {
   event.preventDefault()
@@ -152,6 +213,10 @@ async function saveJournalEntry(event) {
   const content = document.getElementById('journal-content').value
   const mood = document.getElementById('journal-mood').value
   const time = document.getElementById('journal-time').value
+  const entryDate =
+    document.getElementById('journal-entry-date')?.value ||
+    getPendingGoalCheck()?.date ||
+    getLocalDateString()
 
   if (!content.trim()) {
     alert('Please write something!')
@@ -162,9 +227,25 @@ async function saveJournalEntry(event) {
     return
   }
 
-  await window.api.addJournalEntry(content, mood, time)
+  await window.api.addJournalEntry(content, mood, time, entryDate)
   closeJournalModal()
-  renderJournal()
+
+  const pending = getPendingGoalCheck()
+  if (pending && pending.date === entryDate) {
+    try {
+      await window.api.toggleGoalCompletion(pending.goalId, pending.date)
+      clearPendingGoalCheck()
+      if (typeof loadPage === 'function') {
+        loadPage('checkmarked')
+        return
+      }
+    } catch (err) {
+      console.error('Could not complete pending goal check:', err)
+      alert(err.message || 'Journal saved, but the goal cell could not be checked. Try again on CheckMarked.')
+    }
+  }
+
+  await renderJournal()
 }
 
 /**
@@ -214,11 +295,11 @@ function resetMoodSelector() {
  */
 function getMoodEmoji(mood) {
   const moods = {
-    'sad': '😢',
-    'neutral': '😐',
-    'good': '🙂',
-    'happy': '😄',
-    'excited': '🚀'
+    sad: '😢',
+    neutral: '😐',
+    good: '🙂',
+    happy: '😄',
+    excited: '🚀'
   }
   return moods[mood] || '😐'
 }

@@ -68,7 +68,7 @@ async function createWindow() {
   win.loadFile('index.html')
   
   // Open this Line Code to open the developer tools inside the electron desktop app
-  // zwin.webContents.openDevTools()  // Comment out to hide console
+  // win.webContents.openDevTools()  // Comment out to hide console
 
   if (goalEvaluationInterval) {
     clearInterval(goalEvaluationInterval)
@@ -140,7 +140,8 @@ ipcMain.handle('get-contribution-data', () => backend.getContributionData())
 ipcMain.handle('get-streak-all-habits', () => backend.getStreakAcrossAllHabits())
 
 // Journal
-ipcMain.handle('add-journal-entry', (event, content, mood, time) => backend.addJournalEntry(content, mood, time))
+ipcMain.handle('add-journal-entry', (event, content, mood, time, date) => backend.addJournalEntry(content, mood, time, date))
+ipcMain.handle('has-journal-for-date', (event, date) => backend.hasJournalForDate(date))
 ipcMain.handle('get-today-journal', () => backend.getTodayJournal())
 ipcMain.handle('get-journal-by-date', (event, date) => backend.getJournalByDate(date))
 ipcMain.handle('get-all-journal-entries', (event, limit) => backend.getAllJournalEntries(limit))

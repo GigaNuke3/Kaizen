@@ -5,6 +5,9 @@
 
 const { ipcRenderer } = require('electron')
 
+// Shared constants
+const PENDING_GOAL_CHECK_KEY = 'kaizen_pending_goal_check'
+
 const api = {
   // ==================== HABITS ====================
   addHabit: (name, description = '', color = '#6ee7b7') => 
@@ -51,8 +54,11 @@ const api = {
     ipcRenderer.invoke('get-streak-all-habits'),
 
   // ==================== JOURNAL ====================
-  addJournalEntry: (content, mood = 'neutral', time = null) => 
-    ipcRenderer.invoke('add-journal-entry', content, mood, time),
+  addJournalEntry: (content, mood = 'neutral', time = null, date = null) => 
+    ipcRenderer.invoke('add-journal-entry', content, mood, time, date),
+
+  hasJournalForDate: (date) =>
+    ipcRenderer.invoke('has-journal-for-date', date),
   
   getTodayJournal: () => 
     ipcRenderer.invoke('get-today-journal'),

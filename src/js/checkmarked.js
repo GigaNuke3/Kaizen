@@ -4,6 +4,30 @@
  * Data flows from Goals page → Database → API
  */
 
+function getLocalDateString(date = new Date()) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function setPendingGoalCheck(goalId, date) {
+  sessionStorage.setItem(PENDING_GOAL_CHECK_KEY, JSON.stringify({ goalId, date }))
+}
+
+function getPendingGoalCheck() {
+  try {
+    const raw = sessionStorage.getItem(PENDING_GOAL_CHECK_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function clearPendingGoalCheck() {
+  sessionStorage.removeItem(PENDING_GOAL_CHECK_KEY)
+}
+
 /**
  * Main render function - load and display all goal data
  */
@@ -150,7 +174,7 @@ async function renderCheckmarks() {
       }
       grid.appendChild(headerRow)
       
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDateString()
       
       // Create one row per goal
       for (const goal of gridData.goals) {
@@ -162,6 +186,7 @@ async function renderCheckmarks() {
           const shouldDisplay = shouldShowDayForGoal(date, goal.frequency, goal.scheduled_days)
           const isWithinWindow = isDateWithinChecklistWindow(date, goal.start_date, goal.target_date)
           const isNotFuture = new Date(date) <= new Date(today)
+          const isNotPast = new Date(date) >= new Date(today)
           
           const cell = document.createElement('div')
           const cellKey = `${goal.id}_${date}`
@@ -173,6 +198,8 @@ async function renderCheckmarks() {
           if (!shouldDisplay || !isWithinWindow || !isNotFuture) {
             cell.classList.add('disabled')
           } else {
+            const isTodayOnly = date === today
+
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
@@ -183,13 +210,12 @@ async function renderCheckmarks() {
             }
             
             cell.style.cursor = 'pointer'
-            // CORRECTED: try/catch for journal requirement
             cell.addEventListener('click', async () => {
               try {
                 await window.api.toggleGoalCompletion(goal.id, date)
                 renderCheckmarks()
               } catch (error) {
-                showJournalRequiredModal(error.message)
+                showJournalRequiredModal(goal.id, date, error.message)
               }
             })
           }
@@ -336,74 +362,65 @@ function createGoalInfoCard(goal) {
 }
 
 /**
- * Show a beautiful modal requiring journal entry
- * with button to navigate to journal page
+ * Show modal requiring journal entry, then open Journal for that grid date.
  */
-function showJournalRequiredModal(errorMessage) {
-  // Remove any existing modal
+function showJournalRequiredModal(goalId, date, errorMessage) {
+  setPendingGoalCheck(goalId, date)
+
   const existing = document.getElementById('journal-required-modal')
   if (existing) existing.remove()
-  
+
+  const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+
   const modal = document.createElement('div')
   modal.id = 'journal-required-modal'
   modal.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 9999;
   `
-  
+
   const content = document.createElement('div')
   content.style.cssText = `
     background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-    border: 2px solid #6ee7b7;
-    border-radius: 12px;
-    padding: 40px;
-    max-width: 500px;
-    text-align: center;
-    box-shadow: 0 10px 40px rgba(110, 231, 183, 0.2);
+    border: 2px solid #6ee7b7; border-radius: 12px; padding: 40px; max-width: 500px;
+    text-align: center; box-shadow: 0 10px 40px rgba(110, 231, 183, 0.2);
   `
-  
+
   content.innerHTML = `
-    <div style="font-size: 48px; margin-bottom: 20px; animation: pulse 2s infinite;">📓</div>
+    <div style="font-size: 48px; margin-bottom: 20px;">📓</div>
     <h2 style="color: #6ee7b7; margin-bottom: 15px; font-size: 24px;">Journal Entry Required</h2>
-    <p style="color: #ccc; line-height: 1.6; margin-bottom: 25px;">
-      ${errorMessage}
-    </p>
+    <p style="color: #ccc; line-height: 1.6; margin-bottom: 12px;">${errorMessage}</p>
     <p style="color: #888; font-size: 14px; margin-bottom: 30px;">
-      ✍️ Write a journal entry for today with a time to unlock goal tracking
+      Write a journal entry for <strong style="color:#6ee7b7;">${dateLabel}</strong> with a time.
+      After you save, this check slot will be marked automatically.
     </p>
     <div style="display: flex; gap: 12px; justify-content: center;">
-      <button onclick="document.getElementById('journal-required-modal').remove()" 
-              style="background: #333; color: #fff; border: 1px solid #555; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s;">
-        Cancel
-      </button>
-      <button onclick="loadPage('journal'); document.getElementById('journal-required-modal').remove()" 
-              style="background: #6ee7b7; color: #000; border: none; padding: 12px 32px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.3s;">
-        ➔ Go to Journal
-      </button>
+      <button type="button" id="journal-required-cancel" class="btn btn-secondary">Cancel</button>
+      <button type="button" id="journal-required-go" class="btn btn-primary">➔ Go to Journal</button>
     </div>
   `
-  
+
   modal.appendChild(content)
   document.body.appendChild(modal)
-  
-  // Add hover effect to button
-  const button = content.querySelector('button:last-child')
-  if (button) {
-    button.addEventListener('mouseover', () => {
-      button.style.background = '#5ee7b7'
-      button.style.transform = 'scale(1.05)'
-    })
-    button.addEventListener('mouseout', () => {
-      button.style.background = '#6ee7b7'
-      button.style.transform = 'scale(1)'
-    })
-  }
+
+  content.querySelector('#journal-required-cancel').addEventListener('click', () => {
+    clearPendingGoalCheck()
+    modal.remove()
+  })
+
+  content.querySelector('#journal-required-go').addEventListener('click', () => {
+    modal.remove()
+    if (typeof loadPage === 'function') {
+      loadPage('journal')
+    }
+    setTimeout(() => {
+      if (typeof openAddJournalModal === 'function') {
+        openAddJournalModal(date)
+      }
+    }, 150)
+  })
 }
