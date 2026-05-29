@@ -31,11 +31,16 @@
       "node_modules/**"
     ],
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "assets/icons/desktop/kaizen_desktop_icon.png"
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "assets/icons/desktop/kaizen_desktop_icon.png"
     },
     "nsis": {
