@@ -164,6 +164,9 @@ async function getDB() {
     db.run("ALTER TABLE goals ADD COLUMN start_date TEXT")
   if (!goalColumns.includes('completion_date'))
     db.run("ALTER TABLE goals ADD COLUMN completion_date TEXT")
+  if (!goalColumns.includes('time')) {
+    db.run("ALTER TABLE goals ADD COLUMN time TEXT")
+  }
   saveDB()
   console.log('✅ Database initialized')
   return db
@@ -503,19 +506,19 @@ async function evaluateGoals() {
  * ==================== GOALS ====================
  */
 
-async function addGoal(title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null) {
+async function addGoal(title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
   const database = await getDB()
   const start = startDate || new Date().toISOString().split('T')[0]
-  database.run('INSERT INTO goals (title, description, start_date, target_date, frequency, scheduled_days) VALUES (?, ?, ?, ?, ?, ?)', 
-    [title, description, start, targetDate, frequency, scheduledDays])
+  database.run('INSERT INTO goals (title, description, start_date, target_date, frequency, scheduled_days, time) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+    [title, description, start, targetDate, frequency, scheduledDays, time])
   saveDB()
   return getAllGoals()
 }
 
-async function updateGoal(id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null) {
+async function updateGoal(id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
   const database = await getDB()
-  database.run('UPDATE goals SET title = ?, description = ?, target_date = ?, start_date = ?, frequency = ?, scheduled_days = ? WHERE id = ?', 
-    [title, description, targetDate, startDate, frequency, scheduledDays, id])
+  database.run('UPDATE goals SET title = ?, description = ?, target_date = ?, start_date = ?, frequency = ?, scheduled_days = ?, time = ? WHERE id = ?', 
+    [title, description, targetDate, startDate, frequency, scheduledDays, time, id])
   saveDB()
   return getAllGoals()
 }
@@ -674,13 +677,13 @@ async function getGoalTrackingGrid() {
     SELECT 
       id, title, description, start_date, target_date,
       completed, failed, progress, frequency, scheduled_days,
-      created_at, completion_date, color, icon
+      created_at, completion_date, color, icon, time
     FROM goals WHERE completed = 0 AND failed = 0 ORDER BY created_at ASC
   `)
   const goals = goalsResult.length > 0 ? goalsResult[0].values.map(row => ({
     id: row[0], title: row[1], description: row[2], start_date: row[3], target_date: row[4],
     completed: row[5], failed: row[6], progress: row[7], frequency: row[8], scheduled_days: row[9],
-    created_at: row[10], completion_date: row[11], color: row[12], icon: row[13]
+    created_at: row[10], completion_date: row[11], color: row[12], icon: row[13], time: row[14]
   })) : []
   
   if (goals.length === 0) {
@@ -706,7 +709,7 @@ async function getGoalTrackingGrid() {
   latestEnd.setHours(0, 0, 0, 0)
 
   for (let d = new Date(earliestStart); d <= latestEnd; d.setDate(d.getDate() + 1)) {
-    dates.push(d.toISOString().split('T')[0])
+    dates.push(getLocalDateString(d))
   }
   
   // Guard against empty dates array

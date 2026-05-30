@@ -53,15 +53,17 @@
 .goal-labels {
   display: flex;
   flex-direction: column;
-  min-width: 150px;
+  min-width: 180px;
   background: #0f0f0f;
   border-right: 1px solid #2a2a2a;
   overflow-y: hidden;
   max-height: 500px;
+  gap: 4px;
+  padding-top: 4px;
 }
 
 .label-spacer {
-  height: 40px;
+  height: 52px;
   flex-shrink: 0;
   background: #1a1a1a;
   border: none;
@@ -70,14 +72,17 @@
 .goal-label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 40px;
+  gap: 12px;
+  height: 52px;
   padding: 0 12px;
   border: none;
   font-size: 0.85rem;
   white-space: nowrap;
   cursor: default;
   flex-shrink: 0;
+  background: #1a1a1a;
+  border-radius: 6px;
+  margin: 0 8px;
 }
 
 .goal-icon {
@@ -103,30 +108,32 @@
   flex-direction: column;
   min-width: min-content;
   background: #0f0f0f;
+  gap: 4px;
+  padding-top: 4px;
 }
 
 .grid-row {
   display: flex;
-  height: 40px;
+  height: 52px;
   align-items: center;
-  gap: 0;
-  padding: 0;
+  gap: 4px;
+  padding: 0 4px;
   background: transparent;
   border: none;
 }
 
 .grid-cell {
-  width: 24px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #aaa;
   background: transparent;
   border: 1px solid #ff8c00;
-  border-radius: 2px;
+  border-radius: 6px;
   transition: all 0.2s;
   flex-shrink: 0;
   margin: 0;
@@ -155,9 +162,9 @@
 .grid-header-cell {
   cursor: default !important;
   color: #555;
-  font-size: 0.65rem;
+  font-size: 0.85rem;
   border-color: transparent;
-  background: #0f0f0f;
+  background: transparent;
 }
 
 .grid-header-cell:hover {
@@ -167,18 +174,21 @@
 }
 
 .grid-cell.disabled {
-  opacity: 0.15;
+  opacity: 0.3;
   cursor: not-allowed !important;
-  background: #111;
-  border-color: #222;
+  background: #1a1a1a;
+  border-color: #333;
 }
 
 .label-header {
-  height: 40px;
+  height: 52px;
   flex-shrink: 0;
-  background: #0f0f0f;
-  border-bottom: 1px solid #2a2a2a;
+  background: transparent !important;
+  border-bottom: 1px solid #2a2a2a !important;
+  border-radius: 0 !important;
   color: #555;
+  margin: 0 !important;
+  padding: 0 16px !important;
 }
 
 /* Loading and error states */

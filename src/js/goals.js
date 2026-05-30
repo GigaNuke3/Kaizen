@@ -62,7 +62,7 @@ async function renderGoals() {
       activeSection.appendChild(goalsGrid)
     }
     container.appendChild(activeSection)
-    
+
     content.appendChild(container)
     ensureGoalModalExists()
     
@@ -88,11 +88,25 @@ function createGoalCard(goal, isCompleted = false) {
   const completionDate = goal[11]
   const color = goal[12]
   const icon = goal[13] || '🎯'
+  const time = goal[14]
   
   const startStr = startDate ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   const targetStr = targetDate ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   const completionStr = completionDate ? new Date(completionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   
+  let timeInfo = ''
+  if (time) {
+    // Format the time as h:mm A
+    try {
+      const [hours, minutes] = time.split(':')
+      const d = new Date()
+      d.setHours(parseInt(hours), parseInt(minutes), 0)
+      timeInfo = ` &middot; ⌚ ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+    } catch(e) {
+      timeInfo = ` &middot; ⌚ ${time}`
+    }
+  }
+
   card.innerHTML = `
     <div class="goal-card-header">
       <div class="goal-card-title">
@@ -105,7 +119,7 @@ function createGoalCard(goal, isCompleted = false) {
       </div>
     </div>
     ${description ? `<div class="goal-labels"><span class="goal-label-badge">${description}</span></div>` : ''}
-    ${startDate && targetDate ? `<span class="goal-time">⏱️ Window: ${startStr} → ${targetStr}</span>` : ''}
+    ${startDate && targetDate ? `<span class="goal-time">⏱️ Window: ${startStr} → ${targetStr}${timeInfo}</span>` : ''}
     ${isCompleted && completionStr ? `<span class="goal-completion">✓ Completed on ${completionStr}</span>` : ''}
   `
   return card
@@ -176,7 +190,12 @@ function ensureGoalModalExists() {
           </div>
           <input type="hidden" id="goal-color" value="#6ee7b7">
         </div>
-        
+
+        <div class="form-group">
+          <label for="goal-time">Time Window *</label>
+          <input type="time" id="goal-time" required>
+        </div>
+
         <div class="form-group">
           <label for="goal-start-date">Checklist Opens (Start Date) *</label>
           <input type="date" id="goal-start-date" required>
@@ -356,6 +375,9 @@ async function editGoal(goalId) {
   document.getElementById('goal-frequency').value = goal[8] || 'daily'   // frequency at index 8
   document.getElementById('goal-color').value = goal[12] || '#6ee7b7'
   
+  const timeInput = document.getElementById('goal-time')
+  if (timeInput) timeInput.value = goal[14] || ''
+
   if (goal[8] === 'custom' && goal[9]) {  // scheduled_days at index 9
     document.getElementById('custom-days-group').style.display = 'block'
     const days = JSON.parse(goal[9] || '[]')
@@ -379,6 +401,8 @@ async function saveGoal(event) {
   const startDate = document.getElementById('goal-start-date').value
   const targetDate = document.getElementById('goal-date').value
   const frequency = document.getElementById('goal-frequency').value
+  const timeInput = document.getElementById('goal-time')
+  const time = timeInput ? timeInput.value : null
   
   if (!title) {
     alert('Goal title is required!')
@@ -415,9 +439,9 @@ async function saveGoal(event) {
   
   try {
     if (selectedGoalForEdit) {
-      await window.api.updateGoal(selectedGoalForEdit, title, label, targetDate, frequency, scheduledDays, startDate)
+      await window.api.updateGoal(selectedGoalForEdit, title, label, targetDate, frequency, scheduledDays, startDate, time)
     } else {
-      await window.api.addGoal(title, label, targetDate, frequency, scheduledDays, startDate)
+      await window.api.addGoal(title, label, targetDate, frequency, scheduledDays, startDate, time)
     }
     closeGoalModal()
     renderGoals()

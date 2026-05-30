@@ -118,9 +118,26 @@ async function renderCheckmarks() {
       for (const goal of gridData.goals) {
         const label = document.createElement('div')
         label.className = 'goal-label'
+        let timeLabel = ''
+        if (goal.time) {
+          try {
+            const [h, m] = goal.time.split(':')
+            const d = new Date()
+            d.setHours(parseInt(h), parseInt(m), 0)
+            timeLabel = `<div style="font-size: 0.7rem; color: #888; margin-top: 2px;">⌚ ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>`
+          } catch(e) {
+            timeLabel = `<div style="font-size: 0.7rem; color: #888; margin-top: 2px;">⌚ ${goal.time}</div>`
+          }
+        }
+        
         label.innerHTML = `
-          <span class="goal-icon">${goal.icon || '🎯'}</span>
-          <span class="goal-name" title="${goal.title}">${goal.title}</span>
+          <div style="display: flex; align-items: center; justify-content: center; width: 30px;">
+            <span class="goal-icon">${goal.icon || '🎯'}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; overflow: hidden;">
+            <span class="goal-name" title="${goal.title}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${goal.title}</span>
+            ${timeLabel}
+          </div>
         `
         labelsColumn.appendChild(label)
       }
@@ -153,13 +170,13 @@ async function renderCheckmarks() {
       // Add header spacer in labels column
       const headerSpacer = document.createElement('div')
       headerSpacer.className = 'goal-label label-header'
-      headerSpacer.innerHTML = '<span style="color:#555;font-size:0.75rem;">Goal</span>'
+      headerSpacer.innerHTML = '<span style="font-size:0.85rem; font-weight:600;">Goal</span>'
       labelsColumn.insertBefore(headerSpacer, labelsColumn.firstChild)
       
       // Add day-of-week header row
       const headerRow = document.createElement('div')
       headerRow.className = 'grid-row'
-      
+
       for (const date of gridData.dates) {
         const d = new Date(date)
         const dayLetter = ['S','M','T','W','T','F','S'][d.getDay()]
@@ -173,6 +190,10 @@ async function renderCheckmarks() {
         headerRow.appendChild(headerCell)
       }
       grid.appendChild(headerRow)
+      
+      // Get the current local time string (e.g., "14:30")
+      const now = new Date()
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
       
       const today = getLocalDateString()
       
@@ -188,14 +209,25 @@ async function renderCheckmarks() {
           const isNotFuture = new Date(date) <= new Date(today)
           const isNotPast = new Date(date) >= new Date(today)
           
+          // Check if the time requirement is met (only relevant for today)
+          const goalTime = goal.time || "00:00"
+          const isTimeAvailable = (date === today) ? currentTime >= goalTime : true
+          
           const cell = document.createElement('div')
           const cellKey = `${goal.id}_${date}`
           const isCompleted = gridData.completions[cellKey] === 1
           
           cell.className = 'grid-cell'
-          cell.title = `${goal.title} - ${date}${!shouldDisplay ? ' (Not scheduled)' : ''}${!isWithinWindow ? ' (Outside checklist window)' : ''}${!isNotFuture ? ' (Future date - cannot check)' : ''}`
           
-          if (!shouldDisplay || !isWithinWindow || !isNotFuture) {
+          let titleReason = ''
+          if (!shouldDisplay) titleReason = ' (Not scheduled)'
+          else if (!isWithinWindow) titleReason = ' (Outside checklist window)'
+          else if (!isNotFuture) titleReason = ' (Future date - cannot check)'
+          else if (!isTimeAvailable) titleReason = ` (Opens today at ${goalTime})`
+          
+          cell.title = `${goal.title} - ${date}${titleReason}`
+          
+          if (!shouldDisplay || !isWithinWindow || !isNotFuture || !isTimeAvailable) {
             cell.classList.add('disabled')
           } else {
             const isTodayOnly = date === today
@@ -424,3 +456,7 @@ function showJournalRequiredModal(goalId, date, errorMessage) {
     }, 150)
   })
 }
+
+// Get the current local time string (e.g., "14:30")
+const now = new Date()
+const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
