@@ -23,7 +23,7 @@ async function renderGoals() {
     // FIXED: correct column indices
     // goal[5] = completed, goal[6] = failed
     const activeGoals = allGoals.filter(g => g[5] === 0 && g[6] === 0)
-    const completedGoals = allGoals.filter(g => g[5] === 1)
+  
     
     const container = document.createElement('div')
     container.className = 'goals-container'
@@ -62,23 +62,6 @@ async function renderGoals() {
       activeSection.appendChild(goalsGrid)
     }
     container.appendChild(activeSection)
-    
-    // Completed goals section
-    const completedSection = document.createElement('div')
-    completedSection.className = 'goals-section'
-    completedSection.innerHTML = `<h3>✅ Completed (${completedGoals.length})</h3>`
-    
-    if (completedGoals.length === 0) {
-      completedSection.innerHTML += '<p class="empty-msg">No completed goals yet. Keep working!</p>'
-    } else {
-      const completedGrid = document.createElement('div')
-      completedGrid.className = 'goals-grid'
-      for (const goal of completedGoals) {
-        completedGrid.appendChild(createGoalCard(goal, true))
-      }
-      completedSection.appendChild(completedGrid)
-    }
-    container.appendChild(completedSection)
     
     content.appendChild(container)
     ensureGoalModalExists()
