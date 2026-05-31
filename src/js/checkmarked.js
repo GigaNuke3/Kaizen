@@ -178,7 +178,7 @@ async function renderCheckmarks() {
       headerRow.className = 'grid-row'
 
       for (const date of gridData.dates) {
-        const d = new Date(date)
+        const d = new Date(date + 'T12:00:00')
         const dayLetter = ['S','M','T','W','T','F','S'][d.getDay()]
         const headerCell = document.createElement('div')
         headerCell.className = 'grid-cell grid-header-cell'
@@ -206,8 +206,8 @@ async function renderCheckmarks() {
         for (const date of gridData.dates) {
           const shouldDisplay = shouldShowDayForGoal(date, goal.frequency, goal.scheduled_days)
           const isWithinWindow = isDateWithinChecklistWindow(date, goal.start_date, goal.target_date)
-          const isNotFuture = new Date(date) <= new Date(today)
-          const isNotPast = new Date(date) >= new Date(today)
+          const isNotFuture = new Date(date + 'T12:00:00') <= new Date(today + 'T12:00:00')
+          const isNotPast = new Date(date + 'T12:00:00') >= new Date(today + 'T12:00:00')
           
           // Check if the time requirement is met (only relevant for today)
           const goalTime = goal.time || "00:00"
@@ -286,9 +286,9 @@ ${error.stack || 'No stack trace available'}</pre>
 function isDateWithinChecklistWindow(dateStr, startDateStr, targetDateStr) {
   if (!startDateStr || !targetDateStr) return true
   
-  const date = new Date(dateStr)
-  const startDate = new Date(startDateStr)
-  const targetDate = new Date(targetDateStr)
+  const date = new Date(dateStr + 'T12:00:00')
+  const startDate = new Date(startDateStr + 'T12:00:00')
+  const targetDate = new Date(targetDateStr + 'T12:00:00')
   
   return date >= startDate && date <= targetDate
 }
@@ -300,7 +300,7 @@ function isDateWithinChecklistWindow(dateStr, startDateStr, targetDateStr) {
 function shouldShowDayForGoal(dateStr, frequency, scheduledDaysStr) {
   if (!frequency) return true
   
-  const date = new Date(dateStr)
+  const date = new Date(dateStr + 'T12:00:00')
   const dayOfWeek = date.getDay() // 0 = Sunday, 1 = Monday, etc.
   
   switch (frequency) {
@@ -354,12 +354,10 @@ function createGoalInfoCard(goal) {
   const frequency = goal.frequency || 'daily'
   
   const startStr = startDate 
-    ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
-    : ''
-  const targetStr = targetDate 
-    ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
-    : ''
-  
+      ? new Date(startDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+      : ''
+    const targetStr = targetDate 
+      ? new Date(targetDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })       : ''  
   const frequencyDisplay = {
     'daily': '📅 Every Day',
     'weekdays': '💼 Weekdays (Mon-Fri)',

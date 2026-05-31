@@ -207,5 +207,3 @@ ipcMain.handle('set-settings', (_event, settings) => {
   const { notifications } = loadAppSettings()
   return { notifications }
 })
-
-wha

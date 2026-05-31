@@ -13,7 +13,8 @@ async function renderNotifications() {
   content.innerHTML = `
     <div class="notifications-container">
       <div class="notifications-header">
-        <h2>🔔 Notifications</h2>
+      <img src-="assets/icons/pixel_bell/Notification_bell.png" alt="Bell icon" class="sidebar-icon">
+        <h2> Notifications</h2>
         <button class="btn btn-secondary" onclick="markAllRead()">Mark all as read</button>
       </div>
       <div id="notification-list" class="notification-list">Loading...</div>
