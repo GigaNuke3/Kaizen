@@ -217,3 +217,9 @@ Built with the philosophy of **Kaizen** (改善) - continuous improvement throug
 *Version: 1.0.0*
 
 If on Different Device Just npm install to install the dependencies of the node_modules. then npm start
+
+- Then Run git config --user.name "your name"
+           git config --user.email "your email"
+           git commit -m "your messages"
+
+           
