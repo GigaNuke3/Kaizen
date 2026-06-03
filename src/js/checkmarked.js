@@ -235,21 +235,22 @@ async function renderCheckmarks() {
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
-            }
-            
-            if (date === today) {
-              cell.classList.add('today')
-            }
-            
-            cell.style.cursor = 'pointer'
-            cell.addEventListener('click', async () => {
-              try {
-                await window.api.toggleGoalCompletion(goal.id, date)
-                renderCheckmarks()
-              } catch (error) {
-                showJournalRequiredModal(goal.id, date, error.message)
+              cell.style.cursor = 'default'
+            } else {
+              if (date === today) {
+                cell.classList.add('today')
               }
-            })
+              
+              cell.style.cursor = 'pointer'
+              cell.addEventListener('click', async () => {
+                // Always force a new journal entry for every check
+                showJournalRequiredModal(
+                  goal.id, 
+                  date, 
+                  'Each goal check requires a dedicated journal entry.'
+                )
+              })
+            }
           }
           
           row.appendChild(cell)
@@ -425,8 +426,8 @@ function showJournalRequiredModal(goalId, date, errorMessage) {
     <h2 style="color: #6ee7b7; margin-bottom: 15px; font-size: 24px;">Journal Entry Required</h2>
     <p style="color: #ccc; line-height: 1.6; margin-bottom: 12px;">${errorMessage}</p>
     <p style="color: #888; font-size: 14px; margin-bottom: 30px;">
-      Write a journal entry for <strong style="color:#6ee7b7;">${dateLabel}</strong> with a time.
-      After you save, this check slot will be marked automatically.
+      Write a journal entry recording your progress for <strong style="color:#6ee7b7;">${dateLabel}</strong>.
+      After you save, this check slot will be marked permanently.
     </p>
     <div style="display: flex; gap: 12px; justify-content: center;">
       <button type="button" id="journal-required-cancel" class="btn btn-secondary">Cancel</button>

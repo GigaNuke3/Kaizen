@@ -464,28 +464,27 @@ async function evaluateGoals() {
   let failedCount = 0
   let completedCount = 0
 
-  // 1. Mark goals as failed if target_date < today, not completed and not failed
-  const failedResult = database.exec(`
-    SELECT id, title FROM goals
-    WHERE target_date < ? AND completed = 0 AND failed = 0
-  `, [today])
-  
-  if (failedResult.length > 0) {
-    for (const goal of failedResult[0].values) {
-      const goalId = goal[0]
-      const title = goal[1]
-      database.run('UPDATE goals SET failed = 1, progress = 0 WHERE id = ?', [goalId])
-      const message = `Goal "${title}" has failed (deadline passed).`
-      await addNotification(goalId, message, 'failed')
-      failedCount++
+  // 0. Recalculate progress for all active goals to fix any old "windowEnd" progress bugs
+  const activeResult = database.exec(`
+    SELECT id FROM goals WHERE completed = 0 AND failed = 0
+  `)
+  if (activeResult.length > 0) {
+    for (const row of activeResult[0].values) {
+      await recalculateGoalProgress(row[0])
     }
   }
-  
-  // 2. Mark goals as completed if progress >= 100 AND not already completed
+
+  // 1. Mark goals as failed if target_date < today AND progress < 100 and not completed and not failed
+  //    Wait, we'll first mark completions, then failures.
+
+  // 2. Mark goals as completed if target_date < today AND progress >= 100 (or just completed)
+  // Wait, if they do all checks, progress = 100.
+  // The user requested: "in the tracking grid the goals must stay until the the date end only it would stop. not immdietly aftre checking."
+  // Which means even if progress is 100%, we ONLY complete it once the target date has passed.
   const completedResult = database.exec(`
     SELECT id, title FROM goals
-    WHERE progress >= 100 AND completed = 0
-  `)
+    WHERE progress >= 100 AND target_date < ? AND completed = 0 AND failed = 0
+  `, [today])
   
   if (completedResult.length > 0) {
     for (const goal of completedResult[0].values) {
@@ -495,6 +494,23 @@ async function evaluateGoals() {
       const message = `Congratulations! You completed the goal "${title}".`
       await addNotification(goalId, message, 'completed')
       completedCount++
+    }
+  }
+
+  // 1. Mark goals as failed if target_date < today, not completed, and not failed
+  const failedResult = database.exec(`
+    SELECT id, title FROM goals
+    WHERE target_date < ? AND completed = 0 AND failed = 0
+  `, [today])
+  
+  if (failedResult.length > 0) {
+    for (const goal of failedResult[0].values) {
+      const goalId = goal[0]
+      const title = goal[1]
+      database.run('UPDATE goals SET failed = 1 WHERE id = ?', [goalId])
+      const message = `Goal "${title}" has failed (deadline passed).`
+      await addNotification(goalId, message, 'failed')
+      failedCount++
     }
   }
   
@@ -740,10 +756,6 @@ async function getGoalTrackingGrid() {
 async function toggleGoalCompletion(goalId, date) {
   const database = await getDB()
   
-  if (!(await hasJournalForDate(date))) {
-    throw new Error('You must write a journal entry with a time for this day before checking a goal.')
-  }
-  
   const existsResult = database.exec(
     'SELECT id, is_completed FROM goal_completions WHERE goal_id = ? AND date = ?',
     [goalId, date]
@@ -751,10 +763,12 @@ async function toggleGoalCompletion(goalId, date) {
   
   if (existsResult.length > 0 && existsResult[0].values.length > 0) {
     const currentState = existsResult[0].values[0][1]
-    database.run(
-      'UPDATE goal_completions SET is_completed = ? WHERE goal_id = ? AND date = ?',
-      [1 - currentState, goalId, date]
-    )
+    if (currentState === 0) {
+      database.run(
+        'UPDATE goal_completions SET is_completed = 1 WHERE goal_id = ? AND date = ?',
+        [goalId, date]
+      )
+    }
   } else {
     database.run(
       'INSERT INTO goal_completions (goal_id, date, is_completed) VALUES (?, ?, 1)',
@@ -782,14 +796,15 @@ async function recalculateGoalProgress(goalId) {
   const start = new Date(startDate)
   const end = new Date(targetDate)
   const today = new Date()
-  const windowEnd = end < today ? end : today
+  today.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
 
-  let scheduledCount = 0
-  for (let d = new Date(start); d <= windowEnd; d.setDate(d.getDate() + 1)) {
-    if (isDayScheduled(d.getDay(), frequency, scheduledDays)) scheduledCount++
+  let totalScheduledCount = 0
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    if (isDayScheduled(d.getDay(), frequency, scheduledDays)) totalScheduledCount++
   }
 
-  if (scheduledCount === 0) return
+  if (totalScheduledCount === 0) return
 
   const completedResult = database.exec(
     `SELECT COUNT(*) FROM goal_completions
@@ -799,20 +814,13 @@ async function recalculateGoalProgress(goalId) {
   )
   const completedCount = completedResult[0]?.values[0][0] || 0
 
-  const progress = Math.min(100, Math.round((completedCount / scheduledCount) * 100))
+  const progress = Math.min(100, Math.round((completedCount / totalScheduledCount) * 100))
 
-  if (progress >= 100) {
-    const today2 = new Date().toISOString().split('T')[0]
-    database.run(
-      'UPDATE goals SET progress = 100, completed = 1, completion_date = ? WHERE id = ?',
-      [today2, goalId]
-    )
-  } else {
-    database.run(
-      'UPDATE goals SET progress = ?, completed = 0, completion_date = NULL WHERE id = ?',
-      [progress, goalId]
-    )
-  }
+  // Just update progress. evaluateGoals() will handle marking completed/failed.
+  database.run(
+    'UPDATE goals SET progress = ? WHERE id = ?',
+    [progress, goalId]
+  )
 
   saveDB()
 }
