@@ -215,3 +215,5 @@ Built with the philosophy of **Kaizen** (改善) - continuous improvement throug
 
 *Last Updated: May 9, 2026*
 *Version: 1.0.0*
+
+If on Different Device Just npm install to install the dependencies of the node_modules. then npm start
