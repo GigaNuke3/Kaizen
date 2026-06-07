@@ -474,46 +474,38 @@ async function evaluateGoals() {
     }
   }
 
-  // 1. Mark goals as failed if target_date < today AND progress < 100 and not completed and not failed
-  //    Wait, we'll first mark completions, then failures.
-
-  // 2. Mark goals as completed if target_date < today AND progress >= 100 (or just completed)
-  // Wait, if they do all checks, progress = 100.
-  // The user requested: "in the tracking grid the goals must stay until the the date end only it would stop. not immdietly aftre checking."
-  // Which means even if progress is 100%, we ONLY complete it once the target date has passed.
+  // Mark completed: progress >= 100 AND target_date <= today (on or after deadline)
   const completedResult = database.exec(`
     SELECT id, title FROM goals
-    WHERE progress >= 100 AND target_date < ? AND completed = 0 AND failed = 0
+    WHERE progress >= 100 AND target_date <= ? AND completed = 0 AND failed = 0
   `, [today])
-  
+
   if (completedResult.length > 0) {
     for (const goal of completedResult[0].values) {
       const goalId = goal[0]
-      const title = goal[1]
+      const title  = goal[1]
       database.run('UPDATE goals SET completed = 1, completion_date = ? WHERE id = ?', [today, goalId])
-      const message = `Congratulations! You completed the goal "${title}".`
-      await addNotification(goalId, message, 'completed')
+      await addNotification(goalId, `Congratulations! You completed "${title}".`, 'completed')
       completedCount++
     }
   }
 
-  // 1. Mark goals as failed if target_date < today, not completed, and not failed
+  // Mark failed: target_date < today, not completed, not failed
   const failedResult = database.exec(`
     SELECT id, title FROM goals
     WHERE target_date < ? AND completed = 0 AND failed = 0
   `, [today])
-  
+
   if (failedResult.length > 0) {
     for (const goal of failedResult[0].values) {
       const goalId = goal[0]
-      const title = goal[1]
+      const title  = goal[1]
       database.run('UPDATE goals SET failed = 1 WHERE id = ?', [goalId])
-      const message = `Goal "${title}" has failed (deadline passed).`
-      await addNotification(goalId, message, 'failed')
+      await addNotification(goalId, `Goal "${title}" has failed (deadline passed).`, 'failed')
       failedCount++
     }
   }
-  
+
   saveDB()
   return { failed: failedCount, completed: completedCount }
 }
@@ -584,7 +576,7 @@ async function completeGoal(id) {
   return getAllGoals()
 }
 
-// Add this to backend.js after completeGoal()
+// ✅ forceCompleteGoal defined only once
 async function forceCompleteGoal(id) {
   const database = await getDB()
   const today = new Date().toISOString().split('T')[0]
@@ -594,58 +586,6 @@ async function forceCompleteGoal(id) {
   )
   saveDB()
   return getAllGoals()
-}
-
-// Also fix evaluateGoals() — change progress >= 100 check to also catch within-window goals:
-// Replace the completedResult query block with this:
-async function evaluateGoals() {
-  const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
-  let failedCount = 0
-  let completedCount = 0
-
-  // Recalculate progress for all active goals
-  const activeResult = database.exec(`SELECT id FROM goals WHERE completed = 0 AND failed = 0`)
-  if (activeResult.length > 0) {
-    for (const row of activeResult[0].values) {
-      await recalculateGoalProgress(row[0])
-    }
-  }
-
-  // Mark completed: progress >= 100 AND target_date <= today (on or after deadline)
-  const completedResult = database.exec(`
-    SELECT id, title FROM goals
-    WHERE progress >= 100 AND target_date <= ? AND completed = 0 AND failed = 0
-  `, [today])
-
-  if (completedResult.length > 0) {
-    for (const goal of completedResult[0].values) {
-      const goalId = goal[0]
-      const title  = goal[1]
-      database.run('UPDATE goals SET completed = 1, completion_date = ? WHERE id = ?', [today, goalId])
-      await addNotification(goalId, `Congratulations! You completed "${title}".`, 'completed')
-      completedCount++
-    }
-  }
-
-  // Mark failed: target_date < today, not completed, not failed
-  const failedResult = database.exec(`
-    SELECT id, title FROM goals
-    WHERE target_date < ? AND completed = 0 AND failed = 0
-  `, [today])
-
-  if (failedResult.length > 0) {
-    for (const goal of failedResult[0].values) {
-      const goalId = goal[0]
-      const title  = goal[1]
-      database.run('UPDATE goals SET failed = 1 WHERE id = ?', [goalId])
-      await addNotification(goalId, `Goal "${title}" has failed (deadline passed).`, 'failed')
-      failedCount++
-    }
-  }
-
-  saveDB()
-  return { failed: failedCount, completed: completedCount }
 }
 
 async function deleteGoal(id) {
@@ -718,17 +658,6 @@ async function deleteLabel(id) {
     saveDB()
   }
   return getAllLabels()
-}
-
-async function forceCompleteGoal(id) {
-  const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
-  database.run(
-    'UPDATE goals SET completed = 1, failed = 0, progress = 100, completion_date = ? WHERE id = ?',
-    [today, id]
-  )
-  saveDB()
-  return getAllGoals()
 }
 
 async function getTopLabels(limit = 5) {
@@ -1181,13 +1110,13 @@ module.exports = {
   completeGoal,
   deleteGoal,
   restoreGoal,
+  forceCompleteGoal,   // ✅ fixed typo
   // Goal Labels
   initializeDefaultLabels,
   getAllLabels,
   addCustomLabel,
   deleteLabel,
   getTopLabels,
-  forceCompletedGoal,
   // Goal Tracking Grid
   getGoalTrackingGrid,
   toggleGoalCompletion,
