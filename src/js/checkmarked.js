@@ -39,6 +39,24 @@ async function renderCheckmarks() {
   }
 
   try {
+    // ── Resolve any pending journal-gated check-in ───────────────────────
+    const pending = getPendingGoalCheck()
+    if (pending) {
+      clearPendingGoalCheck()
+      try {
+        const hasJournal = await window.api.hasJournalForDate(pending.date)
+        if (hasJournal) {
+          await window.api.toggleGoalCompletion(pending.goalId, pending.date)
+          await window.api.evaluateGoals()
+        } else {
+          // Journal not written yet — re-queue silently
+          setPendingGoalCheck(pending.goalId, pending.date)
+        }
+      } catch (pendingErr) {
+        console.error('Failed to apply pending goal check:', pendingErr)
+      }
+    }
+
     content.innerHTML = ''
 
     const gridData = await window.api.getGoalTrackingGrid()
@@ -228,26 +246,37 @@ async function renderCheckmarks() {
             cell.title = `${goal.title} - ${date} (Opens today at ${goalTime})`
 
           } else if (isPast) {
-            // ✅ Past date — show result, no interaction
+            // ✅ Past date — completed is toggleable, missed is fixed
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
-              cell.title = `${goal.title} - ${date} ✓ Completed`
+              cell.title = `${goal.title} - ${date} ✓ Completed (click to undo)`
+              cell.style.cursor = 'pointer'
+              cell.addEventListener('click', async () => {
+                await window.api.toggleGoalCompletion(goal.id, date)
+                await window.api.evaluateGoals()
+                renderCheckmarks()
+              })
             } else {
               // ❌ Missed — was scheduled but not checked
               cell.classList.add('missed')
               cell.textContent = '✗'
               cell.title = `${goal.title} - ${date} ✗ Missed`
+              cell.style.cursor = 'default'
             }
-            cell.style.cursor = 'default'
 
           } else {
             // Today and available
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
-              cell.title = `${goal.title} - ${date} ✓ Completed`
-              cell.style.cursor = 'default'
+              cell.title = `${goal.title} - ${date} ✓ Completed (click to undo)`
+              cell.style.cursor = 'pointer'
+              cell.addEventListener('click', async () => {
+                await window.api.toggleGoalCompletion(goal.id, date)
+                await window.api.evaluateGoals()
+                renderCheckmarks()
+              })
             } else {
               cell.classList.add('today')
               cell.title = `${goal.title} - ${date} (Click to check in)`

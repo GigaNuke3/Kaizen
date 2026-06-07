@@ -474,11 +474,11 @@ async function evaluateGoals() {
     }
   }
 
-  // Mark completed: progress >= 100 AND target_date <= today (on or after deadline)
+  // Mark completed: progress >= 100 (regardless of whether deadline has passed yet)
   const completedResult = database.exec(`
     SELECT id, title FROM goals
-    WHERE progress >= 100 AND target_date <= ? AND completed = 0 AND failed = 0
-  `, [today])
+    WHERE progress >= 100 AND completed = 0 AND failed = 0
+  `)
 
   if (completedResult.length > 0) {
     for (const goal of completedResult[0].values) {
@@ -490,10 +490,10 @@ async function evaluateGoals() {
     }
   }
 
-  // Mark failed: target_date < today, not completed, not failed
+  // Mark failed: target_date < today, progress < 100, not completed, not failed
   const failedResult = database.exec(`
     SELECT id, title FROM goals
-    WHERE target_date < ? AND completed = 0 AND failed = 0
+    WHERE target_date < ? AND progress < 100 AND completed = 0 AND failed = 0
   `, [today])
 
   if (failedResult.length > 0) {
@@ -598,10 +598,12 @@ async function deleteGoal(id) {
 async function restoreGoal(id) {
   const database = await getDB()
   database.run(
-    'UPDATE goals SET completed = 0, failed = 0, progress = 0, completion_date = NULL WHERE id = ?',
+    'UPDATE goals SET completed = 0, failed = 0, completion_date = NULL WHERE id = ?',
     [id]
   )
   saveDB()
+  // Recalculate real progress from existing check-ins so the grid stays accurate
+  await recalculateGoalProgress(id)
   return getAllGoals()
 }
 
@@ -767,12 +769,11 @@ async function toggleGoalCompletion(goalId, date) {
   
   if (existsResult.length > 0 && existsResult[0].values.length > 0) {
     const currentState = existsResult[0].values[0][1]
-    if (currentState === 0) {
-      database.run(
-        'UPDATE goal_completions SET is_completed = 1 WHERE goal_id = ? AND date = ?',
-        [goalId, date]
-      )
-    }
+    // True toggle: flip between 1 and 0
+    database.run(
+      'UPDATE goal_completions SET is_completed = ? WHERE goal_id = ? AND date = ?',
+      [currentState === 1 ? 0 : 1, goalId, date]
+    )
   } else {
     database.run(
       'INSERT INTO goal_completions (goal_id, date, is_completed) VALUES (?, ?, 1)',
