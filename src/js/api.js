@@ -122,7 +122,11 @@ const api = {
   getTodayGoalStats: () => 
     ipcRenderer.invoke('get-today-goal-stats'),
 
-  // ==================== HABIT KEYWORDS & DETECTION ====================
+  // Add inside the api object, under Goals section
+  forceCompleteGoal: (id) =>
+    ipcRenderer.invoke('force-complete-goal', id),
+
+  // ==================== HABIT KEYWORDS & DETECTION ==================== 
   addHabitKeyword: (habitId, keyword) => 
     ipcRenderer.invoke('add-habit-keyword', habitId, keyword),
   

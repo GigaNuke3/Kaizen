@@ -230,6 +230,7 @@ ipcMain.handle('get-all-goals', () => backend.getAllGoals())
 ipcMain.handle('get-active-goals', () => backend.getActiveGoals())
 ipcMain.handle('update-goal-progress', (event, id, progress) => backend.updateGoalProgress(id, progress))
 ipcMain.handle('complete-goal', (event, id) => backend.completeGoal(id))
+ipcMain.handle('force-complete-goal', (event, id) => backend.forceCompleteGoal(id))
 ipcMain.handle('delete-goal', (event, id) => backend.deleteGoal(id))
 ipcMain.handle('restore-goal', (event, id) => backend.restoreGoal(id))
 
