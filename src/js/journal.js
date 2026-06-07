@@ -64,7 +64,7 @@ async function renderJournal() {
         const timeStr = entry[3] ? ` · ${entry[3]}` : ''
 
         return `
-          <div class="journal-entry">
+          <div class="journal-entry" data-id="${entry[0]}">
             <div class="entry-header">
               <div class="entry-meta">
                 <span class="entry-mood">${mood}</span>
@@ -75,6 +75,7 @@ async function renderJournal() {
             <div class="entry-content">
               ${escapeHtml(entry[1])}
             </div>
+            <div class="kai-companion-slot" id="kai-slot-${entry[0]}"></div>
           </div>
         `
       }).join('')
@@ -88,7 +89,9 @@ async function renderJournal() {
         </div>
         ${bannerHtml}
         <div class="journal-entries" id="journal-entries">
-          ${allJournalEntries.length === 0 ? `<p class="empty-msg">No journal entries yet. Start your first reflection! 🌟</p>` : entriesHtml}
+          ${allJournalEntries.length === 0
+            ? `<p class="empty-msg">No journal entries yet. Start your first reflection! 🌟</p>`
+            : entriesHtml}
         </div>
       </div>
     `
@@ -206,11 +209,13 @@ function closeJournalModal() {
 
 /**
  * Save journal entry; if opened from CheckMarked, auto-check the pending cell.
+ * After saving, Kai reads the entry and responds below it.
  */
 async function saveJournalEntry(event) {
   event.preventDefault()
 
-  const content = document.getElementById('journal-content').value
+  // ✅ Grab the actual text content from the form
+  const journalText = document.getElementById('journal-content').value
   const mood = document.getElementById('journal-mood').value
   const time = document.getElementById('journal-time').value
   const entryDate =
@@ -218,7 +223,7 @@ async function saveJournalEntry(event) {
     getPendingGoalCheck()?.date ||
     getLocalDateString()
 
-  if (!content.trim()) {
+  if (!journalText.trim()) {
     alert('Please write something!')
     return
   }
@@ -227,9 +232,11 @@ async function saveJournalEntry(event) {
     return
   }
 
-  await window.api.addJournalEntry(content, mood, time, entryDate)
+  // Save to database
+  await window.api.addJournalEntry(journalText, mood, time, entryDate)
   closeJournalModal()
 
+  // Handle pending goal check (CheckMarked unlock)
   const pending = getPendingGoalCheck()
   if (pending && pending.date === entryDate) {
     try {
@@ -245,7 +252,17 @@ async function saveJournalEntry(event) {
     }
   }
 
+  // Re-render journal to show the new entry
   await renderJournal()
+
+  // ✅ Show Kai's response below the latest (first) entry
+  const latestEntry = document.querySelector('.journal-entry')
+  if (latestEntry) {
+    const kaiSlot = latestEntry.querySelector('.kai-companion-slot')
+    if (kaiSlot) {
+      await renderKaiCompanion(journalText, kaiSlot)
+    }
+  }
 }
 
 /**

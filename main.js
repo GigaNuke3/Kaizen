@@ -118,6 +118,80 @@ app.on('activate', () => {
   }
 })
 
+async function setupKaiFirstLaunch(win) {
+  const store = new Store()
+  if (store.get('kaiModelReady')) return
+
+  // Find ollama executable
+  const ollamaPaths = [
+    `${process.env.LOCALAPPDATA}\\Programs\\Ollama\\ollama.exe`,
+    `${process.env.LOCALAPPDATA}\\Ollama\\ollama.exe`,
+    'ollama' // fallback to PATH
+  ]
+
+  let ollamaExe = null
+  for (const p of ollamaPaths) {
+    if (p === 'ollama') { ollamaExe = 'ollama'; break }
+    if (fs.existsSync(p)) { ollamaExe = p; break }
+  }
+
+  if (!ollamaExe) {
+    console.log('⚠️ Ollama not found, skipping Kai setup')
+    return
+  }
+
+  // Start ollama serve in background (non-blocking)
+  exec(`"${ollamaExe}" serve`)
+  
+  // Wait 2 seconds for server to start
+  await new Promise(r => setTimeout(r, 2000))
+
+  // Notify user
+  if (Notification.isSupported()) {
+    new Notification({
+      title: '🤖 Setting up Kai...',
+      body: 'Downloading AI model (~1.5GB). Kaizen is fully usable while this runs!'
+    }).show()
+  }
+
+  // Pull model in background — don't block app startup
+  const pull = exec(`"${ollamaExe}" pull llama3.2:latest`)
+  
+  pull.on('close', (code) => {
+    if (code === 0) {
+      store.set('kaiModelReady', true)
+      if (Notification.isSupported()) {
+        new Notification({
+          title: '🤖 Kai is ready!',
+          body: 'Your AI companion is now active. Write a journal entry to chat!'
+        }).show()
+      }
+      win?.webContents.send('kai-ready')
+    }
+  })
+}
+
+// Add near the bottom with your other IPC handlers
+const { exec } = require('child_process')
+
+ipcMain.handle('check-ollama-installed', () => {
+  return new Promise((resolve) => {
+    exec('ollama --version', (error) => {
+      resolve(!error) // true = installed, false = not installed
+    })
+  })
+})
+
+ipcMain.handle('pull-ollama-model', (event, model = 'llama3.2:latest') => {
+  return new Promise((resolve, reject) => {
+    const process = exec(`ollama pull ${model}`)
+    process.on('close', (code) => {
+      if (code === 0) resolve(true)
+      else reject(new Error(`Pull failed with code ${code}`))
+    })
+  })
+})
+
 /**
  * ==================== IPC HANDLERS ====================
  */

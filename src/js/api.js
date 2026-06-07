@@ -25,8 +25,10 @@ const api = {
   // ==================== NOTIFICATIONS ====================
   getNotifications: (unreadOnly = false) => 
     ipcRenderer.invoke('get-notifications', unreadOnly),
+
   markNotificationRead: (id) => 
     ipcRenderer.invoke('mark-notification-read', id),
+
   evaluateGoals: () => 
     ipcRenderer.invoke('evaluate-goals'),
 
@@ -169,7 +171,15 @@ const api = {
     ipcRenderer.invoke('get-settings'),
 
   setSettings: (settings) =>
-    ipcRenderer.invoke('set-settings', settings)
+    ipcRenderer.invoke('set-settings', settings),
+
+  // ==================== OLLAMA / KAI ====================
+  // ✅ Now correctly inside the api object
+  checkOllamaInstalled: () =>
+    ipcRenderer.invoke('check-ollama-installed'),
+
+  pullOllamaModel: (model = 'llama3.2:latest') =>
+    ipcRenderer.invoke('pull-ollama-model', model)
 }
 
 // Make it globally accessible

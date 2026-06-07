@@ -1,7 +1,7 @@
 /**
- * CheckMarked Page - Goal Tracking Grid (365-Day View)
- * Displays all active goals with 365-day tracking grid
- * Data flows from Goals page → Database → API
+ * CheckMarked Page - Goal Tracking Grid
+ * Displays all active goals with tracking grid
+ * Past missed days show ❌, completed days show ✓, today is highlighted
  */
 
 function getLocalDateString(date = new Date()) {
@@ -37,28 +37,25 @@ async function renderCheckmarks() {
     console.error('❌ Error: main-content element not found')
     return
   }
-  
+
   try {
-    // Clear content
     content.innerHTML = ''
-    
-    // Load data
+
     const gridData = await window.api.getGoalTrackingGrid()
     const todayStats = await window.api.getTodayGoalStats()
-    
-    // Create main container
+
     const container = document.createElement('div')
     container.className = 'checkmarked-container'
-    
+
     // ===== HEADER =====
     const header = document.createElement('div')
     header.className = 'checkmarked-header'
     header.innerHTML = `
       <h2>✅ CheckMarked - Goal Tracker</h2>
-      <p>Track your goals across 365 days with frequency-based scheduling</p>
+      <p>Track your goals with frequency-based scheduling</p>
     `
     container.appendChild(header)
-    
+
     // ===== TODAY'S STATS =====
     const statsDiv = document.createElement('div')
     statsDiv.className = 'checkmarked-stats'
@@ -73,87 +70,86 @@ async function renderCheckmarks() {
       </div>
     `
     container.appendChild(statsDiv)
-    
+
     // ===== EMPTY STATE =====
     if (gridData.goals.length === 0) {
       const emptyState = document.createElement('div')
       emptyState.className = 'empty-state'
       emptyState.innerHTML = `
-        <p style="color: #888; text-align: center; padding: 40px 20px;">
+        <p style="color:#888; text-align:center; padding:40px 20px;">
           📝 No active goals yet. Create goals in the <strong>Goals</strong> page to start tracking!
         </p>
       `
       container.appendChild(emptyState)
     } else {
-      // ===== GOALS INFO SECTION =====
+
+      // ===== GOALS INFO CARDS =====
       const goalsInfoSection = document.createElement('div')
       goalsInfoSection.className = 'goals-section'
       goalsInfoSection.innerHTML = `<h3>📋 Active Goals (${gridData.goals.length})</h3>`
-      
+
       const goalsGrid = document.createElement('div')
       goalsGrid.className = 'goals-grid'
-      
       for (const goal of gridData.goals) {
         goalsGrid.appendChild(createGoalInfoCard(goal))
       }
-      
       goalsInfoSection.appendChild(goalsGrid)
       container.appendChild(goalsInfoSection)
-      
-      // ===== TRACKING GRID SECTION =====
+
+      // ===== TRACKING GRID =====
       const gridSection = document.createElement('div')
       gridSection.className = 'goal-grid-section'
       const earliestDate = gridData.dates.length > 0 ? gridData.dates[0] : 'N/A'
-      const latestDate = gridData.dates.length > 0 ? gridData.dates[gridData.dates.length - 1] : 'N/A'
+      const latestDate   = gridData.dates.length > 0 ? gridData.dates[gridData.dates.length - 1] : 'N/A'
       gridSection.innerHTML = `<h3>📅 Tracking Grid (${earliestDate} → ${latestDate})</h3>`
-      
+
       const gridContainer = document.createElement('div')
       gridContainer.className = 'goal-grid-container'
-      
-      // Goal labels column (left side)
+
+      // ── Labels column (left) ──────────────────────────────────────────────
       const labelsColumn = document.createElement('div')
       labelsColumn.className = 'goal-labels'
       labelsColumn.innerHTML = ''
-      
+
       for (const goal of gridData.goals) {
         const label = document.createElement('div')
         label.className = 'goal-label'
+
         let timeLabel = ''
         if (goal.time) {
           try {
             const [h, m] = goal.time.split(':')
             const d = new Date()
             d.setHours(parseInt(h), parseInt(m), 0)
-            timeLabel = `<div style="font-size: 0.7rem; color: #888; margin-top: 2px;">⌚ ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>`
-          } catch(e) {
-            timeLabel = `<div style="font-size: 0.7rem; color: #888; margin-top: 2px;">⌚ ${goal.time}</div>`
+            timeLabel = `<div style="font-size:0.7rem;color:#888;margin-top:2px;">⌚ ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`
+          } catch {
+            timeLabel = `<div style="font-size:0.7rem;color:#888;margin-top:2px;">⌚ ${goal.time}</div>`
           }
         }
-        
+
         label.innerHTML = `
-          <div style="display: flex; align-items: center; justify-content: center; width: 30px;">
+          <div style="display:flex;align-items:center;justify-content:center;width:30px;">
             <span class="goal-icon">${goal.icon || '🎯'}</span>
           </div>
-          <div style="display: flex; flex-direction: column; overflow: hidden;">
-            <span class="goal-name" title="${goal.title}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${goal.title}</span>
+          <div style="display:flex;flex-direction:column;overflow:hidden;">
+            <span class="goal-name" title="${goal.title}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${goal.title}</span>
             ${timeLabel}
           </div>
         `
         labelsColumn.appendChild(label)
       }
-      
+
       gridContainer.appendChild(labelsColumn)
-      
-      // Scrollable grid (right side)
+
+      // ── Scrollable grid (right) ───────────────────────────────────────────
       const gridScroll = document.createElement('div')
       gridScroll.className = 'goal-grid-scroll'
-      
+
       const grid = document.createElement('div')
       grid.className = 'goal-grid'
 
-      // Guard flag to prevent infinite scroll event loops
+      // Sync scrolling - guard prevents infinite loop
       let isSyncing = false
-
       gridScroll.addEventListener('scroll', () => {
         if (isSyncing) return
         isSyncing = true
@@ -166,17 +162,16 @@ async function renderCheckmarks() {
         gridScroll.scrollTop = labelsColumn.scrollTop
         isSyncing = false
       })
-      
-      // Add header spacer in labels column
+
+      // Header spacer in labels column
       const headerSpacer = document.createElement('div')
       headerSpacer.className = 'goal-label label-header'
-      headerSpacer.innerHTML = '<span style="font-size:0.85rem; font-weight:600;">Goal</span>'
+      headerSpacer.innerHTML = '<span style="font-size:0.85rem;font-weight:600;">Goal</span>'
       labelsColumn.insertBefore(headerSpacer, labelsColumn.firstChild)
-      
-      // Add day-of-week header row
+
+      // Day-of-week header row
       const headerRow = document.createElement('div')
       headerRow.className = 'grid-row'
-
       for (const date of gridData.dates) {
         const d = new Date(date + 'T12:00:00')
         const dayLetter = ['S','M','T','W','T','F','S'][d.getDay()]
@@ -190,91 +185,104 @@ async function renderCheckmarks() {
         headerRow.appendChild(headerCell)
       }
       grid.appendChild(headerRow)
-      
-      // Get the current local time string (e.g., "14:30")
+
+      // Current time for time-gate logic
       const now = new Date()
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-      
+      const currentTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
       const today = getLocalDateString()
-      
-      // Create one row per goal
+
+      // ── One row per goal ──────────────────────────────────────────────────
       for (const goal of gridData.goals) {
         const row = document.createElement('div')
         row.className = 'grid-row'
-        
-        // Create a cell for each date
-        for (const date of gridData.dates) {
-          const shouldDisplay = shouldShowDayForGoal(date, goal.frequency, goal.scheduled_days)
-          const isWithinWindow = isDateWithinChecklistWindow(date, goal.start_date, goal.target_date)
-          const isNotFuture = new Date(date + 'T12:00:00') <= new Date(today + 'T12:00:00')
-          const isNotPast = new Date(date + 'T12:00:00') >= new Date(today + 'T12:00:00')
-          
-          // Check if the time requirement is met (only relevant for today)
-          const goalTime = goal.time || "00:00"
-          const isTimeAvailable = (date === today) ? currentTime >= goalTime : true
-          
-          const cell = document.createElement('div')
-          const cellKey = `${goal.id}_${date}`
-          const isCompleted = gridData.completions[cellKey] === 1
-          
-          cell.className = 'grid-cell'
-          
-          let titleReason = ''
-          if (!shouldDisplay) titleReason = ' (Not scheduled)'
-          else if (!isWithinWindow) titleReason = ' (Outside checklist window)'
-          else if (!isNotFuture) titleReason = ' (Future date - cannot check)'
-          else if (!isTimeAvailable) titleReason = ` (Opens today at ${goalTime})`
-          
-          cell.title = `${goal.title} - ${date}${titleReason}`
-          
-          if (!shouldDisplay || !isWithinWindow || !isNotFuture || !isTimeAvailable) {
-            cell.classList.add('disabled')
-          } else {
-            const isTodayOnly = date === today
 
+        for (const date of gridData.dates) {
+          const cell = document.createElement('div')
+          cell.className = 'grid-cell'
+
+          const cellKey   = `${goal.id}_${date}`
+          const isCompleted = gridData.completions[cellKey] === 1
+
+          const scheduled   = shouldShowDayForGoal(date, goal.frequency, goal.scheduled_days)
+          const inWindow    = isDateWithinChecklistWindow(date, goal.start_date, goal.target_date)
+          const isPast      = new Date(date + 'T12:00:00') < new Date(today + 'T12:00:00')
+          const isFuture    = new Date(date + 'T12:00:00') > new Date(today + 'T12:00:00')
+          const isToday     = date === today
+          const goalTime    = goal.time || '00:00'
+          const timeOk      = isToday ? currentTime >= goalTime : true
+
+          // ── Cell state machine ──────────────────────────────────────────
+          if (!scheduled || !inWindow) {
+            // Not scheduled for this day or outside goal window
+            cell.classList.add('disabled')
+            cell.title = `${goal.title} - ${date} (${!scheduled ? 'Not scheduled' : 'Outside window'})`
+
+          } else if (isFuture) {
+            // Future date — cannot check yet
+            cell.classList.add('disabled')
+            cell.title = `${goal.title} - ${date} (Future date)`
+
+          } else if (isToday && !timeOk) {
+            // Today but time gate not reached
+            cell.classList.add('disabled')
+            cell.title = `${goal.title} - ${date} (Opens today at ${goalTime})`
+
+          } else if (isPast) {
+            // ✅ Past date — show result, no interaction
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
+              cell.title = `${goal.title} - ${date} ✓ Completed`
+            } else {
+              // ❌ Missed — was scheduled but not checked
+              cell.classList.add('missed')
+              cell.textContent = '✗'
+              cell.title = `${goal.title} - ${date} ✗ Missed`
+            }
+            cell.style.cursor = 'default'
+
+          } else {
+            // Today and available
+            if (isCompleted) {
+              cell.classList.add('completed')
+              cell.textContent = '✓'
+              cell.title = `${goal.title} - ${date} ✓ Completed`
               cell.style.cursor = 'default'
             } else {
-              if (date === today) {
-                cell.classList.add('today')
-              }
-              
+              cell.classList.add('today')
+              cell.title = `${goal.title} - ${date} (Click to check in)`
               cell.style.cursor = 'pointer'
-              cell.addEventListener('click', async () => {
-                // Always force a new journal entry for every check
+              cell.addEventListener('click', () => {
                 showJournalRequiredModal(
-                  goal.id, 
-                  date, 
+                  goal.id,
+                  date,
                   'Each goal check requires a dedicated journal entry.'
                 )
               })
             }
           }
-          
+
           row.appendChild(cell)
         }
-        
+
         grid.appendChild(row)
       }
-      
+
       gridScroll.appendChild(grid)
       gridContainer.appendChild(gridScroll)
       gridSection.appendChild(gridContainer)
-      
       container.appendChild(gridSection)
     }
-    
+
     content.appendChild(container)
-    
+
   } catch (error) {
     console.error('❌ Error rendering checkmarked:', error)
     content.innerHTML = `
-      <div class="error-state" style="padding: 40px; text-align: center;">
+      <div class="error-state" style="padding:40px;text-align:center;">
         <h2>❌ Error Loading CheckMarked</h2>
         <p><strong>${error.message || 'Unknown error'}</strong></p>
-        <pre style="text-align: left; background: #1a1a1a; padding: 12px; border-radius: 6px; overflow-x: auto;">
+        <pre style="text-align:left;background:#1a1a1a;padding:12px;border-radius:6px;overflow-x:auto;">
 ${error.stack || 'No stack trace available'}</pre>
       </div>
     `
@@ -282,91 +290,80 @@ ${error.stack || 'No stack trace available'}</pre>
 }
 
 /**
- * Check if a date is within the checklist window (between start_date and target_date)
+ * Is the date within the goal's start→target window?
  */
 function isDateWithinChecklistWindow(dateStr, startDateStr, targetDateStr) {
   if (!startDateStr || !targetDateStr) return true
-  
-  const date = new Date(dateStr + 'T12:00:00')
-  const startDate = new Date(startDateStr + 'T12:00:00')
+  const date       = new Date(dateStr      + 'T12:00:00')
+  const startDate  = new Date(startDateStr + 'T12:00:00')
   const targetDate = new Date(targetDateStr + 'T12:00:00')
-  
   return date >= startDate && date <= targetDate
 }
 
 /**
- * Determine if a goal should be shown on a given date
- * based on its frequency and scheduled days
+ * Should this goal be shown on the given date based on frequency?
  */
 function shouldShowDayForGoal(dateStr, frequency, scheduledDaysStr) {
   if (!frequency) return true
-  
-  const date = new Date(dateStr + 'T12:00:00')
-  const dayOfWeek = date.getDay() // 0 = Sunday, 1 = Monday, etc.
-  
+  const date      = new Date(dateStr + 'T12:00:00')
+  const dayOfWeek = date.getDay()
+
   switch (frequency) {
-    case 'daily':
-      return true
-    case 'weekdays':
-      return dayOfWeek >= 1 && dayOfWeek <= 5
-    case 'weekends':
-      return dayOfWeek === 0 || dayOfWeek === 6
+    case 'daily':    return true
+    case 'weekdays': return dayOfWeek >= 1 && dayOfWeek <= 5
+    case 'weekends': return dayOfWeek === 0 || dayOfWeek === 6
     case '3x': {
-      if (!scheduledDaysStr) return [1, 3, 5].includes(dayOfWeek)
-      const days = parseScheduledDays(scheduledDaysStr)
+      const days = scheduledDaysStr ? parseScheduledDays(scheduledDaysStr) : [1,3,5]
       return days.includes(dayOfWeek)
     }
     case 'custom': {
       if (!scheduledDaysStr) return true
-      const customDays = parseScheduledDays(scheduledDaysStr)
-      return customDays.includes(dayOfWeek)
+      return parseScheduledDays(scheduledDaysStr).includes(dayOfWeek)
     }
-    default:
-      return true
+    default: return true
   }
 }
 
-/**
- * Parse scheduled days string (JSON format) to array of day numbers
- */
 function parseScheduledDays(scheduledDaysStr) {
   try {
     if (!scheduledDaysStr) return []
     const parsed = JSON.parse(scheduledDaysStr)
     return Array.isArray(parsed) ? parsed : []
-  } catch (e) {
+  } catch {
     return []
   }
 }
 
 /**
- * Create goal information card showing details
+ * Goal info card for the Active Goals section
  */
 function createGoalInfoCard(goal) {
   const card = document.createElement('div')
   card.className = 'goal-card'
-  
-  const title = goal.title || 'Untitled Goal'
+
+  const title       = goal.title       || 'Untitled Goal'
   const description = goal.description || ''
-  const startDate = goal.start_date
-  const targetDate = goal.target_date
-  const progress = goal.progress || 0
-  const icon = goal.icon || '🎯'
-  const frequency = goal.frequency || 'daily'
-  
-  const startStr = startDate 
-      ? new Date(startDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
-      : ''
-    const targetStr = targetDate 
-      ? new Date(targetDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })       : ''  
+  const startDate   = goal.start_date
+  const targetDate  = goal.target_date
+  const progress    = goal.progress    || 0
+  const icon        = goal.icon        || '🎯'
+  const frequency   = goal.frequency   || 'daily'
+
+  const startStr = startDate
+    ? new Date(startDate  + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+    : ''
+  const targetStr = targetDate
+    ? new Date(targetDate + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+    : ''
+
   const frequencyDisplay = {
-    'daily': '📅 Every Day',
+    'daily':    '📅 Every Day',
     'weekdays': '💼 Weekdays (Mon-Fri)',
     'weekends': '🎉 Weekends (Sat-Sun)',
-    '3x': '⭐ 3 times per week',
-    'custom': '📍 Custom days'
+    '3x':       '⭐ 3 times per week',
+    'custom':   '📍 Custom days'
   }[frequency] || frequency
-  
+
   card.innerHTML = `
     <div class="goal-card-header">
       <div class="goal-card-title">
@@ -377,23 +374,22 @@ function createGoalInfoCard(goal) {
     ${description ? `<p class="goal-desc">${description}</p>` : ''}
     <div class="goal-card-meta">
       <span class="goal-card-frequency"><strong>${frequencyDisplay}</strong></span>
-      ${startDate && targetDate ? `<span class="goal-card-target">⏱️ Window: ${startStr} → ${targetStr}</span>` : ''}
+      ${startDate && targetDate ? `<span class="goal-card-target">⏱️ ${startStr} → ${targetStr}</span>` : ''}
     </div>
     <div class="progress-container">
       <div class="progress-bar">
-        <div class="progress-fill" style="width: ${progress}%"></div>
+        <div class="progress-fill" style="width:${progress}%"></div>
       </div>
       <div class="progress-text">
         <span>Progress: ${progress}%</span>
       </div>
     </div>
   `
-  
   return card
 }
 
 /**
- * Show modal requiring journal entry, then open Journal for that grid date.
+ * Show modal requiring journal entry before allowing a check-in
  */
 function showJournalRequiredModal(goalId, date, errorMessage) {
   setPendingGoalCheck(goalId, date)
@@ -401,61 +397,50 @@ function showJournalRequiredModal(goalId, date, errorMessage) {
   const existing = document.getElementById('journal-required-modal')
   if (existing) existing.remove()
 
-  const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
+  const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US',{
+    month:'short', day:'numeric', year:'numeric'
   })
 
   const modal = document.createElement('div')
   modal.id = 'journal-required-modal'
   modal.style.cssText = `
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    display: flex; align-items: center; justify-content: center; z-index: 9999;
+    position:fixed;inset:0;background:rgba(0,0,0,0.7);
+    display:flex;align-items:center;justify-content:center;z-index:9999;
   `
 
-  const content = document.createElement('div')
-  content.style.cssText = `
-    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-    border: 2px solid #6ee7b7; border-radius: 12px; padding: 40px; max-width: 500px;
-    text-align: center; box-shadow: 0 10px 40px rgba(110, 231, 183, 0.2);
+  const inner = document.createElement('div')
+  inner.style.cssText = `
+    background:linear-gradient(135deg,#1a1a1a 0%,#0f0f0f 100%);
+    border:2px solid #6ee7b7;border-radius:12px;padding:40px;max-width:500px;
+    text-align:center;box-shadow:0 10px 40px rgba(110,231,183,0.2);
   `
-
-  content.innerHTML = `
-    <div style="font-size: 48px; margin-bottom: 20px;">📓</div>
-    <h2 style="color: #6ee7b7; margin-bottom: 15px; font-size: 24px;">Journal Entry Required</h2>
-    <p style="color: #ccc; line-height: 1.6; margin-bottom: 12px;">${errorMessage}</p>
-    <p style="color: #888; font-size: 14px; margin-bottom: 30px;">
-      Write a journal entry recording your progress for <strong style="color:#6ee7b7;">${dateLabel}</strong>.
-      After you save, this check slot will be marked permanently.
+  inner.innerHTML = `
+    <div style="font-size:48px;margin-bottom:20px;">📓</div>
+    <h2 style="color:#6ee7b7;margin-bottom:15px;font-size:24px;">Journal Entry Required</h2>
+    <p style="color:#ccc;line-height:1.6;margin-bottom:12px;">${errorMessage}</p>
+    <p style="color:#888;font-size:14px;margin-bottom:30px;">
+      Write a journal entry for <strong style="color:#6ee7b7;">${dateLabel}</strong>.
+      After you save, this slot will be marked permanently.
     </p>
-    <div style="display: flex; gap: 12px; justify-content: center;">
-      <button type="button" id="journal-required-cancel" class="btn btn-secondary">Cancel</button>
-      <button type="button" id="journal-required-go" class="btn btn-primary">➔ Go to Journal</button>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button type="button" id="jrm-cancel" class="btn btn-secondary">Cancel</button>
+      <button type="button" id="jrm-go"     class="btn btn-primary">➔ Go to Journal</button>
     </div>
   `
 
-  modal.appendChild(content)
+  modal.appendChild(inner)
   document.body.appendChild(modal)
 
-  content.querySelector('#journal-required-cancel').addEventListener('click', () => {
+  inner.querySelector('#jrm-cancel').addEventListener('click', () => {
     clearPendingGoalCheck()
     modal.remove()
   })
 
-  content.querySelector('#journal-required-go').addEventListener('click', () => {
+  inner.querySelector('#jrm-go').addEventListener('click', () => {
     modal.remove()
-    if (typeof loadPage === 'function') {
-      loadPage('journal')
-    }
+    if (typeof loadPage === 'function') loadPage('journal')
     setTimeout(() => {
-      if (typeof openAddJournalModal === 'function') {
-        openAddJournalModal(date)
-      }
+      if (typeof openAddJournalModal === 'function') openAddJournalModal(date)
     }, 150)
   })
 }
-
-// Get the current local time string (e.g., "14:30")
-const now = new Date()
-const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`

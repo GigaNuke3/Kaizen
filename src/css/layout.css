@@ -191,3 +191,75 @@ main.content,
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ===== KAI COMPANION ===== */
+.kai-companion {
+  margin-top: 16px;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 16px;
+}
+
+.kai-online,
+.kai-offline {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.kai-avatar {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kai-bubble {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 0 12px 12px 12px;
+  padding: 12px 16px;
+  flex: 1;
+}
+
+.kai-name {
+  font-size: 0.75rem;
+  color: #6ee7b7;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.kai-text {
+  color: #ccc;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.kai-cursor {
+  color: #6ee7b7;
+  animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.kai-offline code {
+  display: inline-block;
+  margin-top: 6px;
+  background: #0f0f0f;
+  color: #6ee7b7;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}

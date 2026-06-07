@@ -1,31 +1,27 @@
 !macro customInstall
-  DetailPrint "Installing AI Companion..."
-  SetOutPath $INSTDIR
+  DetailPrint "Installing Kai AI Companion..."
   
-  ; Include the OllamaSetup.exe which you should download and place in the build directory
-  File "${BUILD_RESOURCES_DIR}\OllamaSetup.exe"
+  ; Check if Ollama is already installed by looking for registry entry
+  ReadRegStr $0 HKLM "SOFTWARE\Ollama" "InstallLocation"
+  ReadRegStr $1 HKCU "SOFTWARE\Ollama" "InstallLocation"
   
-  ; Run the Ollama installer silently
-  ExecWait '"$INSTDIR\OllamaSetup.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
+  ${If} $0 == ""
+  ${AndIf} $1 == ""
+    ; Ollama not found — install silently from bundled resources
+    DetailPrint "Setting up Ollama (this may take a moment)..."
+    ExecWait '"$INSTDIR\resources\ollama\OllamaSetup.exe" /S' $2
+    ${If} $2 == 0
+      DetailPrint "✅ Ollama installed successfully!"
+    ${Else}
+      DetailPrint "⚠️ Ollama install failed — Kai will set up on first launch"
+    ${EndIf}
+  ${Else}
+    DetailPrint "✅ Ollama already installed — skipping"
+  ${EndIf}
   
-  DetailPrint "Preparing Kaizen AI Companion (Pulling llama3.2)..."
-  
-  ; Ensure ollama is callable even if PATH hasn't been reloaded yet in this session
-  ExpandEnvStrings $0 "%LOCALAPPDATA%\Programs\Ollama\ollama.exe"
-  IfFileExists $0 runOllama 0
-  ExpandEnvStrings $0 "%LOCALAPPDATA%\Ollama\ollama.exe"
-  IfFileExists $0 runOllama 0
-  ; Fallback to global PATH
-  StrCpy $0 "ollama"
+  ; AI model will be pulled on first Kaizen launch (handled by main.js)
+  DetailPrint "✅ Kai will finish setup on first launch..."
+!macroend
 
-runOllama:
-  ; Start ollama app in the background in case the installer didn't automatically start the server
-  nsExec::ExecToLog '"$0" serve'
-  Sleep 3000
-  
-  ; Pull the model needed for the companion silently
-  nsExec::ExecToLog '"$0" pull llama3.2'
-  
-  ; Delete the bundle after
-  Delete "$INSTDIR\OllamaSetup.exe"
+!macro customUnInstall
 !macroend
