@@ -1,5 +1,12 @@
+// Standalone page renderer — called by loadPage('ollama_journal')
+async function renderKaiPage() {
+  const content = document.getElementById('main-content')
+  content.innerHTML = `<div class="kai-page-container" id="kai-page"></div>`
+  await renderKaiCompanion('Hello Kai!', document.getElementById('kai-page'))
+}
+
+// Companion renderer — called with journal content and a container element
 async function renderKaiCompanion(journalContent, containerEl) {
-  // Check if Ollama is available
   const running = await isOllamaRunning()
 
   const kaiSection = document.createElement('div')
@@ -20,7 +27,6 @@ async function renderKaiCompanion(journalContent, containerEl) {
     return
   }
 
-  // Kai is online - show typing state
   kaiSection.innerHTML = `
     <div class="kai-online">
       <span class="kai-avatar">🤖</span>
@@ -36,10 +42,8 @@ async function renderKaiCompanion(journalContent, containerEl) {
 
   try {
     await getJournalCompanionResponse(journalContent, (chunk, fullText) => {
-      // Streaming typing effect
       kaiTextEl.innerHTML = fullText + '<span class="kai-cursor">▋</span>'
     })
-    // Remove cursor when done
     kaiTextEl.querySelector('.kai-cursor')?.remove()
   } catch (err) {
     kaiTextEl.textContent = "Hmm, I couldn't read that. Try again later."

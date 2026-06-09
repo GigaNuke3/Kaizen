@@ -30,9 +30,17 @@
       </div>
 
       <ul class="nav-links">
-         <li data-page="notifications" onclick="loadPage('notifications')">
+        <li data-page="notifications" onclick="loadPage('notifications')">
           <span style="display: flex; align-items: center; gap: 8px;">
-            <img src="assets/icons/Notif_Bell.png" alt="Notifications" class="nav-icon" style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"> Notifications
+            <img 
+              src="assets/icons/bell_icon/Notification_Idle.png" 
+              id="notif-nav-icon"
+              alt="Notifications" 
+              class="nav-icon" 
+              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/bell_icon/Notification.gif'"
+              onmouseleave="this.src='assets/icons/bell_icon/Notification_Idle.png'"
+            > Notifications
           </span>
         </li>
         <li class="active" data-page="dashboard" onclick="loadPage('dashboard')">
@@ -52,6 +60,9 @@
         </li>
         <li data-page="journal" onclick="loadPage('journal')">
           📓 Journal
+        </li>
+        <li data-page="ollama_journal" onclick="loadPage('ollama_journal')">
+           Companion
         </li>
       </ul>
 
@@ -101,6 +112,14 @@
 
         currentPage = page
 
+        // Notification Swith png to gif
+        const notifIcon = document.getElementById('notif-nav-icon')
+        if (notifIcon) {
+          notifIcon.src = page === 'notifications'
+            ? 'assets/icons/bell_icon/Notification.gif'
+            : 'assets/icons/bell_icon/Notification_Idle.png'
+        }
+
         switch(page) {
           case 'dashboard':     await renderDashboard(); break
           case 'journal':       await renderJournal(); sidebarBadges?.updateJournalBadge(); break
@@ -110,6 +129,7 @@
           case 'checkmarked':   await renderCheckmarks(); sidebarBadges?.updateCheckmarkedBadge(); break
           case 'completed_goals': await renderCompletedGoals(); sidebarBadges?.updateCompletedBadge(); break
           case 'profile':       await renderProfile(); break
+          case 'ollama_journal':   await renderKaiCompanion(); break
           default: throw new Error(`Unknown page: ${page}`)
         }
 
