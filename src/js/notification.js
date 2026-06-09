@@ -14,7 +14,7 @@ async function renderNotifications() {
     <div class="notifications-container">
       <div class="notifications-header">
       <h2 style="display: flex; align-items: center; gap: 12.1px;">
-        <img src="assets/icons/bell_icon/Notification_Idle.png" style="width: 66px; height: 66px; image-rendering: pixelated; margin: 0;"> 
+        <img src="assets/icons/bell_icon/Static_Bell.png" style="width: 66px; height: 66px; image-rendering: pixelated; margin: 0;"> 
             Notifications
           </h2>
         <button class="btn btn-secondary" onclick="markAllRead()">Mark all as read</button>
