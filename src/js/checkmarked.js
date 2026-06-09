@@ -42,18 +42,23 @@ async function renderCheckmarks() {
     // ── Resolve any pending journal-gated check-in ───────────────────────
     const pending = getPendingGoalCheck()
     if (pending) {
-      clearPendingGoalCheck()
       try {
         const hasJournal = await window.api.hasJournalForDate(pending.date)
         if (hasJournal) {
-          await window.api.toggleGoalCompletion(pending.goalId, pending.date)
-          await window.api.evaluateGoals()
-        } else {
-          // Journal not written yet — re-queue silently
-          setPendingGoalCheck(pending.goalId, pending.date)
+          // Only clear AFTER a successful toggle so the pending is never lost
+          const cellKey = `${pending.goalId}_${pending.date}`
+          const gridCheck = await window.api.getGoalTrackingGrid()
+          const alreadyChecked = gridCheck.completions[cellKey] === 1
+          if (!alreadyChecked) {
+            await window.api.toggleGoalCompletion(pending.goalId, pending.date)
+            await window.api.evaluateGoals()
+          }
+          clearPendingGoalCheck()
         }
+        // If no journal yet, leave pending in sessionStorage — will retry on next visit
       } catch (pendingErr) {
         console.error('Failed to apply pending goal check:', pendingErr)
+        // Don't clear pending on error — let it retry
       }
     }
 
@@ -246,17 +251,13 @@ async function renderCheckmarks() {
             cell.title = `${goal.title} - ${date} (Opens today at ${goalTime})`
 
           } else if (isPast) {
-            // ✅ Past date — completed is toggleable, missed is fixed
+            // ✅ Past date — completed is PERMANENT (no undo), missed is fixed
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
-              cell.title = `${goal.title} - ${date} ✓ Completed (click to undo)`
-              cell.style.cursor = 'pointer'
-              cell.addEventListener('click', async () => {
-                await window.api.toggleGoalCompletion(goal.id, date)
-                await window.api.evaluateGoals()
-                renderCheckmarks()
-              })
+              cell.title = `${goal.title} - ${date} ✓ Completed (permanent)`
+              cell.style.cursor = 'default'
+              // No click handler — completed slots are locked forever
             } else {
               // ❌ Missed — was scheduled but not checked
               cell.classList.add('missed')
@@ -270,13 +271,9 @@ async function renderCheckmarks() {
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
-              cell.title = `${goal.title} - ${date} ✓ Completed (click to undo)`
-              cell.style.cursor = 'pointer'
-              cell.addEventListener('click', async () => {
-                await window.api.toggleGoalCompletion(goal.id, date)
-                await window.api.evaluateGoals()
-                renderCheckmarks()
-              })
+              cell.title = `${goal.title} - ${date} ✓ Completed (permanent)`
+              cell.style.cursor = 'default'
+              // No click handler — completed slots are locked forever
             } else {
               cell.classList.add('today')
               cell.title = `${goal.title} - ${date} (Click to check in)`
