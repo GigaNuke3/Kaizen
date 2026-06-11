@@ -37,7 +37,7 @@
               id="notif-nav-icon"
               alt="Notifications" 
               class="nav-icon" 
-              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
+              style="width: 30px; height: 30px; image-rendering: pixelated; margin: 0;"
               onmouseenter="this.src='assets/icons/bell_icon/Notification.gif'"
               onmouseleave="this.src='assets/icons/bell_icon/Notification_Idle.png'"
             > Notifications
@@ -69,7 +69,17 @@
           ❌ Failed Goals
         </li>
         <li data-page="journal" onclick="loadPage('journal')">
-          📓 Journal
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <img
+              src="assets/icons/Journal_icon/Journal_Idle.png"
+              id="journal-nav-icon"
+              alt="Journal"
+              class="nav-icon"
+              style="width: 40px; height: 40px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/Journal_icon/Journal_gif.gif'"
+              onmouseleave="this.src='assets/icons/Journal_icon/Journal_Idle.png'"
+              > Journal
+          </span>
         </li>
         <li data-page="ollama_journal" onclick="loadPage('ollama_journal')">
            Companion
@@ -136,6 +146,14 @@
           dashboardIcon.src = page === 'dashboard'
             ? 'assets/icons/dashboard_icon/Dashboard_gif.gif'
             : 'assets/icons/dashboard_icon/Dashboard_Idle.png'
+        }
+
+        // Journal switch from png to gif
+        const journalIcon = document.getElementById('journal-nav-icon')
+        if (journalIcon) {
+          journalIcon.src = page === 'journal'
+            ? 'assets/icons/journal_icon/journal_gif.gif'
+            : 'assets/icons/journal_icon/journal_Idle.png'
         }
 
         switch(page) {
