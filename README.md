@@ -10,14 +10,6 @@ Your personal self-improvement companion built with Electron, featuring habit tr
 - **Today's Checklist**: Quick access to today's habits with completion status
 - **Recent Journal**: Preview your latest journal entries
 
-### 📋 Habits
-- Create and track daily habits
-- Set custom colors for each habit
-- Add descriptions to habits
-- Mark habits complete for the day
-- Track completion status in real-time
-- See habit creation date
-
 ### 📓 Journal
 - Write daily reflections
 - Track your mood: 😢 😐 🙂 😄 🚀
@@ -93,26 +85,6 @@ Database (SQLite/sql.js)
 
 ## 📚 Usage Tips
 
-### Adding a Habit
-1. Go to **Habits** page
-2. Click **+ Add New Habit**
-3. Enter habit name (required)
-4. Add optional description
-5. Choose a color
-6. Click **Save Habit**
-
-### Tracking Habits
-1. Check the habit status in **Habits** page or **Dashboard**
-2. Click **✓ Mark Done** to complete today
-3. Completion automatically updates dashboard
-
-### Writing in Journal
-1. Go to **Journal** page
-2. Click **+ New Entry**
-3. Select your mood
-4. Write your reflection
-5. Click **Save Entry**
-
 ### Setting Goals
 1. Go to **Goals** page
 2. Click **+ New Goal**
@@ -121,17 +93,16 @@ Database (SQLite/sql.js)
 5. Update progress using the slider
 6. Mark as complete when done
 
-### Managing Todos
-1. Go to **Todo** page
-2. Click **+ New Todo**
-3. Set title, category, priority, and due date
-4. Click **Save Todo**
-5. Check off when complete
+### Writing in Journal
+1. Go to **Journal** page
+2. Click **+ New Entry**
+3. Select your mood
+4. Write your reflection
+5. Click **Save Entry**
 
 ## ⌨️ Keyboard Shortcuts
 
 - Click **Dashboard**: View overall progress
-- Click **Habits**: Manage your daily habits
 - Click **Journal**: Write reflections
 - Click **Goals**: Set and track goals
 - Click **CheckMarked**: Track goals across 365 days
@@ -222,4 +193,23 @@ If on Different Device Just npm install to install the dependencies of the node_
            git config --user.email "your email"
            git commit -m "your messages"
 
+If Switching from Linux to Windows
+
+Refresh the node_modules
+
+Via - terminal
+
+rd /s /q node_modules
+npm install
+npm start
+
+If Switching from Windows to Linux
+
+Refresh the node_modules
+
+Via - terminal
+
+rm -rf node_modules
+npm install
+npm start
            

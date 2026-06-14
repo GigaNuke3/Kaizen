@@ -1,6 +1,6 @@
 /**
  * Completed Goals Page
- * Uses the same CSS classes as failed_goals for consistent layout.
+ * Uses cg-* CSS classes from completed_goals.css
  * [0]=id [1]=title [2]=desc [3]=start_date [4]=target_date
  * [5]=completed [6]=failed [7]=progress [8]=frequency [9]=scheduled_days
  * [10]=created_at [11]=completion_date [12]=color [13]=icon [14]=time
@@ -24,23 +24,21 @@ async function renderCompletedGoals() {
       return db.localeCompare(da)
     })
 
-    // Goals at 100% but not yet marked completed
+    // Goals at 100% progress but not yet marked completed
     const readyGoals = allGoals.filter(g => g[5] === 0 && g[6] === 0 && g[7] >= 100)
 
     const container = document.createElement('div')
-    container.className = 'failed-goals-container'
+    container.className = 'cg-container'
 
     // ── HEADER ────────────────────────────────────────────────────────────
     const header = document.createElement('div')
-    header.className = 'failed-goals-header'
+    header.className = 'cg-header'
     header.innerHTML = `
-      <h2 style="color:#6ee7b7;">✅ Completed Goals</h2>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-        <span class="badge-count" style="background:rgba(110,231,183,0.12);border:1px solid rgba(110,231,183,0.3);color:#6ee7b7;">
-          ${completedGoals.length} completed
-        </span>
-        <button id="cg-refresh-btn" class="btn btn-secondary">🔄 Refresh</button>
+      <div class="cg-header-left">
+        <h2>✅ Completed Goals</h2>
+        <span class="cg-count-badge">${completedGoals.length} completed</span>
       </div>
+      <button id="cg-refresh-btn" class="cg-refresh-btn">🔄 Refresh</button>
     `
     container.appendChild(header)
 
@@ -84,7 +82,7 @@ async function renderCompletedGoals() {
       container.appendChild(banner)
     }
 
-    // ── STATS ─────────────────────────────────────────────────────────────
+    // ── STATS ROW ─────────────────────────────────────────────────────────
     let totalDaysTracked = 0
     for (const g of completedGoals) {
       if (g[3] && g[4]) {
@@ -95,22 +93,19 @@ async function renderCompletedGoals() {
     }
 
     const statsRow = document.createElement('div')
-    statsRow.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px;'
+    statsRow.className = 'cg-stats-row'
     statsRow.innerHTML = `
-      <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:16px 28px;
-                  display:flex;flex-direction:column;align-items:center;gap:4px;min-width:120px;">
-        <span style="font-size:2rem;font-weight:700;color:#6ee7b7;line-height:1;">${completedGoals.length}</span>
-        <span style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.06em;">Goals Achieved</span>
+      <div class="cg-stat-card">
+        <span class="cg-stat-num">${completedGoals.length}</span>
+        <span class="cg-stat-label">Goals Achieved</span>
       </div>
-      <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:16px 28px;
-                  display:flex;flex-direction:column;align-items:center;gap:4px;min-width:120px;">
-        <span style="font-size:2rem;font-weight:700;color:#6ee7b7;line-height:1;">${totalDaysTracked}</span>
-        <span style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.06em;">Days Tracked</span>
+      <div class="cg-stat-card">
+        <span class="cg-stat-num">${totalDaysTracked}</span>
+        <span class="cg-stat-label">Days Tracked</span>
       </div>
-      <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:16px 28px;
-                  display:flex;flex-direction:column;align-items:center;gap:4px;min-width:120px;">
-        <span style="font-size:1.5rem;line-height:1;">🏆</span>
-        <span style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.06em;">Keep it up!</span>
+      <div class="cg-stat-card">
+        <span class="cg-stat-num">🏆</span>
+        <span class="cg-stat-label">Keep it up!</span>
       </div>
     `
     container.appendChild(statsRow)
@@ -120,16 +115,17 @@ async function renderCompletedGoals() {
 
     if (completedGoals.length === 0) {
       goalsSection.innerHTML = `
-        <h3 style="color:#6ee7b7;margin-bottom:12px;">🏅 Completed Goals</h3>
-        <p style="color:#666;text-align:center;padding:40px 0;font-size:1rem;">
-          No completed goals yet. Keep checking in on <strong style="color:#6ee7b7;">CheckMarked</strong>! 💪
-        </p>
+        <p class="cg-section-heading">🏅 Completed Goals</p>
+        <div class="cg-empty">
+          <div class="cg-empty-icon">🏅</div>
+          <p class="cg-empty-title">No completed goals yet</p>
+          <p class="cg-empty-sub">Keep checking in on <strong>CheckMarked</strong> and your achievements will appear here! 💪</p>
+        </div>
       `
     } else {
-      goalsSection.innerHTML = `<h3 style="color:#6ee7b7;margin-bottom:16px;">🏅 Completed Goals (${completedGoals.length})</h3>`
+      goalsSection.innerHTML = `<p class="cg-section-heading">🏅 Completed Goals (${completedGoals.length})</p>`
       const grid = document.createElement('div')
-      grid.className = 'failed-goals-grid'
-
+      grid.className = 'cg-grid'
       for (const goal of completedGoals) {
         grid.appendChild(buildCGCard(goal))
       }
@@ -146,9 +142,10 @@ async function renderCompletedGoals() {
   } catch (err) {
     console.error('Error rendering completed goals:', err)
     content.innerHTML = `
-      <div style="padding:40px;text-align:center;color:#ff6b6b;">
+      <div class="cg-error">
         <h2>❌ Error Loading Completed Goals</h2>
         <p>${escapeHtmlCG(err.message)}</p>
+        <pre>${escapeHtmlCG(err.stack || '')}</pre>
       </div>
     `
   }
@@ -160,6 +157,7 @@ function buildCGCard(goal) {
   const description    = goal[2]  || ''
   const startDate      = goal[3]
   const targetDate     = goal[4]
+  const progress       = goal[7]  || 0
   const frequency      = goal[8]  || 'daily'
   const completionDate = goal[11]
   const color          = goal[12] || '#6ee7b7'
@@ -184,48 +182,40 @@ function buildCGCard(goal) {
   const freqLabel = freqMap[frequency] || frequency
 
   const card = document.createElement('div')
-  card.className = 'failed-goal-card'
+  card.className = 'cg-card'
   card.style.borderLeftColor = color
-  card.style.borderLeftWidth = '5px'
 
   card.innerHTML = `
-    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
-      <span style="font-size:1.6rem;line-height:1;">${icon}</span>
-      <div style="flex:1;min-width:0;">
-        <h3 style="margin:0 0 6px;font-size:1rem;color:#6ee7b7;">
-          ${escapeHtmlCG(title)}
-        </h3>
-        <span style="background:rgba(110,231,183,0.12);border:1px solid rgba(110,231,183,0.3);
-                     color:#6ee7b7;border-radius:12px;padding:2px 10px;
-                     font-size:0.72rem;font-weight:700;">✅ COMPLETED</span>
+    <div class="cg-card-top">
+      <div class="cg-card-title-row">
+        <span class="cg-card-icon">${icon}</span>
+        <h3 class="cg-card-title">${escapeHtmlCG(title)}</h3>
+        <span class="cg-card-badge">✅ COMPLETED</span>
+      </div>
+      ${description ? `<p class="cg-card-desc">${escapeHtmlCG(description)}</p>` : ''}
+    </div>
+
+    <div class="cg-card-meta">
+      ${completedStr ? `<div class="cg-meta-row">🏆 Completed: <strong>${completedStr}</strong></div>` : ''}
+      ${targetStr    ? `<div class="cg-meta-row">⏰ Deadline: <strong>${targetStr}</strong></div>`    : ''}
+      <div class="cg-meta-row">${freqLabel}</div>
+      ${durationStr  ? `<div class="cg-meta-row">📆 Duration: <strong>${durationStr}</strong></div>` : ''}
+    </div>
+
+    <div class="cg-progress-wrap">
+      <div class="cg-progress-bar">
+        <div class="cg-progress-fill" style="width:${progress}%;background:linear-gradient(90deg,${color},#39d353);"></div>
+      </div>
+      <div class="cg-progress-label">
+        <span>${progress}% Complete</span>
       </div>
     </div>
 
-    ${description
-      ? `<p style="color:#aaa;font-size:0.85rem;margin-bottom:10px;">${escapeHtmlCG(description)}</p>`
-      : ''}
-
-    <div class="meta" style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;font-size:0.85rem;color:#999;">
-      ${completedStr ? `<span>🏆 Completed: <strong style="color:#6ee7b7;">${completedStr}</strong></span>` : ''}
-      ${targetStr    ? `<span>⏰ Deadline: <strong style="color:#ccc;">${targetStr}</strong></span>`        : ''}
-      <span>${freqLabel}</span>
-      ${durationStr  ? `<span>📆 Duration: <strong style="color:#ccc;">${durationStr}</strong></span>`    : ''}
-    </div>
-
-    <div style="background:#1a1a1a;border-radius:4px;height:6px;overflow:hidden;margin-bottom:14px;">
-      <div style="height:100%;width:100%;background:linear-gradient(90deg,${color},#39d353);border-radius:4px;"></div>
-    </div>
-    <div style="font-size:0.78rem;color:#6ee7b7;font-weight:600;text-align:right;margin-bottom:14px;">
-      100% Complete
-    </div>
-
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-secondary btn-sm restore-cg-btn"
-              data-id="${id}" data-title="${escapeHtmlCG(title)}" style="flex:1;">
+    <div class="cg-card-actions">
+      <button class="cg-btn-restore" data-id="${id}" data-title="${escapeHtmlCG(title)}">
         🔄 Restore
       </button>
-      <button class="btn btn-danger btn-sm delete-cg-btn"
-              data-id="${id}" data-title="${escapeHtmlCG(title)}" style="flex:1;">
+      <button class="cg-btn-delete" data-id="${id}" data-title="${escapeHtmlCG(title)}">
         🗑️ Delete
       </button>
     </div>
@@ -236,7 +226,8 @@ function buildCGCard(goal) {
 function attachCGEvents(content) {
   content.addEventListener('click', async (e) => {
     if (e.target.closest('#cg-refresh-btn')) {
-      renderCompletedGoals(); return
+      renderCompletedGoals()
+      return
     }
 
     const forceBtn = e.target.closest('.btn-force-complete')
@@ -251,7 +242,7 @@ function attachCGEvents(content) {
       return
     }
 
-    const restoreBtn = e.target.closest('.restore-cg-btn')
+    const restoreBtn = e.target.closest('.cg-btn-restore')
     if (restoreBtn) {
       const id = Number(restoreBtn.dataset.id)
       const title = restoreBtn.dataset.title
@@ -263,7 +254,7 @@ function attachCGEvents(content) {
       return
     }
 
-    const deleteBtn = e.target.closest('.delete-cg-btn')
+    const deleteBtn = e.target.closest('.cg-btn-delete')
     if (deleteBtn) {
       const id = Number(deleteBtn.dataset.id)
       const title = deleteBtn.dataset.title
@@ -289,11 +280,4 @@ function fmtDateCG(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
   })
-}
-
-function getLocalDateStringCG(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
 }

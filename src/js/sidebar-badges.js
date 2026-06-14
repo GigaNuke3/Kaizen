@@ -135,7 +135,8 @@ class SidebarBadges {
   async updateNotificationsBadge() {
     try {
       const notifications = await window.api.getNotifications?.() || []
-      const unreadCount = notifications.filter(n => !n.read).length
+      // notifications are arrays: [0]=id [1]=goal_id [2]=message [3]=type [4]=created_at [5]=read
+      const unreadCount = notifications.filter(n => n[5] === 0).length
       this.updateBadge('notifications', unreadCount)
     } catch (error) {
       console.error('Error updating notifications badge:', error)
@@ -164,11 +165,17 @@ class SidebarBadges {
    */
   async updateCheckmarkedBadge() {
     try {
-      const grid = await window.api.getGoalTrackingGrid?.() || []
-      const pendingCount = grid.filter(goal => {
-        if (goal[11]) return false // Skip if already checked today
-        return true
+      const grid = await window.api.getGoalTrackingGrid?.()
+      if (!grid || !grid.goals) { this.updateBadge('checkmarked', 0); return }
+
+      const today = new Date().toISOString().split('T')[0]
+
+      // Count active goals that have NOT been checked today
+      const pendingCount = grid.goals.filter(goal => {
+        const key = `${goal.id}_${today}`
+        return grid.completions[key] !== 1
       }).length
+
       this.updateBadge('checkmarked', pendingCount)
     } catch (error) {
       console.error('Error updating checkmarked badge:', error)
@@ -212,15 +219,16 @@ class SidebarBadges {
    */
   async updateJournalBadge() {
     try {
-      const entries = await window.api.getJournalEntries?.() || []
+      // journal entries: [0]=id [1]=content [2]=date [3]=time [4]=mood
+      const entries = await window.api.getAllJournalEntries?.(100) || []
       const now = new Date()
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      
+
       const thisMonthCount = entries.filter(entry => {
-        const entryDate = entry[1] ? entry[1].substring(0, 7) : ''
+        const entryDate = entry[2] ? entry[2].substring(0, 7) : ''
         return entryDate === currentMonth
       }).length
-      
+
       this.updateBadge('journal', thisMonthCount)
     } catch (error) {
       console.error('Error updating journal badge:', error)

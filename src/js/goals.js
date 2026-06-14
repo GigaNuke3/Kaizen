@@ -84,11 +84,12 @@ function createGoalCard(goal, isCompleted = false) {
   const targetDate = goal[4]
   const completed = goal[5]
   const failed = goal[6]
-  const progress = goal[7]          // was incorrectly goal[6]
+  const progress = goal[7]
   const completionDate = goal[11]
   const color = goal[12]
   const icon = goal[13] || '🎯'
   const time = goal[14]
+  const label = goal[15] || ''
   
   const startStr = startDate ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   const targetStr = targetDate ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
@@ -118,7 +119,7 @@ function createGoalCard(goal, isCompleted = false) {
         <button class="icon-btn" onclick="deleteGoalConfirm(${id})" title="Delete">🗑️</button>
       </div>
     </div>
-    ${description ? `<div class="goal-labels"><span class="goal-label-badge">${description}</span></div>` : ''}
+    ${label ? `<div class="goal-labels"><span class="goal-label-badge">${label}</span></div>` : ''}
     ${startDate && targetDate ? `<span class="goal-time">⏱️ Window: ${startStr} → ${targetStr}${timeInfo}</span>` : ''}
     ${isCompleted && completionStr ? `<span class="goal-completion">✓ Completed on ${completionStr}</span>` : ''}
   `
@@ -369,16 +370,16 @@ async function editGoal(goalId) {
   ensureGoalModalExists()
   document.getElementById('goal-modal-title').textContent = 'Edit Goal'
   document.getElementById('goal-title').value = goal[1]
-  document.getElementById('goal-label-value').value = goal[2] || ''
+  document.getElementById('goal-label-value').value = goal[15] || ''
   document.getElementById('goal-start-date').value = goal[3] || ''
   document.getElementById('goal-date').value = goal[4] || ''
-  document.getElementById('goal-frequency').value = goal[8] || 'daily'   // frequency at index 8
+  document.getElementById('goal-frequency').value = goal[8] || 'daily'
   document.getElementById('goal-color').value = goal[12] || '#6ee7b7'
-  
+
   const timeInput = document.getElementById('goal-time')
   if (timeInput) timeInput.value = goal[14] || ''
 
-  if (goal[8] === 'custom' && goal[9]) {  // scheduled_days at index 9
+  if (goal[8] === 'custom' && goal[9]) {
     document.getElementById('custom-days-group').style.display = 'block'
     const days = JSON.parse(goal[9] || '[]')
     document.querySelectorAll('input[name="day"]').forEach(cb => {
@@ -389,7 +390,8 @@ async function editGoal(goalId) {
   }
 
   updateLabelDropdown()
-  document.getElementById('goal-label').value = goal[2] || ''
+  // Restore label dropdown to saved label value (index 15)
+  document.getElementById('goal-label').value = goal[15] || ''
   document.getElementById('goal-modal').classList.add('active')
 }
 

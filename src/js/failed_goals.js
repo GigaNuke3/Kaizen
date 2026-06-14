@@ -146,11 +146,12 @@ async function renderFailedGoals() {
         }[goal.frequency] || goal.frequency || 'Daily'
 
         const missedCount = goal.missedDates?.length || 0
+        const failureRate = 100 - (goal.progress || 0)
 
         // Status badge
         const statusBadge = goal.hardFailed
-          ? `<span style="background:#7f1d1d;color:#fca5a5;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600;">⛔ DEADLINE PASSED</span>`
-          : `<span style="background:#3b1f1f;color:#fca5a5;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600;">⚠️ ${missedCount} DAY${missedCount !== 1 ? 'S' : ''} MISSED</span>`
+          ? `<span style="background:#7f1d1d;color:#fca5a5;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600;">⛔ DEADLINE PASSED · ${failureRate}% failed</span>`
+          : `<span style="background:#3b1f1f;color:#fca5a5;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600;">⚠️ ${missedCount} DAY${missedCount !== 1 ? 'S' : ''} MISSED · ${failureRate}% failed</span>`
 
         // Show last 5 missed dates as pills
         const missedPills = goal.missedDates?.slice(-5).map(d => {
@@ -171,11 +172,12 @@ async function renderFailedGoals() {
           ${goal.description ? `<p style="color:#aaa;font-size:0.85rem;margin-bottom:10px;">${escapeHtml(goal.description)}</p>` : ''}
           <div class="meta" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;font-size:0.85rem;color:#999;">
             <span>⏱️ Deadline: <strong style="color:#ff6b6b;">${targetStr}</strong></span>
-            <span>📊 Progress: <strong style="color:#fff;">${goal.progress || 0}%</strong></span>
+            <span>❌ Failure Rate: <strong style="color:#ff6b6b;">${100 - (goal.progress || 0)}%</strong></span>
+            <span>✅ Completion Rate: <strong style="color:#aaa;">${goal.progress || 0}%</strong></span>
             <span>${freqLabel}</span>
           </div>
           <div style="background:#1a1a1a;border-radius:4px;height:5px;overflow:hidden;margin-bottom:12px;">
-            <div style="height:100%;width:${goal.progress || 0}%;background:#ff6b6b;border-radius:4px;transition:width 0.3s;"></div>
+            <div style="height:100%;width:${100 - (goal.progress || 0)}%;background:#ff6b6b;border-radius:4px;transition:width 0.3s;"></div>
           </div>
           ${missedPills ? `
             <div style="margin-bottom:12px;">

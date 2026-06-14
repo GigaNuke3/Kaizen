@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu, ipcMain, Notification } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const { exec } = require('child_process')
 const backend = require('./database/backend.js')
 
 let goalEvaluationInterval = null
@@ -66,6 +67,13 @@ async function createWindow() {
   })
 
   win.loadFile('index.html')
+
+  // Start Kai setup after window is ready (non-blocking)
+  win.webContents.once('did-finish-load', () => {
+    setupKaiFirstLaunch(win).catch(err => {
+      console.error('Kai setup error:', err)
+    })
+  })
   
   // Open this Line Code to open the developer tools inside the electron desktop app
   // win.webContents.openDevTools()  // Comment out to hide console
@@ -119,15 +127,24 @@ app.on('activate', () => {
 })
 
 async function setupKaiFirstLaunch(win) {
-  const store = new Store()
-  if (store.get('kaiModelReady')) return
+  // Use the existing settings system instead of electron-store
+  const settings = loadAppSettings()
+  if (settings.kaiModelReady) return
 
-  // Find ollama executable
-  const ollamaPaths = [
-    `${process.env.LOCALAPPDATA}\\Programs\\Ollama\\ollama.exe`,
-    `${process.env.LOCALAPPDATA}\\Ollama\\ollama.exe`,
-    'ollama' // fallback to PATH
-  ]
+  // Cross-platform ollama paths
+  const isWin = process.platform === 'win32'
+  const ollamaPaths = isWin
+    ? [
+        `${process.env.LOCALAPPDATA}\\Programs\\Ollama\\ollama.exe`,
+        `${process.env.LOCALAPPDATA}\\Ollama\\ollama.exe`,
+        'ollama'
+      ]
+    : [
+        '/usr/local/bin/ollama',
+        '/usr/bin/ollama',
+        `${process.env.HOME}/.local/bin/ollama`,
+        'ollama' // fallback to PATH
+      ]
 
   let ollamaExe = null
   for (const p of ollamaPaths) {
@@ -141,8 +158,10 @@ async function setupKaiFirstLaunch(win) {
   }
 
   // Start ollama serve in background (non-blocking)
-  exec(`"${ollamaExe}" serve`)
-  
+  exec(`"${ollamaExe}" serve`, (err) => {
+    if (err) console.log('Ollama serve note:', err.message)
+  })
+
   // Wait 2 seconds for server to start
   await new Promise(r => setTimeout(r, 2000))
 
@@ -156,10 +175,11 @@ async function setupKaiFirstLaunch(win) {
 
   // Pull model in background — don't block app startup
   const pull = exec(`"${ollamaExe}" pull llama3.2:latest`)
-  
+
   pull.on('close', (code) => {
     if (code === 0) {
-      store.set('kaiModelReady', true)
+      // Persist kai ready flag in our settings file
+      saveAppSettings({ kaiModelReady: true })
       if (Notification.isSupported()) {
         new Notification({
           title: '🤖 Kai is ready!',
@@ -171,8 +191,7 @@ async function setupKaiFirstLaunch(win) {
   })
 }
 
-// Add near the bottom with your other IPC handlers
-const { exec } = require('child_process')
+// ==================== OLLAMA IPC HANDLERS ====================
 
 ipcMain.handle('check-ollama-installed', () => {
   return new Promise((resolve) => {

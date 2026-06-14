@@ -43,19 +43,25 @@ async function renderCheckmarks() {
     const pending = getPendingGoalCheck()
     if (pending) {
       try {
-        const hasJournal = await window.api.hasJournalForDate(pending.date)
-        if (hasJournal) {
-          // Only clear AFTER a successful toggle so the pending is never lost
-          const cellKey = `${pending.goalId}_${pending.date}`
-          const gridCheck = await window.api.getGoalTrackingGrid()
-          const alreadyChecked = gridCheck.completions[cellKey] === 1
-          if (!alreadyChecked) {
-            await window.api.toggleGoalCompletion(pending.goalId, pending.date)
-            await window.api.evaluateGoals()
-          }
+        const todayStr = getLocalDateString()
+        // If pending is from a previous day, discard it — slot is now permanently closed
+        if (pending.date !== todayStr) {
           clearPendingGoalCheck()
+        } else {
+          const hasJournal = await window.api.hasJournalForDate(pending.date)
+          if (hasJournal) {
+            // Only clear AFTER a successful toggle so the pending is never lost
+            const cellKey = `${pending.goalId}_${pending.date}`
+            const gridCheck = await window.api.getGoalTrackingGrid()
+            const alreadyChecked = gridCheck.completions[cellKey] === 1
+            if (!alreadyChecked) {
+              await window.api.toggleGoalCompletion(pending.goalId, pending.date)
+              await window.api.evaluateGoals()
+            }
+            clearPendingGoalCheck()
+          }
+          // If no journal yet, leave pending in sessionStorage — will retry on next visit
         }
-        // If no journal yet, leave pending in sessionStorage — will retry on next visit
       } catch (pendingErr) {
         console.error('Failed to apply pending goal check:', pendingErr)
         // Don't clear pending on error — let it retry
@@ -235,6 +241,16 @@ async function renderCheckmarks() {
           const timeOk      = isToday ? currentTime >= goalTime : true
 
           // ── Cell state machine ──────────────────────────────────────────
+          // Cells beyond this goal's own target_date are invisible for layout
+          // alignment but fully inert — no interaction, no visual noise
+          const isPastGoalEnd = goal.target_date &&
+            new Date(date + 'T12:00:00') > new Date(goal.target_date + 'T12:00:00')
+          if (isPastGoalEnd) {
+            cell.style.cssText = 'visibility:hidden;pointer-events:none;border-color:transparent;background:transparent;'
+            row.appendChild(cell)
+            continue
+          }
+
           if (!scheduled || !inWindow) {
             // Not scheduled for this day or outside goal window
             cell.classList.add('disabled')
@@ -278,12 +294,34 @@ async function renderCheckmarks() {
               cell.classList.add('today')
               cell.title = `${goal.title} - ${date} (Click to check in)`
               cell.style.cursor = 'pointer'
-              cell.addEventListener('click', () => {
-                showJournalRequiredModal(
-                  goal.id,
-                  date,
-                  'Each goal check requires a dedicated journal entry.'
-                )
+              cell.addEventListener('click', async () => {
+                // First check if a journal entry already exists for today
+                let hasJournal = false
+                try {
+                  hasJournal = await window.api.hasJournalForDate(date)
+                } catch (e) {
+                  console.error('Journal check failed:', e)
+                }
+
+                if (hasJournal) {
+                  // Journal exists — attempt check-in directly
+                  try {
+                    await window.api.toggleGoalCompletion(goal.id, date)
+                    await window.api.evaluateGoals()
+                    // Re-render the full grid to reflect the permanent check
+                    await renderCheckmarks()
+                  } catch (err) {
+                    // Backend threw a rule violation — surface the reason clearly
+                    alert(err.message || 'Could not check this slot.')
+                  }
+                } else {
+                  // No journal yet — prompt user to write one first
+                  showJournalRequiredModal(
+                    goal.id,
+                    date,
+                    'Each goal check requires a journal entry for today.'
+                  )
+                }
               })
             }
           }
@@ -298,6 +336,16 @@ async function renderCheckmarks() {
       gridContainer.appendChild(gridScroll)
       gridSection.appendChild(gridContainer)
       container.appendChild(gridSection)
+
+      // Auto-scroll to today's column so user lands on current date
+      requestAnimationFrame(() => {
+        const todayIndex = gridData.dates.indexOf(today)
+        if (todayIndex > 0) {
+          const cellWidth = 52 // 48px cell + 4px gap
+          const scrollTarget = Math.max(0, (todayIndex * cellWidth) - (gridScroll.clientWidth / 2))
+          gridScroll.scrollLeft = scrollTarget
+        }
+      })
     }
 
     content.appendChild(container)
