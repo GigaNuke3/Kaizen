@@ -294,12 +294,16 @@ async function renderSpiderChart() {
   const canvas = document.getElementById('spiderChart')
   if (!canvas) return
 
+  // Must set explicit height — maintainAspectRatio:false collapses to 0 without it
+  canvas.style.height = '340px'
+  canvas.style.width = '100%'
+
   try {
     // Get top 5 labels with usage counts
     const topLabels = await window.api.getTopLabels(5)
-    
+
     if (!topLabels || topLabels.length === 0) {
-      canvas.parentElement.innerHTML = '<p class="empty-msg">No goal labels yet. Create goals to see stats!</p>'
+      canvas.parentElement.innerHTML = '<p class="empty-msg">No goal labels yet. Create goals with labels to see stats!</p>'
       return
     }
 
@@ -310,6 +314,10 @@ async function renderSpiderChart() {
     if (window.spiderChartInstance) {
       window.spiderChartInstance.destroy()
     }
+
+    // Safe max — guard against all-zero or single-item edge cases
+    const maxVal = Math.max(...data)
+    const scaleMax = maxVal > 0 ? Math.ceil(maxVal * 1.25) : 5
 
     // Create radar chart
     window.spiderChartInstance = new Chart(canvas, {
@@ -345,10 +353,11 @@ async function renderSpiderChart() {
         scales: {
           r: {
             beginAtZero: true,
-            max: Math.max(...data) * 1.2,
+            max: scaleMax,
             ticks: {
               color: '#666',
-              font: { size: 10 }
+              font: { size: 10 },
+              stepSize: Math.max(1, Math.floor(scaleMax / 5))
             },
             grid: {
               color: 'rgba(255, 255, 255, 0.1)'

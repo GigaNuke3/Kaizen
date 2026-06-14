@@ -312,7 +312,7 @@ function resetMoodSelector() {
  */
 function getMoodEmoji(mood) {
   const moods = {
-    sad: '😢',
+    sad: src='assets/Kai-Zun/Kai_sad.png',
     neutral: '😐',
     good: '🙂',
     happy: '😄',
