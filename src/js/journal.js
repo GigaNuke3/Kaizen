@@ -46,7 +46,8 @@ async function renderJournal() {
       })
       bannerHtml = `
         <div class="journal-pending-banner" style="background:#1a2a1a;border:1px solid #6ee7b7;border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#ccc;">
-          📌 Add a journal entry for <strong style="color:#6ee7b7;">${dateLabel}</strong> to unlock your CheckMarked slot.
+          📌 Write a journal entry for <strong style="color:#6ee7b7;">${dateLabel}</strong> linked to this goal to unlock your CheckMarked slot.
+          <br><span style="font-size:0.8rem;color:#888;margin-top:4px;display:block;">This journal entry will be saved specifically for that goal's check-in.</span>
         </div>
       `
     }
@@ -232,12 +233,13 @@ async function saveJournalEntry(event) {
     return
   }
 
-  // Save to database
-  await window.api.addJournalEntry(journalText, mood, time, entryDate)
+  // Save to database — link to goal if this entry is for a pending check-in
+  const pending = getPendingGoalCheck()
+  const linkedGoalId = (pending && pending.date === entryDate) ? pending.goalId : null
+  await window.api.addJournalEntry(journalText, mood, time, entryDate, linkedGoalId)
   closeJournalModal()
 
   // Handle pending goal check (CheckMarked unlock)
-  const pending = getPendingGoalCheck()
   if (pending && pending.date === entryDate) {
     try {
       await window.api.toggleGoalCompletion(pending.goalId, pending.date)
@@ -312,7 +314,7 @@ function resetMoodSelector() {
  */
 function getMoodEmoji(mood) {
   const moods = {
-    sad: src='assets/Kai-Zun/Kai_sad.png',
+    sad: '😢',
     neutral: '😐',
     good: '🙂',
     happy: '😄',

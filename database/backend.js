@@ -18,13 +18,28 @@ function getLocalDateString(date = new Date()) {
   return `${y}-${m}-${d}`
 }
 
-async function hasJournalForDate(date) {
+async function hasJournalForDate(date, goalId = null) {
   const database = await getDB()
-  const result = database.exec(
-    'SELECT id FROM journal WHERE date = ? AND time IS NOT NULL AND time != "" LIMIT 1',
-    [date]
-  )
-  return result.length > 0 && result[0].values.length > 0
+  try {
+    if (goalId) {
+      // Check if a journal entry exists for this specific goal on this date
+      const result = database.exec(
+        'SELECT id FROM journal WHERE date = ? AND goal_id = ? AND time IS NOT NULL AND time != "" LIMIT 1',
+        [date, goalId]
+      )
+      return result.length > 0 && result[0].values.length > 0
+    } else {
+      // Fallback: any journal entry for this date (used by journal.js pending check)
+      const result = database.exec(
+        'SELECT id FROM journal WHERE date = ? AND time IS NOT NULL AND time != "" LIMIT 1',
+        [date]
+      )
+      return result.length > 0 && result[0].values.length > 0
+    }
+  } catch (err) {
+    console.error('hasJournalForDate error:', err)
+    return false
+  }
 }
 
 /**
@@ -170,6 +185,13 @@ async function getDB() {
   if (!goalColumns.includes('label')) {
     db.run("ALTER TABLE goals ADD COLUMN label TEXT DEFAULT ''")
   }
+
+  // Journal migrations
+  const journalColumns = db.exec("PRAGMA table_info(journal)")[0]?.values?.map(r => r[1]) || []
+  if (!journalColumns.includes('goal_id')) {
+    db.run("ALTER TABLE journal ADD COLUMN goal_id INTEGER REFERENCES goals(id) ON DELETE SET NULL")
+  }
+
   saveDB()
   console.log('✅ Database initialized')
   return db
@@ -393,10 +415,13 @@ async function getStreakAcrossAllHabits() {
  * ==================== JOURNAL ====================
  */
 
-async function addJournalEntry(content, mood, time, date = null) {
+async function addJournalEntry(content, mood, time, date = null, goalId = null) {
   const database = await getDB()
   const entryDate = date || getLocalDateString()
-  database.run('INSERT INTO journal (content, mood, date, time) VALUES (?, ?, ?, ?)', [content, mood, entryDate, time])
+  database.run(
+    'INSERT INTO journal (content, mood, date, time, goal_id) VALUES (?, ?, ?, ?, ?)',
+    [content, mood, entryDate, time, goalId || null]
+  )
   saveDB()
   return getJournalByDate(entryDate)
 }
@@ -517,49 +542,32 @@ async function evaluateGoals() {
  * ==================== GOALS ====================
  */
 
-async function addGoal(title, label = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
+async function addGoal(title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
   const database = await getDB()
   const start = startDate || new Date().toISOString().split('T')[0]
-  database.run(
-    'INSERT INTO goals (title, label, start_date, target_date, frequency, scheduled_days, time) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [title, label, start, targetDate, frequency, scheduledDays, time]
-  )
+  database.run('INSERT INTO goals (title, description, start_date, target_date, frequency, scheduled_days, time) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+    [title, description, start, targetDate, frequency, scheduledDays, time])
   saveDB()
   return getAllGoals()
 }
 
-async function updateGoal(id, title, label = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
+async function updateGoal(id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
   const database = await getDB()
-  database.run(
-    'UPDATE goals SET title = ?, label = ?, target_date = ?, start_date = ?, frequency = ?, scheduled_days = ?, time = ? WHERE id = ?',
-    [title, label, targetDate, startDate, frequency, scheduledDays, time, id]
-  )
+  database.run('UPDATE goals SET title = ?, description = ?, target_date = ?, start_date = ?, frequency = ?, scheduled_days = ?, time = ? WHERE id = ?', 
+    [title, description, targetDate, startDate, frequency, scheduledDays, time, id])
   saveDB()
   return getAllGoals()
 }
 
 async function getAllGoals() {
   const database = await getDB()
-  // Explicit columns: [0]=id [1]=title [2]=description [3]=start_date [4]=target_date
-  // [5]=completed [6]=failed [7]=progress [8]=frequency [9]=scheduled_days
-  // [10]=created_at [11]=completion_date [12]=color [13]=icon [14]=time [15]=label
-  const result = database.exec(`
-    SELECT id, title, description, start_date, target_date,
-           completed, failed, progress, frequency, scheduled_days,
-           created_at, completion_date, color, icon, time, label
-    FROM goals ORDER BY created_at DESC
-  `)
+  const result = database.exec('SELECT * FROM goals ORDER BY created_at DESC')
   return result.length > 0 ? result[0].values : []
 }
 
 async function getActiveGoals() {
   const database = await getDB()
-  const result = database.exec(`
-    SELECT id, title, description, start_date, target_date,
-           completed, failed, progress, frequency, scheduled_days,
-           created_at, completion_date, color, icon, time, label
-    FROM goals WHERE completed = 0 AND failed = 0 ORDER BY created_at DESC
-  `)
+  const result = database.exec('SELECT * FROM goals WHERE completed = 0 AND failed = 0 ORDER BY created_at DESC')
   return result.length > 0 ? result[0].values : []
 }
 
@@ -685,17 +693,18 @@ async function deleteLabel(id) {
 async function getTopLabels(limit = 5) {
   const database = await getDB()
   try {
+    // Count goals by description (which acts as the label)
     const result = database.exec(`
-      SELECT label, COUNT(*) as count
+      SELECT description, COUNT(*) as count
       FROM goals
-      WHERE label IS NOT NULL AND label != ''
-      GROUP BY label
+      WHERE description IS NOT NULL AND description != ''
+      GROUP BY description
       ORDER BY count DESC
       LIMIT ?
     `, [limit])
-
+    
     if (result.length === 0) return []
-
+    
     return result[0].values.map(row => ({
       label: row[0],
       count: row[1]
@@ -780,18 +789,39 @@ async function getGoalTrackingGrid() {
 
 async function toggleGoalCompletion(goalId, date) {
   const database = await getDB()
-  
+  const today = getLocalDateString()
+
+  // ── Rule 1: Only today's slot can be checked ─────────────────────────────
+  if (date !== today) {
+    throw new Error('Only today\'s slot can be checked. Past slots are permanently closed.')
+  }
+
+  // ── Rule 2: Slot cannot be unchecked once checked ─────────────────────────
   const existsResult = database.exec(
     'SELECT id, is_completed FROM goal_completions WHERE goal_id = ? AND date = ?',
     [goalId, date]
   )
-  
   if (existsResult.length > 0 && existsResult[0].values.length > 0) {
     const currentState = existsResult[0].values[0][1]
-    // True toggle: flip between 1 and 0
+    if (currentState === 1) {
+      throw new Error('This slot has already been checked and cannot be undone.')
+    }
+  }
+
+  // ── Rule 3: A journal entry for THIS SPECIFIC GOAL must exist today ───────
+  const journalCheck = database.exec(
+    'SELECT id FROM journal WHERE date = ? AND goal_id = ? AND time IS NOT NULL AND time != "" LIMIT 1',
+    [today, goalId]
+  )
+  if (!journalCheck.length || journalCheck[0].values.length === 0) {
+    throw new Error('You must write a journal entry for this goal before checking it in.')
+  }
+
+  // ── All rules passed: mark as completed ──────────────────────────────────
+  if (existsResult.length > 0 && existsResult[0].values.length > 0) {
     database.run(
-      'UPDATE goal_completions SET is_completed = ? WHERE goal_id = ? AND date = ?',
-      [currentState === 1 ? 0 : 1, goalId, date]
+      'UPDATE goal_completions SET is_completed = 1 WHERE goal_id = ? AND date = ?',
+      [goalId, date]
     )
   } else {
     database.run(
@@ -799,7 +829,7 @@ async function toggleGoalCompletion(goalId, date) {
       [goalId, date]
     )
   }
-  
+
   saveDB()
   await recalculateGoalProgress(goalId)
   return true

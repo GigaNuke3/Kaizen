@@ -44,11 +44,12 @@ async function renderCheckmarks() {
     if (pending) {
       try {
         const todayStr = getLocalDateString()
-        // If pending is from a previous day, discard it — slot is now permanently closed
+        // Discard stale pending from a previous day — slot is permanently closed
         if (pending.date !== todayStr) {
           clearPendingGoalCheck()
         } else {
-          const hasJournal = await window.api.hasJournalForDate(pending.date)
+          // Check journal exists for this specific goal
+          const hasJournal = await window.api.hasJournalForDate(pending.date, pending.goalId)
           if (hasJournal) {
             // Only clear AFTER a successful toggle so the pending is never lost
             const cellKey = `${pending.goalId}_${pending.date}`
@@ -60,7 +61,7 @@ async function renderCheckmarks() {
             }
             clearPendingGoalCheck()
           }
-          // If no journal yet, leave pending in sessionStorage — will retry on next visit
+          // If no journal for this goal yet, leave pending — will retry on next visit
         }
       } catch (pendingErr) {
         console.error('Failed to apply pending goal check:', pendingErr)
@@ -241,16 +242,6 @@ async function renderCheckmarks() {
           const timeOk      = isToday ? currentTime >= goalTime : true
 
           // ── Cell state machine ──────────────────────────────────────────
-          // Cells beyond this goal's own target_date are invisible for layout
-          // alignment but fully inert — no interaction, no visual noise
-          const isPastGoalEnd = goal.target_date &&
-            new Date(date + 'T12:00:00') > new Date(goal.target_date + 'T12:00:00')
-          if (isPastGoalEnd) {
-            cell.style.cssText = 'visibility:hidden;pointer-events:none;border-color:transparent;background:transparent;'
-            row.appendChild(cell)
-            continue
-          }
-
           if (!scheduled || !inWindow) {
             // Not scheduled for this day or outside goal window
             cell.classList.add('disabled')
@@ -295,31 +286,29 @@ async function renderCheckmarks() {
               cell.title = `${goal.title} - ${date} (Click to check in)`
               cell.style.cursor = 'pointer'
               cell.addEventListener('click', async () => {
-                // First check if a journal entry already exists for today
+                // Check if a journal entry exists for THIS specific goal today
                 let hasJournal = false
                 try {
-                  hasJournal = await window.api.hasJournalForDate(date)
+                  hasJournal = await window.api.hasJournalForDate(date, goal.id)
                 } catch (e) {
                   console.error('Journal check failed:', e)
                 }
 
                 if (hasJournal) {
-                  // Journal exists — attempt check-in directly
+                  // Journal for this goal exists — check in directly
                   try {
                     await window.api.toggleGoalCompletion(goal.id, date)
                     await window.api.evaluateGoals()
-                    // Re-render the full grid to reflect the permanent check
                     await renderCheckmarks()
                   } catch (err) {
-                    // Backend threw a rule violation — surface the reason clearly
                     alert(err.message || 'Could not check this slot.')
                   }
                 } else {
-                  // No journal yet — prompt user to write one first
+                  // No journal for this goal yet — prompt user to write one
                   showJournalRequiredModal(
                     goal.id,
                     date,
-                    'Each goal check requires a journal entry for today.'
+                    `Write a journal entry for "${goal.title}" to check in.`
                   )
                 }
               })
@@ -336,16 +325,6 @@ async function renderCheckmarks() {
       gridContainer.appendChild(gridScroll)
       gridSection.appendChild(gridContainer)
       container.appendChild(gridSection)
-
-      // Auto-scroll to today's column so user lands on current date
-      requestAnimationFrame(() => {
-        const todayIndex = gridData.dates.indexOf(today)
-        if (todayIndex > 0) {
-          const cellWidth = 52 // 48px cell + 4px gap
-          const scrollTarget = Math.max(0, (todayIndex * cellWidth) - (gridScroll.clientWidth / 2))
-          gridScroll.scrollLeft = scrollTarget
-        }
-      })
     }
 
     content.appendChild(container)

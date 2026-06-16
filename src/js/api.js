@@ -56,11 +56,11 @@ const api = {
     ipcRenderer.invoke('get-streak-all-habits'),
 
   // ==================== JOURNAL ====================
-  addJournalEntry: (content, mood = 'neutral', time = null, date = null) => 
-    ipcRenderer.invoke('add-journal-entry', content, mood, time, date),
+  addJournalEntry: (content, mood = 'neutral', time = null, date = null, goalId = null) => 
+    ipcRenderer.invoke('add-journal-entry', content, mood, time, date, goalId),
 
-  hasJournalForDate: (date) =>
-    ipcRenderer.invoke('has-journal-for-date', date),
+  hasJournalForDate: (date, goalId = null) =>
+    ipcRenderer.invoke('has-journal-for-date', date, goalId),
   
   getTodayJournal: () => 
     ipcRenderer.invoke('get-today-journal'),
@@ -75,11 +75,11 @@ const api = {
     ipcRenderer.invoke('delete-journal-entry', id),
 
   // ==================== GOALS ====================
-  addGoal: (title, label = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) => 
-    ipcRenderer.invoke('add-goal', title, label, targetDate, frequency, scheduledDays, startDate, time),
+  addGoal: (title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) => 
+    ipcRenderer.invoke('add-goal', title, description, targetDate, frequency, scheduledDays, startDate, time),
   
-  updateGoal: (id, title, label = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) => 
-    ipcRenderer.invoke('update-goal', id, title, label, targetDate, frequency, scheduledDays, startDate, time),
+  updateGoal: (id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) => 
+    ipcRenderer.invoke('update-goal', id, title, description, targetDate, frequency, scheduledDays, startDate, time),
   
   getAllGoals: () => 
     ipcRenderer.invoke('get-all-goals'),

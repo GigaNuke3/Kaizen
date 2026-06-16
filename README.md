@@ -212,4 +212,4 @@ Via - terminal
 rm -rf node_modules
 npm install
 npm start
-           
+           z
