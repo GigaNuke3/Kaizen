@@ -49,6 +49,15 @@ async function createWindow() {
   // Initialize database
   await backend.getDB()
 
+  // Evaluate goals immediately on startup — catches any goals that failed/completed
+  // while the app was closed (overnight, across days, etc.)
+  try {
+    await backend.evaluateGoals()
+    console.log('✅ Startup goal evaluation complete')
+  } catch (err) {
+    console.error('Startup evaluateGoals error:', err)
+  }
+
   // Remove menu bar completely
   Menu.setApplicationMenu(null)
 
@@ -196,26 +205,12 @@ ipcMain.handle('pull-ollama-model', (event, model = 'llama3.2:latest') => {
  * ==================== IPC HANDLERS ====================
  */
 
-// Habits
-ipcMain.handle('add-habit', (event, name, description, color) => backend.addHabit(name, description, color))
-ipcMain.handle('get-all-habits', () => backend.getAllHabits())
-ipcMain.handle('update-habit', (event, id, name, description, color) => backend.updateHabit(id, name, description, color))
-ipcMain.handle('delete-habit', (event, id) => backend.deleteHabit(id))
-
-// Daily Checklist
-ipcMain.handle('mark-habit-complete', (event, habitId, date) => backend.markHabitComplete(habitId, date))
-ipcMain.handle('unmark-habit-complete', (event, habitId, date) => backend.unmarkHabitComplete(habitId, date))
-ipcMain.handle('get-today-checklist', () => backend.getTodayChecklist())
-ipcMain.handle('get-checklist-by-date', (event, date) => backend.getChecklistByDate(date))
-
-// Streak & Contributions
-ipcMain.handle('get-current-streak', (event, habitId) => backend.getCurrentStreak(habitId))
+// Contributions
 ipcMain.handle('get-contribution-data', () => backend.getContributionData())
-ipcMain.handle('get-streak-all-habits', () => backend.getStreakAcrossAllHabits())
 
 // Journal
-ipcMain.handle('add-journal-entry', (event, content, mood, time, date, goalId) => backend.addJournalEntry(content, mood, time, date, goalId))
-ipcMain.handle('has-journal-for-date', (event, date, goalId) => backend.hasJournalForDate(date, goalId))
+ipcMain.handle('add-journal-entry', (event, content, mood, time, date) => backend.addJournalEntry(content, mood, time, date))
+ipcMain.handle('has-journal-for-date', (event, date) => backend.hasJournalForDate(date))
 ipcMain.handle('get-today-journal', () => backend.getTodayJournal())
 ipcMain.handle('get-journal-by-date', (event, date) => backend.getJournalByDate(date))
 ipcMain.handle('get-all-journal-entries', (event, limit) => backend.getAllJournalEntries(limit))
@@ -249,12 +244,6 @@ ipcMain.handle('get-today-goal-stats', () => backend.getTodayGoalStats())
 ipcMain.handle('get-notifications', (event, unreadOnly) => backend.getNotifications(unreadOnly))
 ipcMain.handle('mark-notification-read', (event, id) => backend.markNotificationRead(id))
 ipcMain.handle('evaluate-goals', () => backend.evaluateGoals())
-
-// Habit Keywords & Detection
-ipcMain.handle('add-habit-keyword', (event, habitId, keyword) => backend.addHabitKeyword(habitId, keyword))
-ipcMain.handle('get-habit-keywords', (event, habitId) => backend.getHabitKeywords(habitId))
-ipcMain.handle('detect-habits-from-journal', (event, content) => backend.detectHabitsFromJournal(content))
-ipcMain.handle('get-habit-stats-from-journal', () => backend.getHabitStatsFromJournal())
 
 // Checkmarks
 ipcMain.handle('add-checkmark', (event, title, category, priority, dueDate, description) => 
