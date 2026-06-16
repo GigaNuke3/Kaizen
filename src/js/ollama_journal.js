@@ -1,51 +1,23 @@
-// Standalone page renderer — called by loadPage('ollama_journal')
+/**
+ * ollama_journal.js
+ * Standalone Kai companion page — called by loadPage('ollama_journal')
+ * renderKaiCompanion() lives in ollama.js — do not redefine it here
+ */
+
 async function renderKaiPage() {
   const content = document.getElementById('main-content')
-  content.innerHTML = `<div class="kai-page-container" id="kai-page"></div>`
-  await renderKaiCompanion('Hello Kai!', document.getElementById('kai-page'))
-}
+  if (!content) return
 
-// Companion renderer — called with journal content and a container element
-async function renderKaiCompanion(journalContent, containerEl) {
-  const running = await isOllamaRunning()
-
-  const kaiSection = document.createElement('div')
-  kaiSection.className = 'kai-companion'
-
-  if (!running) {
-    kaiSection.innerHTML = `
-      <div class="kai-offline">
-        <span class="kai-avatar">🤖</span>
-        <div class="kai-message">
-          <strong>Kai is offline</strong>
-          <p>Start Ollama to get your companion's thoughts on your entry.</p>
-          <code>ollama serve</code>
-        </div>
-      </div>
-    `
-    containerEl.appendChild(kaiSection)
-    return
-  }
-
-  kaiSection.innerHTML = `
-    <div class="kai-online">
-      <span class="kai-avatar">🤖</span>
-      <div class="kai-bubble">
-        <span class="kai-name">Kai</span>
-        <p class="kai-text"><span class="kai-cursor">▋</span></p>
-      </div>
+  content.innerHTML = `
+    <div style="padding:32px 0;">
+      <h2 style="color:#6ee7b7;margin-bottom:8px;">🤖 Kai Companion</h2>
+      <p style="color:#888;font-size:0.9rem;margin-bottom:24px;">
+        Say hello to Kai — your personal self-improvement companion.
+        Kai reads your journal entries and responds with empathy and encouragement.
+      </p>
+      <div id="kai-page"></div>
     </div>
   `
-  containerEl.appendChild(kaiSection)
 
-  const kaiTextEl = kaiSection.querySelector('.kai-text')
-
-  try {
-    await getJournalCompanionResponse(journalContent, (chunk, fullText) => {
-      kaiTextEl.innerHTML = fullText + '<span class="kai-cursor">▋</span>'
-    })
-    kaiTextEl.querySelector('.kai-cursor')?.remove()
-  } catch (err) {
-    kaiTextEl.textContent = "Hmm, I couldn't read that. Try again later."
-  }
+  await renderKaiCompanion('Hello Kai! I just opened your page.', document.getElementById('kai-page'))
 }

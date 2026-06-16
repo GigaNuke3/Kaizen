@@ -31,30 +31,30 @@
 
       <ul class="nav-links">
         <li data-page="notifications" onclick="loadPage('notifications')">
-          <h2 style="display: flex; align-items: center;">
+          <span style="display: flex; align-items: center; gap: 8px;">
             <img 
               src="assets/icons/bell_icon/Notification_Idle.png" 
               id="notif-nav-icon"
               alt="Notifications" 
               class="nav-icon" 
-              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
               onmouseenter="this.src='assets/icons/bell_icon/Notification.gif'"
               onmouseleave="this.src='assets/icons/bell_icon/Notification_Idle.png'"
             > Notifications
-          </h2>
+          </span>
         </li>
         <li data-page="dashboard" onclick="loadPage('dashboard')">
-          <h2 style="display: flex; align-items: center;">
+          <span style="display: flex; align-items: center; gap: 8px;">
             <img
               src="assets/icons/dashboard_icon/Dashboard_Idle.png"
               id="dashboard-nav-icon"
               alt="Dashboard"
               class="nav-icon"
-              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
               onmouseenter="this.src='assets/icons/dashboard_icon/Dashboard_gif.gif'"
               onmouseleave="this.src='assets/icons/dashboard_icon/Dashboard_Idle.png'"
               > Dashboard
-          </h2>
+          </span>
         </li>
         <li data-page="goals" onclick="loadPage('goals')">
           🎯 Goals
@@ -69,20 +69,20 @@
           ❌ Failed Goals
         </li>
         <li data-page="journal" onclick="loadPage('journal')">
-          <h2 style="display: flex; align-items: center;">
+          <span style="display: flex; align-items: center; gap: 8px;">
             <img
-              src="assets/icons/Journal_icon/Journal_Idle.png"
+              src="assets/icons/journal_icon/Journal_Idle.png"
               id="journal-nav-icon"
               alt="Journal"
               class="nav-icon"
-              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
-              onmouseenter="this.src='assets/icons/dashboard_icon/Dashboard_gif.gif'"
-              onmouseleave="this.src='assets/icons/dashboard_icon/Dashboard_Idle.png'"
-              > Journal
-          </h2>
+              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/journal_icon/Journal_gif.gif'"
+              onmouseleave="this.src='assets/icons/journal_icon/Journal_Idle.png'"
+            > Journal
+          </span>
         </li>
         <li data-page="ollama_journal" onclick="loadPage('ollama_journal')">
-           Companion
+          🤖 Companion
         </li>
       </ul>
 
@@ -152,8 +152,8 @@
         const journalIcon = document.getElementById('journal-nav-icon')
         if (journalIcon) {
           journalIcon.src = page === 'journal'
-            ? 'assets/icons/Journal_icon/Journal_gif.gif'
-            : 'assets/icons/Journal_icon/Journal_Idle.png'
+            ? 'assets/icons/journal_icon/Journal_gif.gif'
+            : 'assets/icons/journal_icon/Journal_Idle.png'
         }
 
         switch(page) {
@@ -165,7 +165,7 @@
           case 'checkmarked':   await renderCheckmarks(); sidebarBadges?.updateCheckmarkedBadge(); break
           case 'completed_goals': await renderCompletedGoals(); sidebarBadges?.updateCompletedBadge(); break
           case 'profile':       await renderProfile(); break
-          case 'ollama_journal':   await renderKaiCompanion(); break
+          case 'ollama_journal':   await renderKaiPage(); break
           default: throw new Error(`Unknown page: ${page}`)
         }
 
@@ -180,7 +180,7 @@
             <p><strong>${err.message || 'Unknown error'}</strong></p>
             <pre style="background:#1a1a1a;padding:12px;border-radius:6px;overflow-x:auto;margin-top:12px;
                         text-align:left;max-height:200px;font-size:12px;color:#6ee7b7;">
-              ${err.stack?.substring(0, 500) || ''}</pre>
+${err.stack?.substring(0, 500) || ''}</pre>
             <button class="btn btn-primary" style="margin-top:20px;" onclick="loadPage('dashboard')">Back to Dashboard</button>
           </div>
         `
@@ -227,8 +227,21 @@
 
     // Load dashboard once DOM is ready — api.js already ran synchronously so window.api is set
     document.addEventListener('DOMContentLoaded', () => {
+      // Evaluate goals immediately on launch so failed/completed goals appear right away
+      window.api.evaluateGoals().catch(err => console.error('Startup evaluateGoals error:', err))
       loadPage('dashboard')
     })
+
+    // Listen for Kai model ready signal from main process
+    if (window.ipcRenderer) {
+      window.ipcRenderer.on('kai-ready', () => {
+        console.log('🤖 Kai model is ready!')
+        // If user is on the companion page, refresh it
+        if (currentPage === 'ollama_journal') {
+          renderKaiPage().catch(console.error)
+        }
+      })
+    }
   </script>
 </body>
 </html>
