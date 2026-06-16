@@ -4,13 +4,13 @@ async function renderDashboard() {
     console.error('❌ Error: main-content element not found')
     return
   }
-  
+
   try {
     // Fetch data
-    const stats = await window.api.getDashboardStats()
-    const todayChecklist = await window.api.getTodayChecklist()
+    const stats        = await window.api.getDashboardStats()
     const journalEntries = await window.api.getAllJournalEntries(3)
-    
+    const todayStats   = await window.api.getTodayGoalStats()
+
     content.innerHTML = `
       <div class="dashboard">
         <div class="dash-header">
@@ -54,10 +54,8 @@ async function renderDashboard() {
 
         <div class="dash-bottom">
           <div class="section half">
-            <h3>Today's Checklist</h3>
-            <div id="today-checklist">
-              ${todayChecklist.length === 0 ? '<p class="empty-msg">No habits yet. Add some in Habits!</p>' : ''}
-            </div>
+            <h3>Today's Goals</h3>
+            <div id="today-goals-summary"></div>
           </div>
           <div class="section half">
             <h3>Recent Journal</h3>
@@ -69,22 +67,41 @@ async function renderDashboard() {
       </div>
     `
 
-    // Render checklist items
-    if (todayChecklist.length > 0) {
-      const checklistHtml = todayChecklist.map(h => `
-        <div class="checklist-item">
-          <input type="checkbox" ${h[4] === 1 ? 'checked' : ''} onchange="toggleHabitFromDash(${h[0]}, this.checked)">
-          <span>${h[1]}</span>
-        </div>
-      `).join('')
-      document.getElementById('today-checklist').innerHTML = checklistHtml
+    // Render today's goal stats
+    const goalSummaryEl = document.getElementById('today-goals-summary')
+    if (goalSummaryEl) {
+      const completed  = todayStats?.completed  || 0
+      const scheduled  = todayStats?.scheduled  || 0
+      const percentage = todayStats?.percentage || 0
+
+      if (scheduled === 0) {
+        goalSummaryEl.innerHTML = '<p class="empty-msg">No goals scheduled for today.</p>'
+      } else {
+        const remaining = scheduled - completed
+        goalSummaryEl.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:#aaa;font-size:0.9rem;">${completed} of ${scheduled} checked in</span>
+              <span style="color:#6ee7b7;font-weight:700;font-size:1rem;">${percentage}%</span>
+            </div>
+            <div style="background:#2a2a2a;border-radius:4px;height:8px;overflow:hidden;">
+              <div style="height:100%;width:${percentage}%;background:linear-gradient(90deg,#6ee7b7,#39d353);border-radius:4px;transition:width 0.4s;"></div>
+            </div>
+            <p style="color:#666;font-size:0.82rem;margin:0;">
+              ${remaining > 0
+                ? `${remaining} goal${remaining !== 1 ? 's' : ''} still open today — head to <strong style="color:#6ee7b7;">CheckMarked</strong> to check in.`
+                : '🎉 All goals checked in for today!'}
+            </p>
+          </div>
+        `
+      }
     }
 
     // Render recent journal
     if (journalEntries.length > 0) {
       const journalHtml = journalEntries.map(j => `
         <div class="journal-preview">
-          <p><strong>${new Date(j[2]).toLocaleDateString()}:</strong> ${j[1].substring(0, 100)}...</p>
+          <p><strong>${new Date(j[2] + 'T12:00:00').toLocaleDateString()}:</strong> ${j[1].substring(0, 100)}...</p>
         </div>
       `).join('')
       document.getElementById('recent-journal').innerHTML = journalHtml
@@ -103,24 +120,11 @@ async function renderDashboard() {
     `
   }
 }
-
 function getGreeting() {
   const h = new Date().getHours()
   if (h < 12) return 'morning'
   if (h < 18) return 'afternoon'
   return 'evening'
-}
-
-/**
- * Toggle habit completion from dashboard
- */
-async function toggleHabitFromDash(habitId, isChecked) {
-  if (isChecked) {
-    await window.api.markHabitComplete(habitId)
-  } else {
-    await window.api.unmarkHabitComplete(habitId)
-  }
-  renderDashboard()
 }
 
 async function renderContributionGrid() {
@@ -294,16 +298,12 @@ async function renderSpiderChart() {
   const canvas = document.getElementById('spiderChart')
   if (!canvas) return
 
-  // Must set explicit height — maintainAspectRatio:false collapses to 0 without it
-  canvas.style.height = '340px'
-  canvas.style.width = '100%'
-
   try {
     // Get top 5 labels with usage counts
     const topLabels = await window.api.getTopLabels(5)
-
+    
     if (!topLabels || topLabels.length === 0) {
-      canvas.parentElement.innerHTML = '<p class="empty-msg">No goal labels yet. Create goals with labels to see stats!</p>'
+      canvas.parentElement.innerHTML = '<p class="empty-msg">No goal labels yet. Create goals to see stats!</p>'
       return
     }
 
@@ -314,10 +314,6 @@ async function renderSpiderChart() {
     if (window.spiderChartInstance) {
       window.spiderChartInstance.destroy()
     }
-
-    // Safe max — guard against all-zero or single-item edge cases
-    const maxVal = Math.max(...data)
-    const scaleMax = maxVal > 0 ? Math.ceil(maxVal * 1.25) : 5
 
     // Create radar chart
     window.spiderChartInstance = new Chart(canvas, {
@@ -353,11 +349,10 @@ async function renderSpiderChart() {
         scales: {
           r: {
             beginAtZero: true,
-            max: scaleMax,
+            max: Math.max(...data) * 1.2,
             ticks: {
               color: '#666',
-              font: { size: 10 },
-              stepSize: Math.max(1, Math.floor(scaleMax / 5))
+              font: { size: 10 }
             },
             grid: {
               color: 'rgba(255, 255, 255, 0.1)'
