@@ -85,7 +85,10 @@ async function renderJournal() {
     content.innerHTML = `
       <div class="journal-container">
         <div class="journal-header">
-          <h2>📓 Journal</h2>
+          <h2 style="display: flex; align-items: center; gap: 12.1px;">
+            <img src="assets/icons/Journal_icon/Journal_Idle.png" style="width: 66px; height: 66px; image-rendering: pixelated; margin: 0;"> 
+            Journal
+          </h2>
           <button class="btn btn-primary" onclick="openAddJournalModal()">+ New Entry</button>
         </div>
         ${bannerHtml}

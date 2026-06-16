@@ -31,30 +31,30 @@
 
       <ul class="nav-links">
         <li data-page="notifications" onclick="loadPage('notifications')">
-          <span style="display: flex; align-items: center; gap: 8px;">
+          <h2 style="display: flex; align-items: center;">
             <img 
               src="assets/icons/bell_icon/Notification_Idle.png" 
               id="notif-nav-icon"
               alt="Notifications" 
               class="nav-icon" 
-              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
               onmouseenter="this.src='assets/icons/bell_icon/Notification.gif'"
               onmouseleave="this.src='assets/icons/bell_icon/Notification_Idle.png'"
             > Notifications
-          </span>
+          </h2>
         </li>
         <li data-page="dashboard" onclick="loadPage('dashboard')">
-          <span style="display: flex; align-items: center; gap: 8px;">
+          <h2 style="display: flex; align-items: center;">
             <img
               src="assets/icons/dashboard_icon/Dashboard_Idle.png"
               id="dashboard-nav-icon"
               alt="Dashboard"
               class="nav-icon"
-              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
               onmouseenter="this.src='assets/icons/dashboard_icon/Dashboard_gif.gif'"
               onmouseleave="this.src='assets/icons/dashboard_icon/Dashboard_Idle.png'"
               > Dashboard
-          </span>
+          </h2>
         </li>
         <li data-page="goals" onclick="loadPage('goals')">
           🎯 Goals
@@ -69,17 +69,17 @@
           ❌ Failed Goals
         </li>
         <li data-page="journal" onclick="loadPage('journal')">
-          <span style="display: flex; align-items: center; gap: 8px;">
+          <h2 style="display: flex; align-items: center;">
             <img
               src="assets/icons/Journal_icon/Journal_Idle.png"
               id="journal-nav-icon"
               alt="Journal"
               class="nav-icon"
-              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
-              onmouseenter="this.src='assets/icons/Journal_icon/Journal_gif.gif'"
-              onmouseleave="this.src='assets/icons/Journal_icon/Journal_Idle.png'"
-            > Journal
-          </span>
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/dashboard_icon/Dashboard_gif.gif'"
+              onmouseleave="this.src='assets/icons/dashboard_icon/Dashboard_Idle.png'"
+              > Journal
+          </h2>
         </li>
         <li data-page="ollama_journal" onclick="loadPage('ollama_journal')">
            Companion
@@ -152,8 +152,8 @@
         const journalIcon = document.getElementById('journal-nav-icon')
         if (journalIcon) {
           journalIcon.src = page === 'journal'
-            ? 'assets/icons/journal_icon/journal_gif.gif'
-            : 'assets/icons/journal_icon/journal_Idle.png'
+            ? 'assets/icons/Journal_icon/Journal_gif.gif'
+            : 'assets/icons/Journal_icon/Journal_Idle.png'
         }
 
         switch(page) {
@@ -180,7 +180,7 @@
             <p><strong>${err.message || 'Unknown error'}</strong></p>
             <pre style="background:#1a1a1a;padding:12px;border-radius:6px;overflow-x:auto;margin-top:12px;
                         text-align:left;max-height:200px;font-size:12px;color:#6ee7b7;">
-${err.stack?.substring(0, 500) || ''}</pre>
+              ${err.stack?.substring(0, 500) || ''}</pre>
             <button class="btn btn-primary" style="margin-top:20px;" onclick="loadPage('dashboard')">Back to Dashboard</button>
           </div>
         `

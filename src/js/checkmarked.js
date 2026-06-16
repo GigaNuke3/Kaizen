@@ -468,7 +468,7 @@ function showJournalRequiredModal(goalId, date, errorMessage) {
     text-align:center;box-shadow:0 10px 40px rgba(110,231,183,0.2);
   `
   inner.innerHTML = `
-    <div style="font-size:48px;margin-bottom:20px;">📓</div>
+    <div style="font-size:48px;margin-bottom:20px;"><img src="assets/icons/Journal_icon/Journal_gif.gif" style="width: 150px; height: 150px; image-rendering: pixelated; margin: 0;"></div>
     <h2 style="color:#6ee7b7;margin-bottom:15px;font-size:24px;">Journal Entry Required</h2>
     <p style="color:#ccc;line-height:1.6;margin-bottom:12px;">${errorMessage}</p>
     <p style="color:#888;font-size:14px;margin-bottom:30px;">
