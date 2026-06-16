@@ -84,12 +84,11 @@ function createGoalCard(goal, isCompleted = false) {
   const targetDate = goal[4]
   const completed = goal[5]
   const failed = goal[6]
-  const progress = goal[7]
+  const progress = goal[7]          // was incorrectly goal[6]
   const completionDate = goal[11]
   const color = goal[12]
   const icon = goal[13] || '🎯'
   const time = goal[14]
-  const label = goal[15] || ''
   
   const startStr = startDate ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   const targetStr = targetDate ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
@@ -119,11 +118,105 @@ function createGoalCard(goal, isCompleted = false) {
         <button class="icon-btn" onclick="deleteGoalConfirm(${id})" title="Delete">🗑️</button>
       </div>
     </div>
-    ${label ? `<div class="goal-labels"><span class="goal-label-badge">${label}</span></div>` : ''}
+    ${description ? `<div class="goal-labels"><span class="goal-label-badge">${description}</span></div>` : ''}
     ${startDate && targetDate ? `<span class="goal-time">⏱️ Window: ${startStr} → ${targetStr}${timeInfo}</span>` : ''}
     ${isCompleted && completionStr ? `<span class="goal-completion">✓ Completed on ${completionStr}</span>` : ''}
   `
   return card
+}
+
+/**
+ * Returns valid day-of-week numbers (0=Sun…6=Sat) for a given frequency.
+ * null means every day is valid (daily).
+ */
+function getScheduledDaysForFrequency(frequency, customDays = []) {
+  switch (frequency) {
+    case 'daily':    return null               // all days valid
+    case 'weekdays': return [1, 2, 3, 4, 5]   // Mon–Fri
+    case 'weekends': return [0, 6]             // Sat–Sun
+    case '3x':       return [1, 3, 5]          // Mon, Wed, Fri
+    case 'custom':   return customDays.length > 0 ? customDays : null
+    default:         return null
+  }
+}
+
+/**
+ * Returns a human-readable label for the valid days of a frequency.
+ */
+function getFrequencyDayLabel(frequency, customDays = []) {
+  switch (frequency) {
+    case 'daily':    return 'any day'
+    case 'weekdays': return 'Monday–Friday'
+    case 'weekends': return 'Saturday or Sunday'
+    case '3x':       return 'Monday, Wednesday, or Friday'
+    case 'custom': {
+      const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+      return customDays.length > 0
+        ? customDays.map(d => names[d]).join(', ')
+        : 'your selected days'
+    }
+    default: return 'any day'
+  }
+}
+
+/**
+ * Validates a date string against a frequency.
+ * Returns null if valid, or an error message string if invalid.
+ */
+function validateDateForFrequency(dateStr, frequency, customDays = []) {
+  if (!dateStr) return null // let required attr handle empty
+  const validDays = getScheduledDaysForFrequency(frequency, customDays)
+  if (!validDays) return null // daily — all days valid
+  const dayOfWeek = new Date(dateStr + 'T12:00:00').getDay()
+  if (!validDays.includes(dayOfWeek)) {
+    return `Must be a ${getFrequencyDayLabel(frequency, customDays)}`
+  }
+  return null
+}
+
+/**
+ * Gets the currently selected custom days from the modal checkboxes.
+ */
+function getSelectedCustomDays() {
+  return [...document.querySelectorAll('input[name="day"]:checked')]
+    .map(cb => parseInt(cb.value))
+}
+
+/**
+ * Validates both date fields and shows/hides inline errors.
+ * Returns true if both are valid, false otherwise.
+ */
+function validateGoalDates() {
+  const frequency  = document.getElementById('goal-frequency')?.value || 'daily'
+  const startDate  = document.getElementById('goal-start-date')?.value
+  const targetDate = document.getElementById('goal-date')?.value
+  const customDays = frequency === 'custom' ? getSelectedCustomDays() : []
+
+  const startErr  = validateDateForFrequency(startDate, frequency, customDays)
+  const targetErr = validateDateForFrequency(targetDate, frequency, customDays)
+
+  // Cross-field: end must be after start
+  let rangeErr = null
+  if (startDate && targetDate && new Date(startDate) > new Date(targetDate)) {
+    rangeErr = 'Closing date must be after opening date'
+  }
+
+  // Show/hide inline error messages
+  const startErrEl  = document.getElementById('start-date-error')
+  const targetErrEl = document.getElementById('target-date-error')
+  if (startErrEl)  startErrEl.textContent  = startErr  || ''
+  if (targetErrEl) targetErrEl.textContent = rangeErr || targetErr || ''
+
+  // Disable Save button if any errors
+  const saveBtn = document.getElementById('goal-save-btn')
+  const hasErrors = !!(startErr || targetErr || rangeErr)
+  if (saveBtn) {
+    saveBtn.disabled = hasErrors
+    saveBtn.style.opacity = hasErrors ? '0.5' : '1'
+    saveBtn.style.cursor  = hasErrors ? 'not-allowed' : 'pointer'
+  }
+
+  return !hasErrors
 }
 
 function ensureGoalModalExists() {
@@ -200,14 +293,16 @@ function ensureGoalModalExists() {
         <div class="form-group">
           <label for="goal-start-date">Checklist Opens (Start Date) *</label>
           <input type="date" id="goal-start-date" required>
+          <span id="start-date-error" style="color:#ff6b6b;font-size:0.8rem;margin-top:4px;display:block;min-height:16px;"></span>
         </div>
         
         <div class="form-group">
           <label for="goal-date">Checklist Closes (Target Date) *</label>
           <input type="date" id="goal-date" required>
+          <span id="target-date-error" style="color:#ff6b6b;font-size:0.8rem;margin-top:4px;display:block;min-height:16px;"></span>
         </div>
         
-        <button type="submit" class="btn btn-primary">Save Goal</button>
+        <button type="submit" id="goal-save-btn" class="btn btn-primary">Save Goal</button>
       </form>
     </div>
   `
@@ -227,8 +322,22 @@ function ensureGoalModalExists() {
   })
   
   document.getElementById('goal-frequency').addEventListener('change', (e) => {
-    document.getElementById('custom-days-group').style.display = 
+    document.getElementById('custom-days-group').style.display =
       e.target.value === 'custom' ? 'block' : 'none'
+    // Re-validate dates whenever frequency changes
+    validateGoalDates()
+  })
+
+  // Validate dates on blur
+  document.getElementById('goal-start-date').addEventListener('blur', validateGoalDates)
+  document.getElementById('goal-date').addEventListener('blur', validateGoalDates)
+  // Also validate on change (covers keyboard input and date picker selection)
+  document.getElementById('goal-start-date').addEventListener('change', validateGoalDates)
+  document.getElementById('goal-date').addEventListener('change', validateGoalDates)
+
+  // Re-validate when custom day checkboxes change
+  document.querySelectorAll('input[name="day"]').forEach(cb => {
+    cb.addEventListener('change', validateGoalDates)
   })
   
   modal.addEventListener('click', (e) => {
@@ -352,7 +461,21 @@ function openAddGoalModal() {
   document.getElementById('goal-modal-title').textContent = 'Create New Goal'
   document.getElementById('goal-form').reset()
   document.getElementById('goal-label-value').value = ''
+  document.getElementById('custom-days-group').style.display = 'none'
   updateLabelDropdown()
+
+  // Clear any leftover inline errors and reset Save button
+  const startErrEl  = document.getElementById('start-date-error')
+  const targetErrEl = document.getElementById('target-date-error')
+  const saveBtn     = document.getElementById('goal-save-btn')
+  if (startErrEl)  startErrEl.textContent = ''
+  if (targetErrEl) targetErrEl.textContent = ''
+  if (saveBtn) {
+    saveBtn.disabled = false
+    saveBtn.style.opacity = '1'
+    saveBtn.style.cursor  = 'pointer'
+  }
+
   document.getElementById('goal-modal').classList.add('active')
 }
 
@@ -370,16 +493,16 @@ async function editGoal(goalId) {
   ensureGoalModalExists()
   document.getElementById('goal-modal-title').textContent = 'Edit Goal'
   document.getElementById('goal-title').value = goal[1]
-  document.getElementById('goal-label-value').value = goal[15] || ''
+  document.getElementById('goal-label-value').value = goal[2] || ''
   document.getElementById('goal-start-date').value = goal[3] || ''
   document.getElementById('goal-date').value = goal[4] || ''
-  document.getElementById('goal-frequency').value = goal[8] || 'daily'
+  document.getElementById('goal-frequency').value = goal[8] || 'daily'   // frequency at index 8
   document.getElementById('goal-color').value = goal[12] || '#6ee7b7'
-
+  
   const timeInput = document.getElementById('goal-time')
   if (timeInput) timeInput.value = goal[14] || ''
 
-  if (goal[8] === 'custom' && goal[9]) {
+  if (goal[8] === 'custom' && goal[9]) {  // scheduled_days at index 9
     document.getElementById('custom-days-group').style.display = 'block'
     const days = JSON.parse(goal[9] || '[]')
     document.querySelectorAll('input[name="day"]').forEach(cb => {
@@ -390,9 +513,11 @@ async function editGoal(goalId) {
   }
 
   updateLabelDropdown()
-  // Restore label dropdown to saved label value (index 15)
-  document.getElementById('goal-label').value = goal[15] || ''
+  document.getElementById('goal-label').value = goal[2] || ''
   document.getElementById('goal-modal').classList.add('active')
+
+  // Re-validate with loaded frequency so Save button state is correct on open
+  requestAnimationFrame(validateGoalDates)
 }
 
 async function saveGoal(event) {
@@ -422,8 +547,10 @@ async function saveGoal(event) {
     alert('Target date is required!')
     return
   }
-  if (new Date(startDate) > new Date(targetDate)) {
-    alert('Start date must be before target date!')
+
+  // Run full frequency + range validation before saving
+  if (!validateGoalDates()) {
+    // Errors are already shown inline under the fields
     return
   }
   

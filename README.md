@@ -1,42 +1,68 @@
 # 改善 Kaizen - Self-Improvement App
 
-Your personal self-improvement companion built with Electron, featuring habit tracking, journaling, goal setting, and more.
+Your personal self-improvement companion built with Electron. Track goals, journal your progress, and review your achievements — all stored locally, no cloud, no tracking.
+
+---
 
 ## 🎯 Features
 
 ### 📊 Dashboard
-- **Real-time Statistics**: View your habits tracked, goals completed, journal entries, and today's actions
-- **GitHub-style Contribution Grid**: Visualize your activity throughout the year
-- **Today's Checklist**: Quick access to today's habits with completion status
-- **Recent Journal**: Preview your latest journal entries
-
-### 📓 Journal
-- Write daily reflections
-- Track your mood: 😢 😐 🙂 😄 🚀
-- Browse all journal entries
-- Delete entries
-- Organize by date
+- GitHub-style contribution grid showing activity across the last 12 months
+- Radar/spider chart of your top 5 goal labels
+- Today's journal entry preview
+- Real-time stats: checkmarks done, today's actions, journal entries
 
 ### 🎯 Goals
-- Set long-term and short-term goals
-- Add detailed descriptions
-- Set target dates
-- Track progress with visual progress bar (0-100%)
-- Mark goals as complete
-- Separate view for active vs completed goals
+- Create goals with a title, label, frequency, color, and time window
+- Five frequency types: Daily, Weekdays, Weekends, 3x per week, Custom days
+- Checklist Opens (Start Date) and Checklist Closes (Target Date) — both validated against your chosen frequency so invalid dates are caught before saving
+- Progress calculated against total scheduled days across the full goal window
+- Labels power the dashboard spider chart — group goals by category (Fitness, Study, etc.)
 
-### 📝 CheckMarked - Goal Tracking
-- Display all active goals in a 365-day tracking grid
-- Support multiple frequency types (daily, weekdays, weekends, 3x, custom)
-- Track completion status for each goal per day
-- Visual contribution-style grid with color coding
-- Today's completion statistics and progress tracking
+### 📝 CheckMarked — Goal Tracking Grid
+- All active goals displayed as rows in a 365-day tracking grid
+- Slots open only on scheduled frequency days within the goal's date window
+- Each slot requires a journal entry written specifically for that goal before it can be checked
+- Checked slots are permanent — cannot be unchecked
+- Past unchecked slots are permanently closed after midnight
+- Goals with shorter windows stop at their own target date; layout stays aligned
+- Grid auto-scrolls to today's column on load
+
+### 📓 Journal
+- Write daily reflections linked to specific goals
+- Mood tracking: 😢 😐 🙂 😄 🚀
+- Each journal entry is tied to a goal when written from the CheckMarked flow
+- Kai AI companion responds below each saved entry (requires Ollama running locally)
+
+### 🤖 Kai — AI Companion
+- Powered by Ollama running `llama3.2:latest` locally
+- Reads your journal entry and responds with empathy in 2–3 sentences
+- Works completely offline after initial model download
+- Shows offline state gracefully when Ollama is not running
+
+### ✅ Completed Goals
+- Goals move here automatically when their target date passes and all scheduled slots are filled
+- Displays completion rate, duration, frequency, and completion date
+- Goals can be restored to active or permanently deleted
+
+### ❌ Failed Goals
+- Shows goals with missed (permanently closed) slots
+- Displays failure rate (100 - completion%) and missed day count
+- Hard-failed goals (deadline passed) shown with DEADLINE PASSED badge
+- Goals can be restored to active or permanently deleted
+
+### 🔔 Notifications
+- Desktop notifications when goals are completed or failed
+- In-app notification list with unread badges in sidebar
+- Notifications can be toggled off in Profile settings
 
 ### 👤 Profile
-- Edit your name and tagline
-- View overall statistics
-- Browse all features
-- Customize settings
+- Edit name and tagline
+- View stats: active goals, completed goals, journal entries, today's actions
+- Toggle desktop notifications on/off
+- Clear all app data (irreversible)
+
+---
 
 ## 🚀 Getting Started
 
@@ -44,172 +70,181 @@ Your personal self-improvement companion built with Electron, featuring habit tr
 ```bash
 cd /home/eco/Kaizen
 npm install
-```
-
-### Running the App
-```bash
 npm start
 ```
 
-The app will launch with:
-- Dark modern theme
-- Clean, intuitive interface
-- Sidebar navigation
-- Full keyboard support
-
-## 💾 Data Storage
-
-All your data is stored locally in `database/kaizen.db` using SQLite (via sql.js):
-- No cloud uploads
-- No tracking
-- Complete privacy
-- Data persists between sessions
-
-## 🎨 Architecture
-
+### Fresh Start (reset database)
+```bash
+rm database/kaizen.db
+npm start
 ```
-Frontend (HTML/CSS/JavaScript)
-         ↓
-    IPC Bridge (Electron)
-         ↓
-Backend (Node.js)
-         ↓
-Database (SQLite/sql.js)
-```
-
-### Technology Stack
-- **Electron**: Desktop application framework
-- **sql.js**: SQLite in JavaScript
-- **node-cron**: For future reminder scheduling
-- **electron-store**: For app settings
-
-## 📚 Usage Tips
-
-### Setting Goals
-1. Go to **Goals** page
-2. Click **+ New Goal**
-3. Enter goal title, description, and target date
-4. Click **Save Goal**
-5. Update progress using the slider
-6. Mark as complete when done
-
-### Writing in Journal
-1. Go to **Journal** page
-2. Click **+ New Entry**
-3. Select your mood
-4. Write your reflection
-5. Click **Save Entry**
-
-## ⌨️ Keyboard Shortcuts
-
-- Click **Dashboard**: View overall progress
-- Click **Journal**: Write reflections
-- Click **Goals**: Set and track goals
-- Click **CheckMarked**: Track goals across 365 days
-- Click **Profile**: Edit profile and view stats
-
-## 🔄 Workflow Example
-
-### Morning Routine
-1. Open app → view **Dashboard**
-2. See today's habits in checklist
-3. Navigate to **Habits**, mark them as you complete
-4. Check **Dashboard** to see progress
-
-### Evening Reflection
-1. Go to **Journal**
-2. Write about your day
-3. Select your mood
-4. Save entry
-5. Track in **Dashboard** contribution grid
-
-### Weekly Planning
-1. Navigate to **Goals**
-2. Review progress on active goals
-3. Go to **CheckMarked** to monitor goal completion
-4. Set priorities and due dates
-
-## 🐛 Troubleshooting
-
-### App won't start
-- Make sure Node.js and npm are installed
-- Try deleting `database/kaizen.db` and restarting
-- Check console for errors
-
-### Missing data
-- Data is stored in `database/kaizen.db`
-- Don't delete the database folder
-- Restart the app if data seems stuck
-
-### Modals not appearing
-- Reload the page (it should work)
-- Close and reopen the app
-
-## 📈 Future Features
-
-Planned for upcoming versions:
-- 🔔 Reminders and notifications
-- 📊 Advanced analytics and charts
-- 🎖️ Achievement badges and streaks
-- 📤 Data export (JSON/CSV)
-- 🎨 Multiple theme options
-- 📱 Mobile companion app
-
-## 📝 Database Schema
-
-### Tables
-- **habits**: Store habit definitions
-- **daily_checklist**: Track habit completion by date
-- **journal**: Store journal entries with mood
-- **goals**: Store goals and progress
-- **checkmarks**: Store goal completion data per date
-- **user_profile**: Store user information
-
-## 🤝 Contributing
-
-Found a bug? Want to suggest a feature? Feel free to:
-1. Test all features thoroughly
-2. Report issues with exact steps to reproduce
-3. Suggest improvements with use cases
-
-## 📄 License
-
-Personal project - free to use and modify
-
-## 🙏 Inspiration
-
-Built with the philosophy of **Kaizen** (改善) - continuous improvement through small, incremental changes.
 
 ---
 
-**Made with ❤️ for self-improvement**
+## 🔄 Switching Between Operating Systems
 
-*Last Updated: May 9, 2026*
-*Version: 1.0.0*
+Electron bundles a platform-specific binary. When switching OS, always refresh `node_modules`:
 
-If on Different Device Just npm install to install the dependencies of the node_modules. then npm start
-
-- Then Run git config --user.name "your name"
-           git config --user.email "your email"
-           git commit -m "your messages"
-
-If Switching from Linux to Windows
-
-Refresh the node_modules
-
-Via - terminal
-
-rd /s /q node_modules
-npm install
-npm start
-
-If Switching from Windows to Linux
-
-Refresh the node_modules
-
-Via - terminal
-
+**Windows → Linux (Fish shell):**
+```fish
 rm -rf node_modules
 npm install
 npm start
-           z
+```
+
+**Linux → Windows (CMD):**
+```cmd
+rd /s /q node_modules
+npm install
+npm start
+```
+
+Your code, database, and assets are untouched — only `node_modules` needs to be rebuilt.
+
+---
+
+## 🔄 Workflow
+
+### Daily Check-in
+1. Open app → Dashboard shows today's status
+2. Go to **CheckMarked** — see today's open goal slots
+3. Click a goal slot → prompted to write a journal entry for that goal
+4. Write your entry → slot is checked automatically
+5. Repeat for each goal that has an open slot today
+
+### Weekly Review
+1. Go to **Goals** — review active goals and progress percentages
+2. Go to **Completed Goals** — see what you've achieved
+3. Go to **Failed Goals** — review missed slots and failure rates
+4. Adjust or restore goals as needed
+
+### Creating a Goal
+1. Go to **Goals** → click **+ New Goal**
+2. Enter title, select a label, choose frequency
+3. Pick a color and time window
+4. Set Checklist Opens (Start Date) — must land on a valid frequency day
+5. Set Checklist Closes (Target Date) — must land on a valid frequency day
+6. Save — goal appears in CheckMarked immediately
+
+---
+
+## 💾 Data Storage
+
+All data is stored locally in `database/kaizen.db` using SQLite via `sql.js`:
+- No cloud uploads, no tracking, no accounts
+- Back up by copying `database/kaizen.db`
+- Delete `kaizen.db` to start completely fresh
+
+---
+
+## 🏗️ Architecture
+
+```
+Frontend (HTML / CSS / Vanilla JS)
+            ↓
+    IPC Bridge (Electron)
+            ↓
+    Backend (Node.js)
+            ↓
+  Database (SQLite / sql.js)
+```
+
+### Technology Stack
+
+| Tool | Version | Role |
+|------|---------|------|
+| Electron | v42.0.0 | Desktop app framework |
+| sql.js | v1.14.1 | Pure JS SQLite (no native bindings) |
+| Chart.js | v4.5.1 | Radar/spider chart on dashboard |
+| node-cron | v4.2.1 | Scheduled goal evaluation |
+| Ollama | llama3.2 | Local AI for Kai companion |
+
+### Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `goals` | Goal definitions with frequency, dates, label, color, progress |
+| `goal_completions` | Per-day check-in records per goal |
+| `goal_labels` | Label definitions (custom + defaults) |
+| `journal` | Journal entries linked to goals via `goal_id` |
+| `notifications` | Goal completed/failed notification log |
+| `user_profile` | Name and tagline |
+
+---
+
+## 📁 File Structure
+
+```
+/home/eco/Kaizen/
+├── main.js                        # Electron main process + IPC handlers
+├── index.html                     # App shell + page loader
+├── package.json
+├── src/
+│   ├── js/
+│   │   ├── api.js                 # IPC wrapper — all window.api.* calls
+│   │   ├── dashboard.js           # Dashboard page
+│   │   ├── goals.js               # Goals page + create/edit modal
+│   │   ├── checkmarked.js         # CheckMarked tracking grid
+│   │   ├── completed_goals.js     # Completed Goals page
+│   │   ├── failed_goals.js        # Failed Goals page
+│   │   ├── journal.js             # Journal page
+│   │   ├── notification.js        # Notifications page
+│   │   ├── profile.js             # Profile page
+│   │   ├── sidebar-badges.js      # Live badge counts on sidebar nav
+│   │   ├── ollama.js              # Ollama API + Kai response streaming
+│   │   └── ollama_journal.js      # Kai companion page renderer
+│   └── css/
+│       ├── style.css              # Base/global styles
+│       ├── layout.css             # App shell layout
+│       ├── dashboard.css
+│       ├── goals.css
+│       ├── checkmarked.css
+│       ├── completed_goals.css
+│       ├── failed_goals.css
+│       ├── journal.css
+│       ├── notification.css
+│       └── profile.css
+├── database/
+│   ├── backend.js                 # All DB functions (50+ async)
+│   └── kaizen.db                  # Auto-created SQLite database
+└── assets/
+    └── icons/
+```
+
+---
+
+## 🐛 Troubleshooting
+
+| Issue | Solution |
+|-------|---------|
+| App won't start | `rm -rf node_modules && npm install && npm start` |
+| Blank screen / JS error | Open DevTools in `main.js` by uncommenting `win.webContents.openDevTools()` |
+| Database errors | `rm database/kaizen.db` then `npm start` for a fresh schema |
+| Kai is offline | Run `ollama serve` in a terminal, then restart the app |
+| Wrong platform binary | `rm -rf node_modules && npm install` after switching OS |
+
+---
+
+## 📈 Planned Future Features
+
+- 🔔 Time-based reminders via node-cron
+- 📊 Advanced analytics: streak tracking, weekly summaries
+- 🎖️ Achievement badges
+- 📤 Data export (JSON / CSV)
+- 🎨 Multiple theme options
+- 🗂️ Database backup and restore UI
+
+---
+
+## 📄 License
+
+Personal project — free to use and modify.
+
+## 🙏 Philosophy
+
+Built on the philosophy of **Kaizen** (改善) — continuous improvement through small, consistent, incremental steps.
+
+---
+
+*Last Updated: June 16, 2026*
+*Version: 1.0.0*
