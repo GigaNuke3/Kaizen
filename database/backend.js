@@ -542,32 +542,49 @@ async function evaluateGoals() {
  * ==================== GOALS ====================
  */
 
-async function addGoal(title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
+async function addGoal(title, label = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
   const database = await getDB()
   const start = startDate || new Date().toISOString().split('T')[0]
-  database.run('INSERT INTO goals (title, description, start_date, target_date, frequency, scheduled_days, time) VALUES (?, ?, ?, ?, ?, ?, ?)', 
-    [title, description, start, targetDate, frequency, scheduledDays, time])
+  database.run(
+    'INSERT INTO goals (title, label, start_date, target_date, frequency, scheduled_days, time) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [title, label, start, targetDate, frequency, scheduledDays, time]
+  )
   saveDB()
   return getAllGoals()
 }
 
-async function updateGoal(id, title, description = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
+async function updateGoal(id, title, label = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
   const database = await getDB()
-  database.run('UPDATE goals SET title = ?, description = ?, target_date = ?, start_date = ?, frequency = ?, scheduled_days = ?, time = ? WHERE id = ?', 
-    [title, description, targetDate, startDate, frequency, scheduledDays, time, id])
+  database.run(
+    'UPDATE goals SET title = ?, label = ?, target_date = ?, start_date = ?, frequency = ?, scheduled_days = ?, time = ? WHERE id = ?',
+    [title, label, targetDate, startDate, frequency, scheduledDays, time, id]
+  )
   saveDB()
   return getAllGoals()
 }
 
 async function getAllGoals() {
   const database = await getDB()
-  const result = database.exec('SELECT * FROM goals ORDER BY created_at DESC')
+  // Explicit columns: [0]=id [1]=title [2]=description [3]=start_date [4]=target_date
+  // [5]=completed [6]=failed [7]=progress [8]=frequency [9]=scheduled_days
+  // [10]=created_at [11]=completion_date [12]=color [13]=icon [14]=time [15]=label
+  const result = database.exec(`
+    SELECT id, title, description, start_date, target_date,
+           completed, failed, progress, frequency, scheduled_days,
+           created_at, completion_date, color, icon, time, label
+    FROM goals ORDER BY created_at DESC
+  `)
   return result.length > 0 ? result[0].values : []
 }
 
 async function getActiveGoals() {
   const database = await getDB()
-  const result = database.exec('SELECT * FROM goals WHERE completed = 0 AND failed = 0 ORDER BY created_at DESC')
+  const result = database.exec(`
+    SELECT id, title, description, start_date, target_date,
+           completed, failed, progress, frequency, scheduled_days,
+           created_at, completion_date, color, icon, time, label
+    FROM goals WHERE completed = 0 AND failed = 0 ORDER BY created_at DESC
+  `)
   return result.length > 0 ? result[0].values : []
 }
 
@@ -693,18 +710,17 @@ async function deleteLabel(id) {
 async function getTopLabels(limit = 5) {
   const database = await getDB()
   try {
-    // Count goals by description (which acts as the label)
     const result = database.exec(`
-      SELECT description, COUNT(*) as count
+      SELECT label, COUNT(*) as count
       FROM goals
-      WHERE description IS NOT NULL AND description != ''
-      GROUP BY description
+      WHERE label IS NOT NULL AND label != ''
+      GROUP BY label
       ORDER BY count DESC
       LIMIT ?
     `, [limit])
-    
+
     if (result.length === 0) return []
-    
+
     return result[0].values.map(row => ({
       label: row[0],
       count: row[1]

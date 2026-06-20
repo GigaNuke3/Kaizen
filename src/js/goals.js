@@ -274,18 +274,6 @@ function ensureGoalModalExists() {
         </div>
         
         <div class="form-group">
-          <label for="goal-color">Color</label>
-          <div class="color-picker">
-            <span class="color-option" style="background-color: #6ee7b7" data-color="#6ee7b7"></span>
-            <span class="color-option" style="background-color: #f472b6" data-color="#f472b6"></span>
-            <span class="color-option" style="background-color: #60a5fa" data-color="#60a5fa"></span>
-            <span class="color-option" style="background-color: #fbbf24" data-color="#fbbf24"></span>
-            <span class="color-option" style="background-color: #a78bfa" data-color="#a78bfa"></span>
-          </div>
-          <input type="hidden" id="goal-color" value="#6ee7b7">
-        </div>
-
-        <div class="form-group">
           <label for="goal-time">Time Window *</label>
           <input type="time" id="goal-time" required>
         </div>
@@ -308,31 +296,25 @@ function ensureGoalModalExists() {
   `
   
   document.body.appendChild(modal)
-  
-  // Initialize date input handlers
-  initializeDateInputs('goal-start-date')
-  initializeDateInputs('goal-date')
-  
-  document.querySelectorAll('.color-option').forEach(option => {
-    option.addEventListener('click', () => {
-      document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'))
-      option.classList.add('selected')
-      document.getElementById('goal-color').value = option.dataset.color
-    })
-  })
-  
+
+  // Date validation is handled by validateGoalDates() on blur/change
   document.getElementById('goal-frequency').addEventListener('change', (e) => {
     document.getElementById('custom-days-group').style.display =
       e.target.value === 'custom' ? 'block' : 'none'
-    // Re-validate dates whenever frequency changes
     validateGoalDates()
   })
 
-  // Validate dates on blur
+  // Validate dates on blur and change
   document.getElementById('goal-start-date').addEventListener('blur', validateGoalDates)
   document.getElementById('goal-date').addEventListener('blur', validateGoalDates)
-  // Also validate on change (covers keyboard input and date picker selection)
-  document.getElementById('goal-start-date').addEventListener('change', validateGoalDates)
+  document.getElementById('goal-start-date').addEventListener('change', () => {
+    // When start date changes, update target date min to match
+    const startVal = document.getElementById('goal-start-date').value
+    if (startVal) {
+      document.getElementById('goal-date').min = startVal
+    }
+    validateGoalDates()
+  })
   document.getElementById('goal-date').addEventListener('change', validateGoalDates)
 
   // Re-validate when custom day checkboxes change
@@ -464,6 +446,11 @@ function openAddGoalModal() {
   document.getElementById('custom-days-group').style.display = 'none'
   updateLabelDropdown()
 
+  // Enforce today as minimum — new goals cannot start in the past
+  const today = new Date().toISOString().split('T')[0]
+  document.getElementById('goal-start-date').min = today
+  document.getElementById('goal-date').min = today
+
   // Clear any leftover inline errors and reset Save button
   const startErrEl  = document.getElementById('start-date-error')
   const targetErrEl = document.getElementById('target-date-error')
@@ -496,9 +483,12 @@ async function editGoal(goalId) {
   document.getElementById('goal-label-value').value = goal[2] || ''
   document.getElementById('goal-start-date').value = goal[3] || ''
   document.getElementById('goal-date').value = goal[4] || ''
-  document.getElementById('goal-frequency').value = goal[8] || 'daily'   // frequency at index 8
-  document.getElementById('goal-color').value = goal[12] || '#6ee7b7'
-  
+  document.getElementById('goal-frequency').value = goal[8] || 'daily'
+
+  // Remove min restriction for editing — existing goals may have past start dates
+  document.getElementById('goal-start-date').removeAttribute('min')
+  document.getElementById('goal-date').removeAttribute('min')
+
   const timeInput = document.getElementById('goal-time')
   if (timeInput) timeInput.value = goal[14] || ''
 
@@ -617,27 +607,4 @@ function handleLabelChange() {
   const selectElement = document.getElementById('goal-label')
   const selectedValue = selectElement.value
   document.getElementById('goal-label-value').value = selectedValue
-}
-
-/**
- * Initialize date input - disables past dates
- */
-function initializeDateInputs(inputId) {
-  const input = document.getElementById(inputId)
-  if (!input) return
-  
-  // Set minimum date to today to disable past dates
-  const today = new Date()
-  const minDate = formatDate(today)
-  input.setAttribute('min', minDate)
-}
-
-/**
- * Format date object to YYYY-MM-DD string
- */
-function formatDate(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
 }

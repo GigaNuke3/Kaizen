@@ -31,30 +31,30 @@
 
       <ul class="nav-links">
         <li data-page="notifications" onclick="loadPage('notifications')">
-          <span style="display: flex; align-items: center; gap: 8px;">
+          <h2 style="display: flex; align-items: center; gap: 8px;">
             <img 
               src="assets/icons/bell_icon/Notification_Idle.png" 
               id="notif-nav-icon"
               alt="Notifications" 
               class="nav-icon" 
-              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
               onmouseenter="this.src='assets/icons/bell_icon/Notification.gif'"
               onmouseleave="this.src='assets/icons/bell_icon/Notification_Idle.png'"
             > Notifications
-          </span>
+          </h2>
         </li>
         <li data-page="dashboard" onclick="loadPage('dashboard')">
-          <span style="display: flex; align-items: center; gap: 8px;">
+          <h2 style="display: flex; align-items: center; gap: 8px;">
             <img
               src="assets/icons/dashboard_icon/Dashboard_Idle.png"
               id="dashboard-nav-icon"
               alt="Dashboard"
               class="nav-icon"
-              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
               onmouseenter="this.src='assets/icons/dashboard_icon/Dashboard_gif.gif'"
               onmouseleave="this.src='assets/icons/dashboard_icon/Dashboard_Idle.png'"
               > Dashboard
-          </span>
+          </h2>
         </li>
         <li data-page="goals" onclick="loadPage('goals')">
           🎯 Goals
@@ -71,13 +71,13 @@
         <li data-page="journal" onclick="loadPage('journal')">
           <span style="display: flex; align-items: center; gap: 8px;">
             <img
-              src="assets/icons/journal_icon/Journal_Idle.png"
+              src="assets/icons/Journal_icon/Journal_Idle.png"
               id="journal-nav-icon"
               alt="Journal"
               class="nav-icon"
-              style="width: 24px; height: 24px; image-rendering: pixelated; margin: 0;"
-              onmouseenter="this.src='assets/icons/journal_icon/Journal_gif.gif'"
-              onmouseleave="this.src='assets/icons/journal_icon/Journal_Idle.png'"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/Journal_icon/Journal_gif.gif'"
+              onmouseleave="this.src='assets/icons/Journal_icon/Journal_Idle.png'"
             > Journal
           </span>
         </li>
@@ -152,8 +152,8 @@
         const journalIcon = document.getElementById('journal-nav-icon')
         if (journalIcon) {
           journalIcon.src = page === 'journal'
-            ? 'assets/icons/journal_icon/Journal_gif.gif'
-            : 'assets/icons/journal_icon/Journal_Idle.png'
+            ? 'assets/icons/Journal_icon/Journal_gif.gif'
+            : 'assets/icons/Journal_icon/Journal_Idle.png'
         }
 
         switch(page) {

@@ -12,6 +12,20 @@ All core systems have been audited and fixed. The app is past initial scaffoldin
 
 ---
 
+
+##Process
+
+Goals (created here)
+    ↓
+CheckMarked (daily check-in slots open based on frequency)
+    ↓ each slot requires a Journal entry
+Journal (written per goal, per day)
+    ↓ slot gets checked after journal saved
+    ↓
+    ├── all slots checked before deadline → Completed Goals ✅
+    └── missed slots / deadline passed → Failed Goals ❌
+
+
 ## ✅ What's Working
 
 ### Backend (`database/backend.js`)
