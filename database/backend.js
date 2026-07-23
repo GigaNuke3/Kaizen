@@ -635,6 +635,11 @@ async function forceCompleteGoal(id) {
 
 async function deleteGoal(id) {
   const database = await getDB()
+  // sql.js does not enforce FOREIGN KEY ... ON DELETE CASCADE (PRAGMA foreign_keys is never enabled),
+  // so related rows must be cleaned up explicitly or they're orphaned permanently.
+  database.run('DELETE FROM journal WHERE goal_id = ?', [id])
+  database.run('DELETE FROM goal_completions WHERE goal_id = ?', [id])
+  database.run('DELETE FROM notifications WHERE goal_id = ?', [id])
   database.run('DELETE FROM goals WHERE id = ?', [id])
   saveDB()
   return getAllGoals()
@@ -1090,22 +1095,19 @@ async function deleteCheckmark(id) {
 
 async function getDashboardStats() {
   const database = await getDB()
-  
-  const habitsResult = database.exec('SELECT COUNT(*) as count FROM habits')
-  const habitCount = habitsResult.length > 0 ? habitsResult[0].values[0][0] : 0
-  
-  const checkmarksResult = database.exec('SELECT COUNT(*) as count FROM checkmarks WHERE completed = 1')
+
+  // All-time checked slots across all goals (real CheckMarked data, not the obsolete `checkmarks` table)
+  const checkmarksResult = database.exec('SELECT COUNT(*) as count FROM goal_completions WHERE is_completed = 1')
   const checkmarksCount = checkmarksResult.length > 0 ? checkmarksResult[0].values[0][0] : 0
-  
+
   const journalResult = database.exec('SELECT COUNT(*) as count FROM journal')
   const journalCount = journalResult.length > 0 ? journalResult[0].values[0][0] : 0
-  
+
   const today = new Date().toISOString().split('T')[0]
-  const contributionResult = database.exec('SELECT COUNT(*) as count FROM daily_checklist WHERE date = ? AND completed = 1', [today])
+  const contributionResult = database.exec('SELECT COUNT(*) as count FROM goal_completions WHERE date = ? AND is_completed = 1', [today])
   const contributionCount = contributionResult.length > 0 ? contributionResult[0].values[0][0] : 0
-  
+
   return {
-    habits: habitCount,
     checkmarks_done: checkmarksCount,
     journal_entries: journalCount,
     contributions_today: contributionCount

@@ -79,7 +79,7 @@ function createGoalCard(goal, isCompleted = false) {
   // FIXED: correct indices
   const id = goal[0]
   const title = goal[1]
-  const description = goal[2]
+  const label = goal[15]
   const startDate = goal[3]
   const targetDate = goal[4]
   const completed = goal[5]
@@ -118,7 +118,7 @@ function createGoalCard(goal, isCompleted = false) {
         <button class="icon-btn" onclick="deleteGoalConfirm(${id})" title="Delete">🗑️</button>
       </div>
     </div>
-    ${description ? `<div class="goal-labels"><span class="goal-label-badge">${description}</span></div>` : ''}
+    ${label ? `<div class="goal-labels"><span class="goal-label-badge">${label}</span></div>` : ''}
     ${startDate && targetDate ? `<span class="goal-time">⏱️ Window: ${startStr} → ${targetStr}${timeInfo}</span>` : ''}
     ${isCompleted && completionStr ? `<span class="goal-completion">✓ Completed on ${completionStr}</span>` : ''}
   `
@@ -480,7 +480,7 @@ async function editGoal(goalId) {
   ensureGoalModalExists()
   document.getElementById('goal-modal-title').textContent = 'Edit Goal'
   document.getElementById('goal-title').value = goal[1]
-  document.getElementById('goal-label-value').value = goal[2] || ''
+  document.getElementById('goal-label-value').value = goal[15] || ''
   document.getElementById('goal-start-date').value = goal[3] || ''
   document.getElementById('goal-date').value = goal[4] || ''
   document.getElementById('goal-frequency').value = goal[8] || 'daily'
@@ -503,7 +503,7 @@ async function editGoal(goalId) {
   }
 
   updateLabelDropdown()
-  document.getElementById('goal-label').value = goal[2] || ''
+  document.getElementById('goal-label').value = goal[15] || ''
   document.getElementById('goal-modal').classList.add('active')
 
   // Re-validate with loaded frequency so Save button state is correct on open
