@@ -59,14 +59,6 @@ async function getDB() {
 
   // Create tables if they don't exist
   db.run(`
-    CREATE TABLE IF NOT EXISTS habits (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT,
-      created_at TEXT DEFAULT (date('now')),
-      color TEXT DEFAULT '#6ee7b7'
-    );
-
     CREATE TABLE IF NOT EXISTS journal (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       content TEXT NOT NULL,
@@ -101,36 +93,6 @@ async function getDB() {
       is_failed INTEGER DEFAULT 0,
       UNIQUE(goal_id, date),
       FOREIGN KEY(goal_id) REFERENCES goals(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS checkmarks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      description TEXT,
-      category TEXT,
-      completed INTEGER DEFAULT 0,
-      failed INTEGER DEFAULT 0,
-      priority INTEGER DEFAULT 0,
-      due_date TEXT,
-      created_at TEXT DEFAULT (date('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS daily_checklist (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      habit_id INTEGER NOT NULL,
-      date TEXT DEFAULT (date('now')),
-      completed INTEGER DEFAULT 0,
-      failed INTEGER DEFAULT 0,
-      UNIQUE(habit_id, date),
-      FOREIGN KEY(habit_id) REFERENCES habits(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS habit_keywords (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      habit_id INTEGER NOT NULL,
-      keyword TEXT NOT NULL,
-      UNIQUE(habit_id, keyword),
-      FOREIGN KEY(habit_id) REFERENCES habits(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS user_profile (
@@ -210,163 +172,22 @@ function saveDB() {
  * ==================== HABITS ====================
  */
 
-async function addHabit(name, description = '', color = '#6ee7b7') {
-  const database = await getDB()
-  database.run('INSERT INTO habits (name, description, color) VALUES (?, ?, ?)', [name, description, color])
-  saveDB()
-  return getAllHabits()
-}
-
-async function getAllHabits() {
-  const database = await getDB()
-  const result = database.exec('SELECT * FROM habits ORDER BY created_at DESC')
-  return result.length > 0 ? result[0].values : []
-}
-
-async function getHabitById(id) {
-  const database = await getDB()
-  const result = database.exec('SELECT * FROM habits WHERE id = ?', [id])
-  return result.length > 0 && result[0].values.length > 0 ? result[0].values[0] : null
-}
-
-async function updateHabit(id, name, description = '', color = '#6ee7b7') {
-  const database = await getDB()
-  database.run('UPDATE habits SET name = ?, description = ?, color = ? WHERE id = ?', [name, description, color, id])
-  saveDB()
-  return getAllHabits()
-}
-
-async function deleteHabit(id) {
-  const database = await getDB()
-  database.run('DELETE FROM daily_checklist WHERE habit_id = ?', [id])
-  database.run('DELETE FROM habits WHERE id = ?', [id])
-  saveDB()
-  return getAllHabits()
-}
-
-/**
- * ==================== DAILY CHECKLIST ====================
- */
-
-async function markHabitComplete(habitId, date = null) {
-  const database = await getDB()
-  const targetDate = date || new Date().toISOString().split('T')[0]
-  
-  try {
-    database.run('INSERT OR REPLACE INTO daily_checklist (habit_id, date, completed, failed) VALUES (?, ?, 1, 0)', [habitId, targetDate])
-  } catch (e) {
-    database.run('UPDATE daily_checklist SET completed = 1 WHERE habit_id = ? AND date = ?', [habitId, targetDate])
-  }
-  
-  saveDB()
-  return getTodayChecklist()
-}
-
-async function unmarkHabitComplete(habitId, date = null) {
-  const database = await getDB()
-  const targetDate = date || new Date().toISOString().split('T')[0]
-  database.run('UPDATE daily_checklist SET completed = 0 WHERE habit_id = ? AND date = ?', [habitId, targetDate])
-  saveDB()
-  return getTodayChecklist()
-}
-
-async function getTodayChecklist() {
-  const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
-  
-  try {
-    const result = database.exec(`
-      SELECT 
-        h.id,
-        h.name,
-        h.description,
-        h.color,
-        COALESCE(dc.completed, 0) as completed
-      FROM habits h
-      LEFT JOIN daily_checklist dc ON h.id = dc.habit_id AND dc.date = ?
-      ORDER BY h.created_at DESC
-    `, [today])
-    
-    return result.length > 0 ? result[0].values : []
-  } catch (e) {
-    console.error('getTodayChecklist error:', e)
-    return []
-  }
-}
-
-async function getChecklistByDate(date) {
-  const database = await getDB()
-  
-  try {
-    const result = database.exec(`
-      SELECT 
-        h.id,
-        h.name,
-        h.description,
-        h.color,
-        COALESCE(dc.completed, 0) as completed
-      FROM habits h
-      LEFT JOIN daily_checklist dc ON h.id = dc.habit_id AND dc.date = ?
-      ORDER BY h.created_at DESC
-    `, [date])
-    
-    return result.length > 0 ? result[0].values : []
-  } catch (e) {
-    console.error('getChecklistByDate error:', e)
-    return []
-  }
-}
-
 /**
  * ==================== STREAK & CONTRIBUTIONS ====================
  */
 
-async function getCurrentStreak(habitId) {
-  const database = await getDB()
-  
-  const result = database.exec(`
-    SELECT COUNT(*) as streak
-    FROM daily_checklist
-    WHERE habit_id = ?
-    AND completed = 1
-    AND date >= date('now', '-' || (
-      SELECT COUNT(*)
-      FROM daily_checklist dc2
-      WHERE dc2.habit_id = ?
-      AND dc2.completed = 0
-      AND dc2.date < (SELECT MAX(date) FROM daily_checklist WHERE habit_id = ? AND completed = 1)
-    ) || ' days')
-  `, [habitId, habitId, habitId])
-  
-  return result.length > 0 ? result[0].values[0][0] : 0
-}
-
 async function getContributionData(startDate = null, endDate = null) {
   const database = await getDB()
-  
+
   // Default to rolling 12-month window
   const today = new Date()
   const end = endDate ? new Date(endDate) : today
   const start = startDate ? new Date(startDate) : new Date(today)
   start.setFullYear(start.getFullYear() - 1)
-  
+
   const startDateStr = start.toISOString().split('T')[0]
   const endDateStr = end.toISOString().split('T')[0]
-  
-  // Get habit completions
-  const habitResult = database.exec(`
-    SELECT 
-      date,
-      COUNT(*) as count
-    FROM daily_checklist
-    WHERE completed = 1
-    AND date >= ?
-    AND date <= ?
-    GROUP BY date
-    ORDER BY date
-  `, [startDateStr, endDateStr])
-  
-  // Get goal completions
+
   const goalResult = database.exec(`
     SELECT 
       date,
@@ -378,37 +199,16 @@ async function getContributionData(startDate = null, endDate = null) {
     GROUP BY date
     ORDER BY date
   `, [startDateStr, endDateStr])
-  
+
   const data = {}
-  
-  // Merge habit contributions
-  if (habitResult.length > 0) {
-    habitResult[0].values.forEach(([date, count]) => {
-      data[date] = (data[date] || 0) + count
-    })
-  }
-  
-  // Merge goal contributions
+
   if (goalResult.length > 0) {
     goalResult[0].values.forEach(([date, count]) => {
       data[date] = (data[date] || 0) + count
     })
   }
-  
-  return data
-}
 
-async function getStreakAcrossAllHabits() {
-  const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
-  
-  const result = database.exec(`
-    SELECT COUNT(DISTINCT habit_id) as completed_habits
-    FROM daily_checklist
-    WHERE date = ? AND completed = 1
-  `, [today])
-  
-  return result.length > 0 ? result[0].values[0][0] : 0
+  return data
 }
 
 /**
@@ -942,153 +742,6 @@ async function getTodayGoalStats() {
   }
 }
 
-async function addHabitKeyword(habitId, keyword) {
-  const database = await getDB()
-  try {
-    database.run('INSERT OR IGNORE INTO habit_keywords (habit_id, keyword) VALUES (?, ?)', 
-      [habitId, keyword.toLowerCase()])
-    saveDB()
-    return true
-  } catch (e) {
-    return false
-  }
-}
-
-async function getHabitKeywords(habitId) {
-  const database = await getDB()
-  const result = database.exec('SELECT keyword FROM habit_keywords WHERE habit_id = ?', [habitId])
-  return result.length > 0 ? result[0].values.map(row => row[0]) : []
-}
-
-async function detectHabitsFromJournal(content) {
-  const database = await getDB()
-  
-  const habitsResult = database.exec(`
-    SELECT DISTINCT h.id, h.name FROM habits h
-    LEFT JOIN habit_keywords hk ON h.id = hk.habit_id
-  `)
-  
-  if (habitsResult.length === 0) return []
-  
-  const detectedHabits = []
-  const contentLower = content.toLowerCase()
-  
-  for (const row of habitsResult[0].values) {
-    const habitId = row[0]
-    const habitName = row[1]
-    
-    if (contentLower.includes(habitName.toLowerCase())) {
-      detectedHabits.push(habitId)
-      continue
-    }
-    
-    const keywordsResult = database.exec(
-      'SELECT keyword FROM habit_keywords WHERE habit_id = ?',
-      [habitId]
-    )
-    
-    if (keywordsResult.length > 0) {
-      for (const kwRow of keywordsResult[0].values) {
-        if (contentLower.includes(kwRow[0])) {
-          detectedHabits.push(habitId)
-          break
-        }
-      }
-    }
-  }
-  
-  return [...new Set(detectedHabits)]
-}
-
-async function getHabitStatsFromJournal() {
-  const database = await getDB()
-  
-  const journalResult = database.exec('SELECT content FROM journal')
-  const journalEntries = journalResult.length > 0 ? journalResult[0].values.map(row => row[0]) : []
-  
-  const habitMentions = {}
-  const habitsResult = database.exec('SELECT id, name FROM habits')
-  
-  if (habitsResult.length > 0) {
-    for (const row of habitsResult[0].values) {
-      const habitId = row[0]
-      const habitName = row[1]
-      let count = 0
-      
-      for (const entry of journalEntries) {
-        if (entry.toLowerCase().includes(habitName.toLowerCase())) {
-          count++
-        }
-      }
-      
-      if (count > 0) {
-        habitMentions[habitId] = { name: habitName, count }
-      }
-    }
-  }
-  
-  return habitMentions
-}
-
-/**
- * ==================== CHECKMARKS ====================
- */
-
-async function addCheckmark(title, category = 'general', priority = 0, dueDate = null, description = '') {
-  const database = await getDB()
-  database.run('INSERT INTO checkmarks (title, category, priority, due_date, description) VALUES (?, ?, ?, ?, ?)', 
-    [title, category, priority, dueDate, description])
-  saveDB()
-  return getAllCheckmarks()
-}
-
-async function getAllCheckmarks() {
-  const database = await getDB()
-  const result = database.exec('SELECT * FROM checkmarks ORDER BY priority DESC, created_at DESC')
-  return result.length > 0 ? result[0].values : []
-}
-
-async function getActiveCheckmarks() {
-  const database = await getDB()
-  const result = database.exec('SELECT * FROM checkmarks WHERE completed = 0 ORDER BY priority DESC, created_at DESC')
-  return result.length > 0 ? result[0].values : []
-}
-
-async function getCheckmarksByCategory(category) {
-  const database = await getDB()
-  const result = database.exec('SELECT * FROM checkmarks WHERE category = ? AND completed = 0 ORDER BY priority DESC', [category])
-  return result.length > 0 ? result[0].values : []
-}
-
-async function completeCheckmark(id) {
-  const database = await getDB()
-  database.run('UPDATE checkmarks SET completed = 1 WHERE id = ?', [id])
-  saveDB()
-  return getAllCheckmarks()
-}
-
-async function uncompleteCheckmark(id) {
-  const database = await getDB()
-  database.run('UPDATE checkmarks SET completed = 0 WHERE id = ?', [id])
-  saveDB()
-  return getAllCheckmarks()
-}
-
-async function updateCheckmark(id, title, category, priority, dueDate, description) {
-  const database = await getDB()
-  database.run('UPDATE checkmarks SET title = ?, category = ?, priority = ?, due_date = ?, description = ? WHERE id = ?', 
-    [title, category, priority, dueDate, description, id])
-  saveDB()
-  return getAllCheckmarks()
-}
-
-async function deleteCheckmark(id) {
-  const database = await getDB()
-  database.run('DELETE FROM checkmarks WHERE id = ?', [id])
-  saveDB()
-  return getAllCheckmarks()
-}
-
 /**
  * ==================== STATS ====================
  */
@@ -1120,11 +773,7 @@ async function resetAllData() {
     'notifications',
     'goal_completions',
     'goals',
-    'checkmarks',
-    'daily_checklist',
-    'habit_keywords',
     'journal',
-    'habits',
     'goal_labels',
     'user_profile'
   ]
@@ -1140,21 +789,8 @@ module.exports = {
   getDB,
   saveDB,
   setDBPath,
-  // Habits
-  addHabit,
-  getAllHabits,
-  getHabitById,
-  updateHabit,
-  deleteHabit,
-  // Daily Checklist
-  markHabitComplete,
-  unmarkHabitComplete,
-  getTodayChecklist,
-  getChecklistByDate,
   // Streak & Contributions
-  getCurrentStreak,
   getContributionData,
-  getStreakAcrossAllHabits,
   // Journal
   getLocalDateString,
   hasJournalForDate,
@@ -1191,20 +827,6 @@ module.exports = {
   recalculateGoalProgress,
   isDayScheduled,
   getTodayGoalStats,
-  // Habit Keywords & Detection
-  addHabitKeyword,
-  getHabitKeywords,
-  detectHabitsFromJournal,
-  getHabitStatsFromJournal,
-  // Checkmarks
-  addCheckmark,
-  getAllCheckmarks,
-  getActiveCheckmarks,
-  getCheckmarksByCategory,
-  completeCheckmark,
-  uncompleteCheckmark,
-  updateCheckmark,
-  deleteCheckmark,
   // Stats
   getDashboardStats,
   resetAllData

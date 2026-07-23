@@ -255,18 +255,6 @@ ipcMain.handle('get-notifications', (event, unreadOnly) => backend.getNotificati
 ipcMain.handle('mark-notification-read', (event, id) => backend.markNotificationRead(id))
 ipcMain.handle('evaluate-goals', () => backend.evaluateGoals())
 
-// Checkmarks
-ipcMain.handle('add-checkmark', (event, title, category, priority, dueDate, description) => 
-  backend.addCheckmark(title, category, priority, dueDate, description))
-ipcMain.handle('get-all-checkmarks', () => backend.getAllCheckmarks())
-ipcMain.handle('get-active-checkmarks', () => backend.getActiveCheckmarks())
-ipcMain.handle('get-checkmarks-by-category', (event, category) => backend.getCheckmarksByCategory(category))
-ipcMain.handle('complete-checkmark', (event, id) => backend.completeCheckmark(id))
-ipcMain.handle('uncomplete-checkmark', (event, id) => backend.uncompleteCheckmark(id))
-ipcMain.handle('update-checkmark', (event, id, title, category, priority, dueDate, description) => 
-  backend.updateCheckmark(id, title, category, priority, dueDate, description))
-ipcMain.handle('delete-checkmark', (event, id) => backend.deleteCheckmark(id))
-
 // Stats
 ipcMain.handle('get-dashboard-stats', () => backend.getDashboardStats())
 ipcMain.handle('reset-all-data', () => backend.resetAllData())
