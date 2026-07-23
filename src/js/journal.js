@@ -246,6 +246,7 @@ async function saveJournalEntry(event) {
   if (pending && pending.date === entryDate) {
     try {
       await window.api.toggleGoalCompletion(pending.goalId, pending.date)
+      await window.api.evaluateGoals()
       clearPendingGoalCheck()
       if (typeof loadPage === 'function') {
         loadPage('checkmarked')

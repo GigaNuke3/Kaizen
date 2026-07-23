@@ -170,8 +170,18 @@ class SidebarBadges {
 
       const today = new Date().toISOString().split('T')[0]
 
-      // Count active goals that have NOT been checked today
+      // Count only goals that actually have an open, uncompleted slot today —
+      // i.e. today is a scheduled day AND within the goal's start/target window —
+      // matching the same logic the CheckMarked page uses to decide which cells are clickable.
       const pendingCount = grid.goals.filter(goal => {
+        const scheduled = typeof shouldShowDayForGoal === 'function'
+          ? shouldShowDayForGoal(today, goal.frequency, goal.scheduled_days)
+          : true
+        const inWindow = typeof isDateWithinChecklistWindow === 'function'
+          ? isDateWithinChecklistWindow(today, goal.start_date, goal.target_date)
+          : true
+        if (!scheduled || !inWindow) return false
+
         const key = `${goal.id}_${today}`
         return grid.completions[key] !== 1
       }).length
