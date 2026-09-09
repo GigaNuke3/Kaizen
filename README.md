@@ -20,13 +20,12 @@ Your personal self-improvement companion built with Electron. Track goals, journ
 - Labels power the dashboard spider chart — group goals by category (Fitness, Study, etc.)
 
 ### 📝 CheckMarked — Goal Tracking Grid
-- All active goals displayed as rows in a 365-day tracking grid
+- All active goals displayed as rows in a tracking grid spanning each goal's date window
 - Slots open only on scheduled frequency days within the goal's date window
 - Each slot requires a journal entry written specifically for that goal before it can be checked
 - Checked slots are permanent — cannot be unchecked
 - Past unchecked slots are permanently closed after midnight
 - Goals with shorter windows stop at their own target date; layout stays aligned
-- Grid auto-scrolls to today's column on load
 
 ### 📓 Journal
 - Write daily reflections linked to specific goals
@@ -142,12 +141,16 @@ All data is stored locally in `database/kaizen.db` using SQLite via `sql.js`:
 ```
 Frontend (HTML / CSS / Vanilla JS)
             ↓
+    Preload (contextBridge / window.api)
+            ↓
     IPC Bridge (Electron)
             ↓
     Backend (Node.js)
             ↓
   Database (SQLite / sql.js)
 ```
+
+The renderer runs with `contextIsolation: true` and `nodeIntegration: false`; all privileged operations go through `src/preload.js`.
 
 ### Technology Stack
 
@@ -156,7 +159,7 @@ Frontend (HTML / CSS / Vanilla JS)
 | Electron | v42.0.0 | Desktop app framework |
 | sql.js | v1.14.1 | Pure JS SQLite (no native bindings) |
 | Chart.js | v4.5.1 | Radar/spider chart on dashboard |
-| node-cron | v4.2.1 | Scheduled goal evaluation |
+| Node.js `setInterval` | — | Scheduled goal evaluation (every 60s) |
 | Ollama | llama3.2 | Local AI for Kai companion |
 
 ### Database Tables
@@ -180,8 +183,9 @@ Frontend (HTML / CSS / Vanilla JS)
 ├── index.html                     # App shell + page loader
 ├── package.json
 ├── src/
+│   ├── preload.js                 # contextBridge API exposed to renderer
 │   ├── js/
-│   │   ├── api.js                 # IPC wrapper — all window.api.* calls
+│   │   ├── utils.js               # Shared helpers (dates, HTML escaping)
 │   │   ├── dashboard.js           # Dashboard page
 │   │   ├── goals.js               # Goals page + create/edit modal
 │   │   ├── checkmarked.js         # CheckMarked tracking grid
@@ -194,8 +198,7 @@ Frontend (HTML / CSS / Vanilla JS)
 │   │   ├── ollama.js              # Ollama API + Kai response streaming
 │   │   └── ollama_journal.js      # Kai companion page renderer
 │   └── css/
-│       ├── style.css              # Base/global styles
-│       ├── layout.css             # App shell layout
+│       ├── style.css              # Base/global styles + app layout
 │       ├── dashboard.css
 │       ├── goals.css
 │       ├── checkmarked.css

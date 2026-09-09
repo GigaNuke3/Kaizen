@@ -168,7 +168,7 @@ class SidebarBadges {
       const grid = await window.api.getGoalTrackingGrid?.()
       if (!grid || !grid.goals) { this.updateBadge('checkmarked', 0); return }
 
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDateString()
 
       // Count only goals that actually have an open, uncompleted slot today —
       // i.e. today is a scheduled day AND within the goal's start/target window —

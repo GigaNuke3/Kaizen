@@ -30,6 +30,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  animation: cgFadeIn 0.5s ease;
 }
 
 .goals-header {
@@ -79,6 +80,8 @@
 
 .goal-card:hover {
   border-color: #6ee7b7;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
 }
 
 .goal-card.completed {

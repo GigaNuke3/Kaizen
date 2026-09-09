@@ -1,39 +1,3 @@
-function escapeHtml(str) {
-  if (!str) return ''
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-function getLocalDateString(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-function shouldShowDayForGoal(dateStr, frequency, scheduledDaysStr) {
-  if (!frequency) return true
-  const date = new Date(dateStr + 'T12:00:00')
-  const dayOfWeek = date.getDay()
-  switch (frequency) {
-    case 'daily':    return true
-    case 'weekdays': return dayOfWeek >= 1 && dayOfWeek <= 5
-    case 'weekends': return dayOfWeek === 0 || dayOfWeek === 6
-    case '3x': {
-      const days = scheduledDaysStr ? JSON.parse(scheduledDaysStr) : [1, 3, 5]
-      return days.includes(dayOfWeek)
-    }
-    case 'custom': {
-      if (!scheduledDaysStr) return true
-      return JSON.parse(scheduledDaysStr).includes(dayOfWeek)
-    }
-    default: return true
-  }
-}
-
 async function renderFailedGoals() {
   const content = document.getElementById('main-content')
   if (!content) return
@@ -220,14 +184,38 @@ async function renderFailedGoals() {
 
       const restoreBtn = e.target.closest('.restore-goal-btn')
       if (restoreBtn) {
-        await window.api.restoreGoal(Number(restoreBtn.dataset.id))
-        renderFailedGoals()
+        const restoreId = Number(restoreBtn.dataset.id)
+        const goal = allFailingGoals.find(g => g.id === restoreId)
+        let newTarget = null
+
+        // If the deadline has passed, a restore would instantly re-fail.
+        // Ask for a new target date before restoring.
+        if (goal && goal.target_date && goal.target_date < today) {
+          const extended = new Date()
+          extended.setDate(extended.getDate() + 7)
+          const defaultDate = getLocalDateString(extended)
+          const input = prompt(
+            `Goal deadline (${goal.target_date}) has passed.\nEnter a new target date (YYYY-MM-DD):`,
+            defaultDate
+          )
+          if (input === null) return
+          const trimmed = input.trim()
+          if (!trimmed) return
+          newTarget = trimmed
+        }
+
+        try {
+          await window.api.restoreGoal(restoreId, newTarget)
+          renderFailedGoals()
+        } catch (err) {
+          alert(err.message || 'Could not restore goal.')
+        }
         return
       }
 
       const deleteGoalBtn = e.target.closest('.delete-goal-btn')
       if (deleteGoalBtn) {
-        if (confirm('Permanently delete this goal?')) {
+        if (confirm('Permanently delete this goal? Journal entries linked to it will be kept.')) {
           await window.api.deleteGoal(Number(deleteGoalBtn.dataset.id))
           renderFailedGoals()
         }

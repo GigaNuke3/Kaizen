@@ -1,7 +1,7 @@
 {
   "name": "kaizen",
   "version": "1.0.0",
-  "description": "",
+  "description": "Kaizen (改善) — a local-first self-improvement companion built with Electron.",
   "main": "main.js",
   "scripts": {
     "start": "electron . --ozone-platform=x11",

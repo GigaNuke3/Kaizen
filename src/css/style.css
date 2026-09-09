@@ -197,6 +197,22 @@ main.content,
   margin-top: 16px;
   border-top: 1px solid #2a2a2a;
   padding-top: 16px;
+  animation: cgFadeIn 0.5s ease;
+}
+
+/* Companion page wrapper + cards — shares page/card animations */
+.kai-page-container {
+  animation: cgFadeIn 0.5s ease;
+}
+
+.kai-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.kai-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  border-color: #6ee7b7;
 }
 
 .kai-online,
@@ -316,12 +332,13 @@ body {
 
 /* Sidebar */
 .sidebar {
-  width: 220px;
+  width: 260px;
   background: #1a1a1a;
   display: flex;
   flex-direction: column;
   padding: 20px 0;
   border-right: 1px solid #2a2a2a;
+  overflow-y: auto;
 }
 
 .sidebar-header {
@@ -365,12 +382,13 @@ body {
 }
 
 .nav-links li {
-  padding: 14px 24px;
+  padding: 12px 20px;
   cursor: pointer;
   font-size: 0.95rem;
   color: #aaa;
   border-left: 3px solid transparent;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .nav-links li:hover {
@@ -386,12 +404,13 @@ body {
 
 /* Footer */
 .sidebar-footer {
-  padding: 16px 24px;
+  padding: 16px 20px;
   cursor: pointer;
   color: #aaa;
   border-top: 1px solid #2a2a2a;
   font-size: 0.95rem;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .sidebar-footer:hover {
@@ -537,6 +556,13 @@ body {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ===== SHARED PAGE ENTRANCE ANIMATION =====
+   Same slide-up fade used by the Completed Goals page. */
+@keyframes cgFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .modal-content {

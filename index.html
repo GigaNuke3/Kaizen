@@ -6,7 +6,6 @@
   <title>Kaizen</title>
   <link rel="icon" type="image/png" href="assets/icons/desktop/kaizen_desktop_icon.png">
   <link rel="stylesheet" href="src/css/style.css">
-  <link rel="stylesheet" href="src/css/layout.css">
   <link rel="stylesheet" href="src/css/dashboard.css">
   <link rel="stylesheet" href="src/css/journal.css">
   <link rel="stylesheet" href="src/css/checkmarked.css">
@@ -31,7 +30,7 @@
 
       <ul class="nav-links">
         <li data-page="notifications" onclick="loadPage('notifications')">
-          <h2 style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: flex; align-items: center; gap: 8px;">
             <img 
               src="assets/icons/bell_icon/Notification_Idle.png" 
               id="notif-nav-icon"
@@ -41,10 +40,10 @@
               onmouseenter="this.src='assets/icons/bell_icon/Notification.gif'"
               onmouseleave="this.src='assets/icons/bell_icon/Notification_Idle.png'"
             > Notifications
-          </h2>
+          </span>
         </li>
         <li data-page="dashboard" onclick="loadPage('dashboard')">
-          <h2 style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: flex; align-items: center; gap: 8px;">
             <img
               src="assets/icons/dashboard_icon/Dashboard_Idle.png"
               id="dashboard-nav-icon"
@@ -54,19 +53,59 @@
               onmouseenter="this.src='assets/icons/dashboard_icon/Dashboard_gif.gif'"
               onmouseleave="this.src='assets/icons/dashboard_icon/Dashboard_Idle.png'"
               > Dashboard
-          </h2>
+          </span>
         </li>
         <li data-page="goals" onclick="loadPage('goals')">
-          🎯 Goals
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <img
+              src="assets/icons/goals_icon/Goals_Idle.png"
+              id="goals-nav-icon"
+              alt="Goals"
+              class="nav-icon"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/goals_icon/Goals_gif.gif'"
+              onmouseleave="this.src='assets/icons/goals_icon/Goals_Idle.png'"
+            > Goals
+          </span>
         </li>
         <li data-page="checkmarked" onclick="loadPage('checkmarked')">
-          📝 CheckMarked
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <img
+              src="assets/icons/checkmarked_icon/CheckMarked_Idle.png"
+              id="checkmarked-nav-icon"
+              alt="CheckMarked"
+              class="nav-icon"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/checkmarked_icon/CheckMarked_gif.gif'"
+              onmouseleave="this.src='assets/icons/checkmarked_icon/CheckMarked_Idle.png'"
+            > CheckMarked
+          </span>
         </li>
         <li data-page="completed_goals" onclick="loadPage('completed_goals')">
-          ✅ Completed Goals
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <img
+              src="assets/icons/completed_icon/Completed_Idle.png"
+              id="completed-nav-icon"
+              alt="Completed Goals"
+              class="nav-icon"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/completed_icon/Completed_gif.gif'"
+              onmouseleave="this.src='assets/icons/completed_icon/Completed_Idle.png'"
+            > Completed Goals
+          </span>
         </li>
         <li data-page="failed_goals" onclick="loadPage('failed_goals')">
-          ❌ Failed Goals
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <img
+              src="assets/icons/failed_icon/Failed_Idle.png"
+              id="failed-nav-icon"
+              alt="Failed Goals"
+              class="nav-icon"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/failed_icon/Failed_gif.gif'"
+              onmouseleave="this.src='assets/icons/failed_icon/Failed_Idle.png'"
+            > Failed Goals
+          </span>
         </li>
         <li data-page="journal" onclick="loadPage('journal')">
           <span style="display: flex; align-items: center; gap: 8px;">
@@ -82,12 +121,32 @@
           </span>
         </li>
         <li data-page="ollama_journal" onclick="loadPage('ollama_journal')">
-          🤖 Companion
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <img
+              src="assets/icons/companion_icon/Companion_Idle.png"
+              id="companion-nav-icon"
+              alt="Companion"
+              class="nav-icon"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/companion_icon/Companion_gif.gif'"
+              onmouseleave="this.src='assets/icons/companion_icon/Companion_Idle.png'"
+            > Companion
+          </span>
         </li>
       </ul>
 
       <div class="sidebar-footer" data-page="profile" onclick="loadPage('profile')">
-        👤 Profile
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <img
+            src="assets/icons/profile_icon/Profile_Idle.png"
+            id="profile-nav-icon"
+            alt="Profile"
+            class="nav-icon"
+            style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+            onmouseenter="this.src='assets/icons/profile_icon/Profile_gif.gif'"
+            onmouseleave="this.src='assets/icons/profile_icon/Profile_Idle.png'"
+          > Profile
+        </span>
       </div>
     </nav>
 
@@ -100,7 +159,7 @@
   </div>
 
   <script src="node_modules/chart.js/dist/chart.umd.js"></script>
-  <script src="src/js/api.js"></script>
+  <script src="src/js/utils.js"></script>
   <script src="src/js/dashboard.js"></script>
   <script src="src/js/journal.js"></script>
   <script src="src/js/goals.js"></script>
@@ -132,28 +191,21 @@
 
         currentPage = page
 
-        // Notification switch from png to gif
-        const notifIcon = document.getElementById('notif-nav-icon')
-        if (notifIcon) {
-          notifIcon.src = page === 'notifications'
-            ? 'assets/icons/bell_icon/Notification.gif'
-            : 'assets/icons/bell_icon/Notification_Idle.png'
-        }
-
-        // Dashboard switch from png to gif
-        const dashboardIcon = document.getElementById('dashboard-nav-icon')
-        if (dashboardIcon) {
-          dashboardIcon.src = page === 'dashboard'
-            ? 'assets/icons/dashboard_icon/Dashboard_gif.gif'
-            : 'assets/icons/dashboard_icon/Dashboard_Idle.png'
-        }
-
-        // Journal switch from png to gif
-        const journalIcon = document.getElementById('journal-nav-icon')
-        if (journalIcon) {
-          journalIcon.src = page === 'journal'
-            ? 'assets/icons/Journal_icon/Journal_gif.gif'
-            : 'assets/icons/Journal_icon/Journal_Idle.png'
+        // Sidebar icon switch (idle PNG ↔ animated GIF) for all pages
+        const navIcons = [
+          { id: 'notif-nav-icon',       page: 'notifications',   gif: 'assets/icons/bell_icon/Notification.gif',            idle: 'assets/icons/bell_icon/Notification_Idle.png' },
+          { id: 'dashboard-nav-icon',   page: 'dashboard',       gif: 'assets/icons/dashboard_icon/Dashboard_gif.gif',      idle: 'assets/icons/dashboard_icon/Dashboard_Idle.png' },
+          { id: 'journal-nav-icon',     page: 'journal',         gif: 'assets/icons/Journal_icon/Journal_gif.gif',          idle: 'assets/icons/Journal_icon/Journal_Idle.png' },
+          { id: 'goals-nav-icon',       page: 'goals',           gif: 'assets/icons/goals_icon/Goals_gif.gif',              idle: 'assets/icons/goals_icon/Goals_Idle.png' },
+          { id: 'checkmarked-nav-icon', page: 'checkmarked',     gif: 'assets/icons/checkmarked_icon/CheckMarked_gif.gif',  idle: 'assets/icons/checkmarked_icon/CheckMarked_Idle.png' },
+          { id: 'completed-nav-icon',   page: 'completed_goals', gif: 'assets/icons/completed_icon/Completed_gif.gif',      idle: 'assets/icons/completed_icon/Completed_Idle.png' },
+          { id: 'failed-nav-icon',      page: 'failed_goals',    gif: 'assets/icons/failed_icon/Failed_gif.gif',            idle: 'assets/icons/failed_icon/Failed_Idle.png' },
+          { id: 'companion-nav-icon',   page: 'ollama_journal',  gif: 'assets/icons/companion_icon/Companion_gif.gif',      idle: 'assets/icons/companion_icon/Companion_Idle.png' },
+          { id: 'profile-nav-icon',     page: 'profile',         gif: 'assets/icons/profile_icon/Profile_gif.gif',          idle: 'assets/icons/profile_icon/Profile_Idle.png' }
+        ]
+        for (const icon of navIcons) {
+          const el = document.getElementById(icon.id)
+          if (el) el.src = page === icon.page ? icon.gif : icon.idle
         }
 
         switch(page) {
@@ -190,7 +242,7 @@ ${err.stack?.substring(0, 500) || ''}</pre>
     // Expose globally IMMEDIATELY (before DOMContentLoaded) so sidebar onclicks work
     window.loadPage = loadPage
 
-    // IPC listener for cross-page events (ipcRenderer exposed from api.js)
+    // IPC listener for cross-page events (ipcRenderer exposed from preload.js)
     function refreshCurrentGoalPage() {
       const refreshers = {
         checkmarked: renderCheckmarks,
@@ -225,7 +277,7 @@ ${err.stack?.substring(0, 500) || ''}</pre>
       }, 120)
     })
 
-    // Load dashboard once DOM is ready — api.js already ran synchronously so window.api is set
+    // Load dashboard once DOM is ready — preload.js already exposed window.api
     document.addEventListener('DOMContentLoaded', () => {
       // Evaluate goals immediately on launch so failed/completed goals appear right away
       window.api.evaluateGoals().catch(err => console.error('Startup evaluateGoals error:', err))

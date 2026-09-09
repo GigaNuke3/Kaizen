@@ -111,14 +111,14 @@ function createGoalCard(goal, isCompleted = false) {
     <div class="goal-card-header">
       <div class="goal-card-title">
         <span class="goal-card-icon">${icon}</span>
-        <h4>${isCompleted ? '✓' : ''} ${title}</h4>
+        <h4>${isCompleted ? '✓' : ''} ${escapeHtml(title)}</h4>
       </div>
       <div class="goal-actions">
         <button class="icon-btn" onclick="editGoal(${id})" title="Edit">✏️</button>
         <button class="icon-btn" onclick="deleteGoalConfirm(${id})" title="Delete">🗑️</button>
       </div>
     </div>
-    ${label ? `<div class="goal-labels"><span class="goal-label-badge">${label}</span></div>` : ''}
+    ${label ? `<div class="goal-labels"><span class="goal-label-badge">${escapeHtml(label)}</span></div>` : ''}
     ${startDate && targetDate ? `<span class="goal-time">⏱️ Window: ${startStr} → ${targetStr}${timeInfo}</span>` : ''}
     ${isCompleted && completionStr ? `<span class="goal-completion">✓ Completed on ${completionStr}</span>` : ''}
   `
@@ -388,7 +388,7 @@ function displayCustomLabels() {
     const labelName = label[1]
     html += `
       <div style="display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 12px; border-radius: 6px; border-left: 3px solid #6ee7b7;">
-        <span style="color: #fff;">${labelName}</span>
+        <span style="color: #fff;">${escapeHtml(labelName)}</span>
         <button type="button" onclick="deleteCustomLabelFromModal(${labelId})" class="btn-delete" title="Delete">🗑️</button>
       </div>
     `
@@ -447,7 +447,7 @@ function openAddGoalModal() {
   updateLabelDropdown()
 
   // Enforce today as minimum — new goals cannot start in the past
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
   document.getElementById('goal-start-date').min = today
   document.getElementById('goal-date').min = today
 
@@ -573,7 +573,7 @@ async function saveGoal(event) {
 function deleteGoalConfirm(goalId) {
   const goal = allGoals.find(g => g[0] === goalId)
   if (!goal) return
-  if (confirm(`Delete goal "${goal[1]}"? This action cannot be undone.`)) {
+  if (confirm(`Delete goal "${goal[1]}"? This action cannot be undone. Journal entries linked to it will be kept.`)) {
     deleteGoal(goalId)
   }
 }

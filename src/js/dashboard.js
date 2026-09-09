@@ -261,7 +261,7 @@ async function renderContributionGrid() {
         cellsGrid.appendChild(paddingCell)
       } else {
         const isPast = date <= today
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = getLocalDateString(date)
         const count = contributionData[dateStr] || 0
         
         // Color mapping: fewer contributions = lighter, more = darker

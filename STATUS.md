@@ -51,7 +51,6 @@ Journal (written per goal, per day)
 - ✅ CheckMarked: each slot requires its own journal entry before check-in
 - ✅ CheckMarked: past slots permanently closed, checked slots cannot be undone
 - ✅ CheckMarked: goals stop rendering at their own target_date (hidden cells for layout alignment)
-- ✅ CheckMarked: auto-scrolls to today's column on load
 - ✅ Completed Goals: uses correct `cg-*` CSS classes from `completed_goals.css`
 - ✅ Failed Goals: shows failure rate (100 - progress%) not completion rate
 - ✅ Journal: entries saved with `goal_id` when triggered from CheckMarked flow
@@ -91,8 +90,9 @@ Journal (written per goal, per day)
 ├── index.html                     # App shell
 ├── package.json
 ├── src/
+│   ├── preload.js                 # contextBridge API exposed to renderer
 │   ├── js/
-│   │   ├── api.js                 # IPC wrapper
+│   │   ├── utils.js               # Shared helpers (dates, HTML escaping)
 │   │   ├── dashboard.js           # Dashboard
 │   │   ├── goals.js               # Goals + modal with date validation
 │   │   ├── checkmarked.js         # CheckMarked grid
@@ -106,7 +106,6 @@ Journal (written per goal, per day)
 │   │   └── ollama_journal.js      # Kai page renderer
 │   └── css/
 │       ├── style.css
-│       ├── layout.css
 │       ├── dashboard.css
 │       ├── goals.css
 │       ├── checkmarked.css
@@ -144,7 +143,7 @@ Journal (written per goal, per day)
 | Electron | v42.0.0 | Desktop framework |
 | sql.js | v1.14.1 | Pure JS SQLite |
 | Chart.js | v4.5.1 | Radar chart |
-| node-cron | v4.2.1 | Goal evaluation scheduling |
+| Node.js `setInterval` | — | Goal evaluation scheduling (every 60s) |
 | Ollama | llama3.2:latest | Local AI (Kai companion) |
 | Node.js | v22.x | Runtime |
 
@@ -155,7 +154,7 @@ Journal (written per goal, per day)
 - Single-user only — no authentication
 - Profile name/tagline stored in `localStorage` (survives DB reset)
 - No data export yet
-- node-cron only used for `evaluateGoals` interval — time-based reminders not yet wired
+- Goal evaluation runs on a `setInterval` loop — time-based reminders not yet wired
 - Ollama requires manual install and `ollama serve` to be running for Kai
 
 ---

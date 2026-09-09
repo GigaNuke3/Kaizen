@@ -258,7 +258,7 @@ function attachCGEvents(content) {
     if (deleteBtn) {
       const id = Number(deleteBtn.dataset.id)
       const title = deleteBtn.dataset.title
-      if (!confirm(`Permanently delete "${title}"?\n\nThis cannot be undone.`)) return
+      if (!confirm(`Permanently delete "${title}"?\n\nThis cannot be undone. Journal entries linked to it will be kept.`)) return
       try {
         await window.api.deleteGoal(id)
         renderCompletedGoals()

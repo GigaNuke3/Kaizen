@@ -42,7 +42,7 @@ async function renderNotifications() {
 
       html += `
         <div class="notification-item ${read ? 'read' : 'unread'}" data-id="${id}">
-          <p><strong>${type === 'completed' ? '✅' : '❌'}</strong> ${message}</p>
+          <p><strong>${type === 'completed' ? '✅' : '❌'}</strong> ${escapeHtml(message)}</p>
           <div class="timestamp">${createdAt}</div>
           ${!read ? `<button class="btn-small" onclick="markRead(${id})">Mark read</button>` : ''}
         </div>

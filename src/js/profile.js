@@ -139,12 +139,6 @@ async function renderProfile() {
   }
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
-}
-
 function syncProfileModalFields(user) {
   const nameInput = document.getElementById('profile-username')
   const taglineInput = document.getElementById('profile-tagline-input')

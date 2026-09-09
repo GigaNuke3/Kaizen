@@ -1,7 +1,7 @@
-const { app, BrowserWindow, Menu, ipcMain, Notification } = require('electron')
+const { app, BrowserWindow, Menu, ipcMain, Notification, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs')
-const { exec } = require('child_process')
+const { execFile } = require('child_process')
 const backend = require('./database/backend.js')
 
 let goalEvaluationInterval = null
@@ -70,8 +70,9 @@ async function createWindow() {
     title: 'Kaizen',
     icon: path.join(__dirname, 'assets/icons/desktop/kaizen_desktop_icon.png'),
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
+      preload: path.join(__dirname, 'src/preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
     }
   })
 
@@ -134,7 +135,7 @@ app.on('activate', () => {
 
 async function setupKaiFirstLaunch(win) {
   const settings = loadAppSettings()
-  if (settings.kaiModelReady) return
+  if (settings.kaiModelReady || settings.kaiModelPrompted) return
 
   // Cross-platform ollama paths
   const isWin = process.platform === 'win32'
@@ -162,7 +163,29 @@ async function setupKaiFirstLaunch(win) {
     return
   }
 
-  exec(`"${ollamaExe}" serve`, (err) => {
+  // Ask for consent before downloading a ~1.5GB model. Only prompt once.
+  saveAppSettings({ kaiModelPrompted: true })
+
+  let choice
+  try {
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'question',
+      buttons: ['Download now', 'Skip for now'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Kai AI Companion',
+      message: 'Download the Kai AI model?',
+      detail: 'Kai works completely offline through Ollama, but the model (~1.5GB) must be downloaded once. You can keep using Kaizen while it downloads, or skip this and download later from the Companion page.'
+    })
+    choice = response
+  } catch (err) {
+    console.error('Kai setup prompt error:', err)
+    return
+  }
+
+  if (choice !== 0) return
+
+  execFile(ollamaExe, ['serve'], (err) => {
     if (err) console.log('Ollama serve note:', err.message)
   })
 
@@ -175,7 +198,7 @@ async function setupKaiFirstLaunch(win) {
     }).show()
   }
 
-  const pull = exec(`"${ollamaExe}" pull llama3.2:latest`)
+  const pull = execFile(ollamaExe, ['pull', 'llama3.2:latest'])
 
   pull.on('close', (code) => {
     if (code === 0) {
@@ -187,6 +210,8 @@ async function setupKaiFirstLaunch(win) {
         }).show()
       }
       win?.webContents.send('kai-ready')
+    } else {
+      console.log('Ollama pull exited with code', code)
     }
   })
 }
@@ -195,7 +220,7 @@ async function setupKaiFirstLaunch(win) {
 
 ipcMain.handle('check-ollama-installed', () => {
   return new Promise((resolve) => {
-    exec('ollama --version', (error) => {
+    execFile('ollama', ['--version'], (error) => {
       resolve(!error) // true = installed, false = not installed
     })
   })
@@ -203,10 +228,19 @@ ipcMain.handle('check-ollama-installed', () => {
 
 ipcMain.handle('pull-ollama-model', (event, model = 'llama3.2:latest') => {
   return new Promise((resolve, reject) => {
-    const process = exec(`ollama pull ${model}`)
-    process.on('close', (code) => {
-      if (code === 0) resolve(true)
-      else reject(new Error(`Pull failed with code ${code}`))
+    // Validate model name — it goes straight into an execFile argv, never a shell
+    if (typeof model !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.:\/-]*$/.test(model)) {
+      reject(new Error('Invalid model name'))
+      return
+    }
+    const child = execFile('ollama', ['pull', model])
+    child.on('close', (code) => {
+      if (code === 0) {
+        saveAppSettings({ kaiModelReady: true })
+        resolve(true)
+      } else {
+        reject(new Error(`Pull failed with code ${code}`))
+      }
     })
   })
 })
@@ -237,7 +271,7 @@ ipcMain.handle('update-goal-progress', (event, id, progress) => backend.updateGo
 ipcMain.handle('complete-goal', (event, id) => backend.completeGoal(id))
 ipcMain.handle('force-complete-goal', (event, id) => backend.forceCompleteGoal(id))
 ipcMain.handle('delete-goal', (event, id) => backend.deleteGoal(id))
-ipcMain.handle('restore-goal', (event, id) => backend.restoreGoal(id))
+ipcMain.handle('restore-goal', (event, id, newTargetDate = null) => backend.restoreGoal(id, newTargetDate))
 
 // Goal Labels
 ipcMain.handle('get-all-labels', () => backend.getAllLabels())

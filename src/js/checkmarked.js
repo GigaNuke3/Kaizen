@@ -4,13 +4,6 @@
  * Past missed days show ❌, completed days show ✓, today is highlighted
  */
 
-function getLocalDateString(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
 function setPendingGoalCheck(goalId, date) {
   sessionStorage.setItem(PENDING_GOAL_CHECK_KEY, JSON.stringify({ goalId, date }))
 }
@@ -162,7 +155,7 @@ async function renderCheckmarks() {
             <span class="goal-icon">${goal.icon || '🎯'}</span>
           </div>
           <div style="display:flex;flex-direction:column;overflow:hidden;">
-            <span class="goal-name" title="${goal.title}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${goal.title}</span>
+            <span class="goal-name" title="${escapeHtml(goal.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(goal.title)}</span>
             ${timeLabel}
           </div>
         `
@@ -421,10 +414,10 @@ function createGoalInfoCard(goal) {
     <div class="goal-card-header">
       <div class="goal-card-title">
         <span class="goal-card-icon">${icon}</span>
-        <h4>${title}</h4>
+        <h4>${escapeHtml(title)}</h4>
       </div>
     </div>
-    ${description ? `<p class="goal-desc">${description}</p>` : ''}
+    ${description ? `<p class="goal-desc">${escapeHtml(description)}</p>` : ''}
     <div class="goal-card-meta">
       <span class="goal-card-frequency"><strong>${frequencyDisplay}</strong></span>
       ${startDate && targetDate ? `<span class="goal-card-target">⏱️ ${startStr} → ${targetStr}</span>` : ''}
@@ -470,7 +463,7 @@ function showJournalRequiredModal(goalId, date, errorMessage) {
   inner.innerHTML = `
     <div style="font-size:48px;margin-bottom:20px;"><img src="assets/icons/Journal_icon/Journal_gif.gif" style="width: 150px; height: 150px; image-rendering: pixelated; margin: 0;"></div>
     <h2 style="color:#6ee7b7;margin-bottom:15px;font-size:24px;">Journal Entry Required</h2>
-    <p style="color:#ccc;line-height:1.6;margin-bottom:12px;">${errorMessage}</p>
+    <p style="color:#ccc;line-height:1.6;margin-bottom:12px;">${escapeHtml(errorMessage)}</p>
     <p style="color:#888;font-size:14px;margin-bottom:30px;">
       Write a journal entry for <strong style="color:#6ee7b7;">${dateLabel}</strong>.
       After you save, this slot will be marked permanently.

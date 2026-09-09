@@ -3,6 +3,7 @@
   display: flex; 
   flex-direction: column; 
   gap: 30px; 
+  animation: cgFadeIn 0.5s ease;
 }
 
 .dash-header h2 { 
@@ -32,11 +33,13 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  transition: border-color 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
 }
 
 .stat-card:hover { 
   border-color: #6ee7b7; 
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
 }
 
 .stat-num {

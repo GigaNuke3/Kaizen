@@ -185,8 +185,8 @@ async function getContributionData(startDate = null, endDate = null) {
   const start = startDate ? new Date(startDate) : new Date(today)
   start.setFullYear(start.getFullYear() - 1)
 
-  const startDateStr = start.toISOString().split('T')[0]
-  const endDateStr = end.toISOString().split('T')[0]
+  const startDateStr = getLocalDateString(start)
+  const endDateStr = getLocalDateString(end)
 
   const goalResult = database.exec(`
     SELECT 
@@ -288,7 +288,7 @@ async function markNotificationRead(id) {
  */
 async function evaluateGoals() {
   const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
   let failedCount = 0
   let completedCount = 0
 
@@ -344,7 +344,7 @@ async function evaluateGoals() {
 
 async function addGoal(title, label = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) {
   const database = await getDB()
-  const start = startDate || new Date().toISOString().split('T')[0]
+  const start = startDate || getLocalDateString()
   database.run(
     'INSERT INTO goals (title, label, start_date, target_date, frequency, scheduled_days, time) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [title, label, start, targetDate, frequency, scheduledDays, time]
@@ -392,7 +392,7 @@ async function updateGoalProgress(id, progress) {
   const database = await getDB()
   
   if (progress >= 100) {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateString()
     database.run('UPDATE goals SET progress = 100, completed = 1, completion_date = ? WHERE id = ?', [today, id])
   } else {
     database.run('UPDATE goals SET progress = ?, completed = 0, completion_date = NULL WHERE id = ?', [progress, id])
@@ -404,7 +404,7 @@ async function updateGoalProgress(id, progress) {
 
 async function completeGoal(id) {
   const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
   
   // *** JOURNAL REQUIREMENT ***
   // Check if there is a journal entry for today with a non-empty time
@@ -424,7 +424,7 @@ async function completeGoal(id) {
 // ✅ forceCompleteGoal defined only once
 async function forceCompleteGoal(id) {
   const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
   database.run(
     'UPDATE goals SET completed = 1, failed = 0, progress = 100, completion_date = ? WHERE id = ?',
     [today, id]
@@ -437,7 +437,8 @@ async function deleteGoal(id) {
   const database = await getDB()
   // sql.js does not enforce FOREIGN KEY ... ON DELETE CASCADE (PRAGMA foreign_keys is never enabled),
   // so related rows must be cleaned up explicitly or they're orphaned permanently.
-  database.run('DELETE FROM journal WHERE goal_id = ?', [id])
+  // Journal entries are personal reflections — unlink them instead of deleting them.
+  database.run('UPDATE journal SET goal_id = NULL WHERE goal_id = ?', [id])
   database.run('DELETE FROM goal_completions WHERE goal_id = ?', [id])
   database.run('DELETE FROM notifications WHERE goal_id = ?', [id])
   database.run('DELETE FROM goals WHERE id = ?', [id])
@@ -445,8 +446,31 @@ async function deleteGoal(id) {
   return getAllGoals()
 }
 
-async function restoreGoal(id) {
+async function restoreGoal(id, newTargetDate = null) {
   const database = await getDB()
+  const today = getLocalDateString()
+
+  // If a deadline has already passed, the goal would instantly re-fail on the
+  // next evaluateGoals() pass. Allow the caller to provide a new target date,
+  // and as a safety net auto-extend expired failed goals by 7 days.
+  const goalResult = database.exec('SELECT target_date, failed FROM goals WHERE id = ?', [id])
+  if (goalResult.length > 0 && goalResult[0].values.length > 0) {
+    const [currentTarget, wasFailed] = goalResult[0].values[0]
+    if (newTargetDate) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(newTargetDate)) {
+        throw new Error('Invalid date format. Use YYYY-MM-DD.')
+      }
+      if (newTargetDate < today) {
+        throw new Error('New target date must be today or later.')
+      }
+      database.run('UPDATE goals SET target_date = ? WHERE id = ?', [newTargetDate, id])
+    } else if (currentTarget && currentTarget < today && wasFailed === 1) {
+      const extended = new Date()
+      extended.setDate(extended.getDate() + 7)
+      database.run('UPDATE goals SET target_date = ? WHERE id = ?', [getLocalDateString(extended), id])
+    }
+  }
+
   database.run(
     'UPDATE goals SET completed = 0, failed = 0, completion_date = NULL WHERE id = ?',
     [id]
@@ -701,17 +725,26 @@ async function recalculateGoalProgress(goalId) {
 }
 
 function isDayScheduled(dayOfWeek, frequency, scheduledDaysStr) {
+  const parseDays = (str, fallback) => {
+    try {
+      const parsed = str ? JSON.parse(str) : fallback
+      return Array.isArray(parsed) ? parsed : fallback
+    } catch {
+      return fallback
+    }
+  }
+
   switch (frequency) {
     case 'daily': return true
     case 'weekdays': return dayOfWeek >= 1 && dayOfWeek <= 5
     case 'weekends': return dayOfWeek === 0 || dayOfWeek === 6
     case '3x': {
-      const days = scheduledDaysStr ? JSON.parse(scheduledDaysStr) : [1, 3, 5]
+      const days = parseDays(scheduledDaysStr, [1, 3, 5])
       return days.includes(dayOfWeek)
     }
     case 'custom': {
       if (!scheduledDaysStr) return true
-      return JSON.parse(scheduledDaysStr).includes(dayOfWeek)
+      return parseDays(scheduledDaysStr, []).includes(dayOfWeek)
     }
     default: return true
   }
@@ -719,26 +752,45 @@ function isDayScheduled(dayOfWeek, frequency, scheduledDaysStr) {
 
 async function getTodayGoalStats() {
   const database = await getDB()
-  const today = new Date().toISOString().split('T')[0]
-  
-  const goalsResult = database.exec('SELECT id FROM goals WHERE completed = 0 AND failed = 0')
-  const goalIds = goalsResult.length > 0 ? goalsResult[0].values.map(row => row[0]) : []
-  
-  if (goalIds.length === 0) {
+  const today = getLocalDateString()
+  const now = new Date()
+
+  // Count only goals that actually have a slot today:
+  // active + within start/target window + scheduled for this weekday.
+  const goalsResult = database.exec(`
+    SELECT id, start_date, target_date, frequency, scheduled_days
+    FROM goals WHERE completed = 0 AND failed = 0
+  `)
+  const goals = goalsResult.length > 0 ? goalsResult[0].values : []
+
+  if (goals.length === 0) {
     return { completed: 0, scheduled: 0, percentage: 0 }
   }
-  
+
+  const scheduledIds = goals
+    .filter(row => {
+      const [id, startDate, targetDate, frequency, scheduledDays] = row
+      if (startDate && startDate > today) return false
+      if (targetDate && targetDate < today) return false
+      return isDayScheduled(now.getDay(), frequency, scheduledDays)
+    })
+    .map(row => row[0])
+
+  if (scheduledIds.length === 0) {
+    return { completed: 0, scheduled: 0, percentage: 0 }
+  }
+
   const completedResult = database.exec(
-    'SELECT COUNT(*) as count FROM goal_completions WHERE goal_id IN (' + 
-    goalIds.map(() => '?').join(',') + ') AND date = ? AND is_completed = 1',
-    [...goalIds, today]
+    'SELECT COUNT(*) as count FROM goal_completions WHERE goal_id IN (' +
+    scheduledIds.map(() => '?').join(',') + ') AND date = ? AND is_completed = 1',
+    [...scheduledIds, today]
   )
   const completed = completedResult.length > 0 ? completedResult[0].values[0][0] : 0
-  
+
   return {
     completed: completed,
-    scheduled: goalIds.length,
-    percentage: goalIds.length > 0 ? Math.round((completed / goalIds.length) * 100) : 0
+    scheduled: scheduledIds.length,
+    percentage: Math.round((completed / scheduledIds.length) * 100)
   }
 }
 
@@ -756,7 +808,7 @@ async function getDashboardStats() {
   const journalResult = database.exec('SELECT COUNT(*) as count FROM journal')
   const journalCount = journalResult.length > 0 ? journalResult[0].values[0][0] : 0
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
   const contributionResult = database.exec('SELECT COUNT(*) as count FROM goal_completions WHERE date = ? AND is_completed = 1', [today])
   const contributionCount = contributionResult.length > 0 ? contributionResult[0].values[0][0] : 0
 

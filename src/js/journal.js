@@ -3,13 +3,6 @@
  */
 let allJournalEntries = []
 
-function getLocalDateString(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
 function getPendingGoalCheck() {
   try {
     const raw = sessionStorage.getItem(PENDING_GOAL_CHECK_KEY)
@@ -109,18 +102,6 @@ async function renderJournal() {
     console.error('Journal render error:', err)
     content.innerHTML = '<div class="error">Failed to load journal</div>'
   }
-}
-
-/**
- * Simple escape to prevent XSS
- */
-function escapeHtml(str) {
-  return String(str).replace(/[&<>]/g, function (m) {
-    if (m === '&') return '&amp;'
-    if (m === '<') return '&lt;'
-    if (m === '>') return '&gt;'
-    return m
-  })
 }
 
 /**
