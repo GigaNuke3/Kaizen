@@ -39,6 +39,9 @@ async function renderProfile() {
       window.api.getSettings()
     ])
     user.notifications = settings.notifications
+    user.soundEnabled = settings.soundEnabled !== false
+    user.remindersEnabled = settings.remindersEnabled === true
+    user.reminderTime = settings.reminderTime || '20:00'
 
     const activeGoals = allGoals.filter(g => g[5] === 0 && g[6] === 0).length
     const completedGoals = allGoals.filter(g => g[5] === 1).length
@@ -117,9 +120,40 @@ async function renderProfile() {
                 <span>Desktop goal notifications</span>
               </label>
             </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="sound-enabled" ${user.soundEnabled ? 'checked' : ''}
+                  onchange="toggleSoundSetting(this.checked)">
+                <span>Navigation sounds</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="reminders-enabled" ${user.remindersEnabled ? 'checked' : ''}
+                  onchange="toggleRemindersSetting(this.checked)">
+                <span>Daily reminders</span>
+              </label>
+              <input type="time" id="reminder-time" value="${user.reminderTime}" ${user.remindersEnabled ? '' : 'disabled'}
+                onchange="updateReminderTime(this.value)"
+                style="background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:6px 8px;color:#fff;">
+            </div>
             <div class="setting-item setting-item--stacked">
               <button class="btn btn-secondary" onclick="clearAllData()">Clear All Data</button>
               <span class="setting-hint">Deletes all goals, journal entries, checkmarks, and habits. Profile name is kept.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>Data</h3>
+          <div class="settings-list">
+            <div class="setting-item setting-item--stacked">
+              <button class="btn btn-secondary" onclick="backupData()">⬇️ Back up now</button>
+              <span class="setting-hint">Exports all goals, check-ins, journal entries, badges data, and Kai chat to a JSON file.</span>
+            </div>
+            <div class="setting-item setting-item--stacked">
+              <button class="btn btn-secondary" onclick="restoreData()">⬆️ Restore from backup</button>
+              <span class="setting-hint">Replaces all current data with the selected backup file. This cannot be undone.</span>
             </div>
           </div>
         </div>
@@ -208,6 +242,51 @@ async function saveProfile(event) {
 
 async function toggleNotificationsSetting(enabled) {
   await window.api.setSettings({ notifications: enabled })
+  if (window.kaizenSettings) window.kaizenSettings.notifications = enabled
+}
+
+function toggleSoundSetting(enabled) {
+  window.api.setSettings({ soundEnabled: enabled })
+  if (window.kaizenSettings) window.kaizenSettings.soundEnabled = enabled
+}
+
+function toggleRemindersSetting(enabled) {
+  window.api.setSettings({ remindersEnabled: enabled })
+  if (window.kaizenSettings) window.kaizenSettings.remindersEnabled = enabled
+  const timeInput = document.getElementById('reminder-time')
+  if (timeInput) timeInput.disabled = !enabled
+}
+
+function updateReminderTime(value) {
+  window.api.setSettings({ reminderTime: value })
+  if (window.kaizenSettings) window.kaizenSettings.reminderTime = value
+}
+
+async function backupData() {
+  try {
+    const res = await window.api.exportData()
+    if (res && res.canceled) return
+    alert('Backup saved to:\n' + (res.filePath || 'unknown'))
+  } catch (err) {
+    console.error('Backup failed:', err)
+    alert('Backup failed: ' + err.message)
+  }
+}
+
+async function restoreData() {
+  if (!confirm('Restore from backup? This REPLACES all current data (goals, journal, check-ins, chat).')) return
+  if (!confirm('Last chance — current data will be permanently replaced by the backup.')) return
+  try {
+    const res = await window.api.importData()
+    if (res && res.canceled) return
+    alert('Data restored successfully.')
+    if (typeof loadPage === 'function') {
+      loadPage('dashboard')
+    }
+  } catch (err) {
+    console.error('Restore failed:', err)
+    alert('Restore failed: ' + err.message)
+  }
 }
 
 async function clearAllData() {

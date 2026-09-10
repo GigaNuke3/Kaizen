@@ -119,6 +119,13 @@ async function getDB() {
       read INTEGER DEFAULT 0,
       FOREIGN KEY(goal_id) REFERENCES goals(id) ON DELETE SET NULL
     );
+
+    CREATE TABLE IF NOT EXISTS kai_chat (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `)
 
   // Migration: add missing columns if they don't exist
@@ -152,6 +159,12 @@ async function getDB() {
   const journalColumns = db.exec("PRAGMA table_info(journal)")[0]?.values?.map(r => r[1]) || []
   if (!journalColumns.includes('goal_id')) {
     db.run("ALTER TABLE journal ADD COLUMN goal_id INTEGER REFERENCES goals(id) ON DELETE SET NULL")
+  }
+
+  // Goal completions migrations
+  const completionColumns = db.exec("PRAGMA table_info(goal_completions)")[0]?.values?.map(r => r[1]) || []
+  if (!completionColumns.includes('is_excused')) {
+    db.run("ALTER TABLE goal_completions ADD COLUMN is_excused INTEGER DEFAULT 0")
   }
 
   saveDB()
@@ -212,6 +225,122 @@ async function getContributionData(startDate = null, endDate = null) {
 }
 
 /**
+ * ==================== STREAK & WEEKLY SUMMARY ====================
+ */
+
+async function getStreakStats() {
+  const database = await getDB()
+  const result = database.exec(
+    'SELECT DISTINCT date FROM goal_completions WHERE is_completed = 1 ORDER BY date ASC'
+  )
+  const dates = result.length > 0 ? result[0].values.map(r => r[0]) : []
+  const dateSet = new Set(dates)
+
+  // Current streak: consecutive days ending today. If today has no check-in
+  // yet, the streak is still alive through yesterday.
+  let current = 0
+  const cursor = new Date()
+  cursor.setHours(0, 0, 0, 0)
+  if (!dateSet.has(getLocalDateString(cursor))) {
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  while (dateSet.has(getLocalDateString(cursor))) {
+    current++
+    cursor.setDate(cursor.getDate() - 1)
+  }
+
+  // Longest streak: longest run of consecutive dates.
+  let longest = 0
+  let run = 0
+  let prev = null
+  for (const d of dates) {
+    if (prev) {
+      const prevDate = new Date(prev + 'T12:00:00')
+      const curDate = new Date(d + 'T12:00:00')
+      const diff = Math.round((curDate - prevDate) / 86400000)
+      run = diff === 1 ? run + 1 : 1
+    } else {
+      run = 1
+    }
+    if (run > longest) longest = run
+    prev = d
+  }
+
+  return { current, longest }
+}
+
+async function getWeeklySummary() {
+  const database = await getDB()
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const dow = today.getDay()
+  const monday = new Date(today)
+  monday.setDate(monday.getDate() + (dow === 0 ? -6 : 1 - dow))
+  const sunday = new Date(monday)
+  sunday.setDate(sunday.getDate() + 6)
+  const mondayStr = getLocalDateString(monday)
+  const sundayStr = getLocalDateString(sunday)
+
+  const checkinsRes = database.exec(
+    'SELECT COUNT(*) FROM goal_completions WHERE is_completed = 1 AND date >= ? AND date <= ?',
+    [mondayStr, sundayStr]
+  )
+  const checkins = checkinsRes[0]?.values[0][0] || 0
+
+  const journalRes = database.exec(
+    'SELECT COUNT(*) FROM journal WHERE date >= ? AND date <= ?',
+    [mondayStr, sundayStr]
+  )
+  const journalEntries = journalRes[0]?.values[0][0] || 0
+
+  const moods = { sad: 0, neutral: 0, good: 0, happy: 0, excited: 0 }
+  const moodsRes = database.exec(
+    'SELECT mood, COUNT(*) FROM journal WHERE date >= ? AND date <= ? GROUP BY mood',
+    [mondayStr, sundayStr]
+  )
+  if (moodsRes.length > 0) {
+    for (const [mood, count] of moodsRes[0].values) {
+      if (moods[mood] !== undefined) moods[mood] = count
+    }
+  }
+
+  // Scheduled slots this week across every goal whose window overlaps this week
+  // (include completed goals — they still had required slots earlier in the week).
+  const goalsRes = database.exec(
+    'SELECT id, start_date, target_date, frequency, scheduled_days FROM goals'
+  )
+  const goals = goalsRes.length > 0 ? goalsRes[0].values : []
+  let scheduled = 0
+  for (const row of goals) {
+    const [, startDate, targetDate, frequency, scheduledDays] = row
+    for (let d = new Date(monday); d <= sunday; d.setDate(d.getDate() + 1)) {
+      const ds = getLocalDateString(d)
+      if (startDate && ds < startDate) continue
+      if (targetDate && ds > targetDate) continue
+      if (isDayScheduled(d.getDay(), frequency, scheduledDays)) scheduled++
+    }
+  }
+
+  let topMood = null
+  let topCount = 0
+  for (const [mood, count] of Object.entries(moods)) {
+    if (count > topCount) {
+      topCount = count
+      topMood = mood
+    }
+  }
+
+  return {
+    checkins,
+    journalEntries,
+    scheduled,
+    completionPct: scheduled > 0 ? Math.min(100, Math.round((checkins / scheduled) * 100)) : 0,
+    moods,
+    topMood: topCount > 0 ? topMood : null
+  }
+}
+
+/**
  * ==================== JOURNAL ====================
  */
 
@@ -245,6 +374,51 @@ async function getAllJournalEntries(limit = 50) {
   const database = await getDB()
   
   const result = database.exec('SELECT * FROM journal ORDER BY date DESC, created_at DESC LIMIT ?', [limit])
+  return result.length > 0 ? result[0].values : []
+}
+
+async function searchJournalEntries(query = '', mood = null, limit = 200) {
+  const database = await getDB()
+  let sql = 'SELECT * FROM journal WHERE 1=1'
+  const params = []
+  const q = query ? String(query).trim() : ''
+  if (q) {
+    sql += ' AND content LIKE ?'
+    params.push(`%${q}%`)
+  }
+  if (mood && mood !== 'all') {
+    sql += ' AND mood = ?'
+    params.push(mood)
+  }
+  sql += ' ORDER BY date DESC, created_at DESC LIMIT ?'
+  params.push(limit)
+  const result = database.exec(sql, params)
+  return result.length > 0 ? result[0].values : []
+}
+
+async function getMoodAnalytics(days = 90) {
+  const database = await getDB()
+  const start = new Date()
+  start.setDate(start.getDate() - (days - 1))
+  const startStr = getLocalDateString(start)
+  const result = database.exec(
+    'SELECT date, mood FROM journal WHERE date >= ? ORDER BY date ASC, created_at ASC',
+    [startStr]
+  )
+  const rows = result.length > 0 ? result[0].values : []
+  const distribution = { sad: 0, neutral: 0, good: 0, happy: 0, excited: 0 }
+  for (const [, mood] of rows) {
+    if (distribution[mood] !== undefined) distribution[mood]++
+  }
+  return { trend: rows, distribution }
+}
+
+async function getJournalEntriesBetween(startDate, endDate) {
+  const database = await getDB()
+  const result = database.exec(
+    'SELECT * FROM journal WHERE date >= ? AND date <= ? ORDER BY date ASC, created_at ASC',
+    [startDate, endDate]
+  )
   return result.length > 0 ? result[0].values : []
 }
 
@@ -284,6 +458,33 @@ async function markNotificationRead(id) {
 }
 
 /**
+ * ==================== KAI CHAT ====================
+ */
+
+async function getKaiChatHistory(limit = 100) {
+  const database = await getDB()
+  const result = database.exec(
+    'SELECT * FROM (SELECT * FROM kai_chat ORDER BY id DESC LIMIT ?) ORDER BY id ASC',
+    [limit]
+  )
+  return result.length > 0 ? result[0].values : []
+}
+
+async function addKaiChatMessage(role, content) {
+  const database = await getDB()
+  database.run('INSERT INTO kai_chat (role, content) VALUES (?, ?)', [role, content])
+  saveDB()
+  return true
+}
+
+async function clearKaiChatHistory() {
+  const database = await getDB()
+  database.run('DELETE FROM kai_chat')
+  saveDB()
+  return true
+}
+
+/**
  * ==================== GOAL EVALUATION (AUTO COMPLETE/FAIL) ====================
  */
 async function evaluateGoals() {
@@ -318,7 +519,8 @@ async function evaluateGoals() {
     }
   }
 
-  // Mark failed: target_date < today, progress < 100, not completed, not failed
+  // Mark failed: target_date < today, progress < 100, not completed, not failed.
+  // Goals whose scheduled days are all excused have no measurable days and are skipped.
   const failedResult = database.exec(`
     SELECT id, title FROM goals
     WHERE target_date < ? AND progress < 100 AND completed = 0 AND failed = 0
@@ -328,6 +530,8 @@ async function evaluateGoals() {
     for (const goal of failedResult[0].values) {
       const goalId = goal[0]
       const title  = goal[1]
+      const measurable = await getMeasurableDayCount(goalId)
+      if (measurable <= 0) continue
       database.run('UPDATE goals SET failed = 1 WHERE id = ?', [goalId])
       await addNotification(goalId, `Goal "${title}" has failed (deadline passed).`, 'failed')
       failedCount++
@@ -582,7 +786,7 @@ async function getGoalTrackingGrid() {
   })) : []
   
   if (goals.length === 0) {
-    return { goals: [], dates: [], completions: {} }
+    return { goals: [], dates: [], completions: {}, excused: {} }
   }
   
   let earliestStart = new Date()
@@ -609,7 +813,7 @@ async function getGoalTrackingGrid() {
   
   // Guard against empty dates array
   if (dates.length === 0) {
-    return { goals, dates: [], completions: {} }
+    return { goals, dates: [], completions: {}, excused: {} }
   }
   
   // Use range query instead of IN() to avoid SQLite's 999-parameter limit
@@ -624,11 +828,24 @@ async function getGoalTrackingGrid() {
       completions[key] = row[2]
     })
   }
-  
+
+  // Rest days: separate map so the UI can distinguish excused from missed.
+  const excusedResult = database.exec(
+    'SELECT goal_id, date, is_excused FROM goal_completions WHERE date >= ? AND date <= ? AND is_excused = 1',
+    [dates[0], dates[dates.length - 1]]
+  )
+  const excused = {}
+  if (excusedResult.length > 0) {
+    excusedResult[0].values.forEach(row => {
+      excused[`${row[0]}_${row[1]}`] = row[2]
+    })
+  }
+
   return {
     goals,
     dates,
-    completions
+    completions,
+    excused
   }
 }
 
@@ -643,13 +860,16 @@ async function toggleGoalCompletion(goalId, date) {
 
   // ── Rule 2: Slot cannot be unchecked once checked ─────────────────────────
   const existsResult = database.exec(
-    'SELECT id, is_completed FROM goal_completions WHERE goal_id = ? AND date = ?',
+    'SELECT id, is_completed, is_excused FROM goal_completions WHERE goal_id = ? AND date = ?',
     [goalId, date]
   )
   if (existsResult.length > 0 && existsResult[0].values.length > 0) {
-    const currentState = existsResult[0].values[0][1]
+    const [, currentState, isExcused] = existsResult[0].values[0]
     if (currentState === 1) {
       throw new Error('This slot has already been checked and cannot be undone.')
+    }
+    if (isExcused === 1) {
+      throw new Error('This day is marked as a rest day. Remove the rest day first.')
     }
   }
 
@@ -680,6 +900,107 @@ async function toggleGoalCompletion(goalId, date) {
   return true
 }
 
+async function toggleRestDay(goalId, date) {
+  const database = await getDB()
+  const today = getLocalDateString()
+
+  if (date > today) {
+    throw new Error('You cannot mark a future day as a rest day.')
+  }
+
+  const goalResult = database.exec('SELECT completed, failed FROM goals WHERE id = ?', [goalId])
+  if (!goalResult.length || !goalResult[0].values.length) {
+    throw new Error('Goal not found.')
+  }
+  const [completed, failed] = goalResult[0].values[0]
+  if (completed === 1 || failed === 1) {
+    throw new Error('Rest days can only be set for active goals.')
+  }
+
+  const existing = database.exec(
+    'SELECT id, is_completed, is_excused FROM goal_completions WHERE goal_id = ? AND date = ?',
+    [goalId, date]
+  )
+  if (existing.length > 0 && existing[0].values.length > 0) {
+    const [rowId, isCompleted, isExcused] = existing[0].values[0]
+    if (isCompleted === 1) {
+      throw new Error('This slot is already checked and cannot be changed.')
+    }
+    if (isExcused === 1) {
+      // Undo rest day — remove the row entirely since nothing else is stored.
+      database.run('DELETE FROM goal_completions WHERE id = ?', [rowId])
+    } else {
+      database.run('UPDATE goal_completions SET is_excused = 1 WHERE id = ?', [rowId])
+    }
+  } else {
+    database.run(
+      'INSERT INTO goal_completions (goal_id, date, is_completed, is_excused) VALUES (?, ?, 0, 1)',
+      [goalId, date]
+    )
+  }
+
+  saveDB()
+  await recalculateGoalProgress(goalId)
+  return true
+}
+
+async function getTodayOpenGoals() {
+  const database = await getDB()
+  const today = getLocalDateString()
+  const now = new Date()
+
+  const goalsResult = database.exec(
+    'SELECT id, title, time, start_date, target_date, frequency, scheduled_days FROM goals WHERE completed = 0 AND failed = 0'
+  )
+  const goals = goalsResult.length > 0 ? goalsResult[0].values : []
+  const open = []
+
+  for (const row of goals) {
+    const [id, title, time, startDate, targetDate, frequency, scheduledDays] = row
+    if (startDate && startDate > today) continue
+    if (targetDate && targetDate < today) continue
+    if (!isDayScheduled(now.getDay(), frequency, scheduledDays)) continue
+
+    const state = database.exec(
+      'SELECT is_completed, is_excused FROM goal_completions WHERE goal_id = ? AND date = ?',
+      [id, today]
+    )
+    const isCompleted = state.length > 0 && state[0].values.length > 0 && state[0].values[0][0] === 1
+    const isExcused = state.length > 0 && state[0].values.length > 0 && state[0].values[0][1] === 1
+    if (isCompleted || isExcused) continue
+
+    open.push({ id, title, time })
+  }
+
+  return open
+}
+
+async function getMeasurableDayCount(goalId) {
+  const database = await getDB()
+  const goalResult = database.exec(
+    'SELECT start_date, target_date, frequency, scheduled_days FROM goals WHERE id = ?',
+    [goalId]
+  )
+  if (!goalResult.length || !goalResult[0].values.length) return 0
+  const [startDate, targetDate, frequency, scheduledDays] = goalResult[0].values[0]
+  if (!startDate || !targetDate) return 0
+
+  const start = new Date(startDate + 'T00:00:00')
+  const end = new Date(targetDate + 'T00:00:00')
+  let scheduled = 0
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    if (isDayScheduled(d.getDay(), frequency, scheduledDays)) scheduled++
+  }
+  if (scheduled === 0) return 0
+
+  const excusedRes = database.exec(
+    'SELECT COUNT(*) FROM goal_completions WHERE goal_id = ? AND is_excused = 1 AND date >= ? AND date <= ?',
+    [goalId, startDate, targetDate]
+  )
+  const excused = excusedRes[0]?.values[0][0] || 0
+  return Math.max(0, scheduled - excused)
+}
+
 async function recalculateGoalProgress(goalId) {
   const database = await getDB()
 
@@ -692,11 +1013,8 @@ async function recalculateGoalProgress(goalId) {
   const [startDate, targetDate, frequency, scheduledDays] = goalResult[0].values[0]
   if (!startDate || !targetDate) return
 
-  const start = new Date(startDate)
-  const end = new Date(targetDate)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  end.setHours(0, 0, 0, 0)
+  const start = new Date(startDate + 'T00:00:00')
+  const end = new Date(targetDate + 'T00:00:00')
 
   let totalScheduledCount = 0
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -713,7 +1031,22 @@ async function recalculateGoalProgress(goalId) {
   )
   const completedCount = completedResult[0]?.values[0][0] || 0
 
-  const progress = Math.min(100, Math.round((completedCount / totalScheduledCount) * 100))
+  // Rest days are removed from the denominator — they don't count against progress.
+  const excusedResult = database.exec(
+    'SELECT COUNT(*) FROM goal_completions WHERE goal_id = ? AND is_excused = 1 AND date >= ? AND date <= ?',
+    [goalId, startDate, targetDate]
+  )
+  const excusedCount = excusedResult[0]?.values[0][0] || 0
+  const measurableCount = totalScheduledCount - excusedCount
+
+  if (measurableCount <= 0) {
+    // Every scheduled day is excused — nothing to measure, never auto-fail.
+    database.run('UPDATE goals SET progress = 0 WHERE id = ?', [goalId])
+    saveDB()
+    return
+  }
+
+  const progress = Math.min(100, Math.round((completedCount / measurableCount) * 100))
 
   // Just update progress. evaluateGoals() will handle marking completed/failed.
   database.run(
@@ -780,6 +1113,18 @@ async function getTodayGoalStats() {
     return { completed: 0, scheduled: 0, percentage: 0 }
   }
 
+  // Rest days don't count as required slots today.
+  const excusedResult = database.exec(
+    'SELECT COUNT(*) FROM goal_completions WHERE goal_id IN (' +
+    scheduledIds.map(() => '?').join(',') + ') AND date = ? AND is_excused = 1',
+    [...scheduledIds, today]
+  )
+  const excused = excusedResult.length > 0 ? excusedResult[0].values[0][0] : 0
+  const effectiveScheduled = scheduledIds.length - excused
+  if (effectiveScheduled <= 0) {
+    return { completed: 0, scheduled: 0, percentage: 0 }
+  }
+
   const completedResult = database.exec(
     'SELECT COUNT(*) as count FROM goal_completions WHERE goal_id IN (' +
     scheduledIds.map(() => '?').join(',') + ') AND date = ? AND is_completed = 1',
@@ -789,8 +1134,8 @@ async function getTodayGoalStats() {
 
   return {
     completed: completed,
-    scheduled: scheduledIds.length,
-    percentage: Math.round((completed / scheduledIds.length) * 100)
+    scheduled: effectiveScheduled,
+    percentage: Math.round((completed / effectiveScheduled) * 100)
   }
 }
 
@@ -819,6 +1164,157 @@ async function getDashboardStats() {
   }
 }
 
+/**
+ * ==================== ACHIEVEMENT BADGES ====================
+ */
+
+const BADGE_DEFS = [
+  { id: 'first-goal',           name: 'First Goal',        description: 'Create your first goal',             icon: '🎯', target: 1,   metric: 'goals' },
+  { id: 'first-checkin',        name: 'First Check-in',    description: 'Complete your first check-in',       icon: '✅', target: 1,   metric: 'checkins' },
+  { id: 'checkins-10',          name: 'Getting Consistent',description: 'Complete 10 check-ins',              icon: '🔟', target: 10,  metric: 'checkins' },
+  { id: 'checkins-50',          name: 'Habit Builder',     description: 'Complete 50 check-ins',              icon: '🏗️', target: 50,  metric: 'checkins' },
+  { id: 'checkins-100',         name: 'Kaizen Spirit',     description: 'Complete 100 check-ins',             icon: '💯', target: 100, metric: 'checkins' },
+  { id: 'streak-7',             name: '7-Day Warrior',     description: 'Achieve a 7-day streak',             icon: '🔥', target: 7,   metric: 'longest_streak' },
+  { id: 'streak-30',            name: 'Unstoppable',       description: 'Achieve a 30-day streak',            icon: '🚀', target: 30,  metric: 'longest_streak' },
+  { id: 'first-completed-goal', name: 'Goal Crusher',      description: 'Complete your first goal',           icon: '🏆', target: 1,   metric: 'completed_goals' },
+  { id: 'goals-5',              name: 'Goal Getter',       description: 'Complete 5 goals',                   icon: '🏅', target: 5,   metric: 'completed_goals' },
+  { id: 'journals-10',          name: 'Reflector',         description: 'Write 10 journal entries',           icon: '📓', target: 10,  metric: 'journals' },
+  { id: 'journals-25',          name: 'Deep Thinker',      description: 'Write 25 journal entries',           icon: '🧠', target: 25,  metric: 'journals' },
+  { id: 'perfect-week',         name: 'Perfect Week',      description: 'Check in on all 7 days of a week',   icon: '🌟', target: 1,   metric: 'perfect_weeks' }
+]
+
+async function getBadgeStats() {
+  const database = await getDB()
+
+  const goalsRes = database.exec('SELECT COUNT(*) FROM goals')
+  const goals = goalsRes[0]?.values[0][0] || 0
+
+  const checkinsRes = database.exec('SELECT COUNT(*) FROM goal_completions WHERE is_completed = 1')
+  const checkins = checkinsRes[0]?.values[0][0] || 0
+
+  const completedRes = database.exec('SELECT COUNT(*) FROM goals WHERE completed = 1')
+  const completedGoals = completedRes[0]?.values[0][0] || 0
+
+  const journalsRes = database.exec('SELECT COUNT(*) FROM journal')
+  const journals = journalsRes[0]?.values[0][0] || 0
+
+  const { longest } = await getStreakStats()
+
+  // Perfect weeks: any Mon-Sun week (last 12 months) with a check-in on all 7 days.
+  const start = new Date()
+  start.setFullYear(start.getFullYear() - 1)
+  const startStr = getLocalDateString(start)
+  const datesRes = database.exec(
+    'SELECT DISTINCT date FROM goal_completions WHERE is_completed = 1 AND date >= ?',
+    [startStr]
+  )
+  const dates = datesRes.length > 0 ? datesRes[0].values.map(r => r[0]) : []
+  const weekCounts = new Map()
+  for (const ds of dates) {
+    const d = new Date(ds + 'T12:00:00')
+    const dow = d.getDay()
+    const monday = new Date(d)
+    monday.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1))
+    const key = getLocalDateString(monday)
+    weekCounts.set(key, (weekCounts.get(key) || 0) + 1)
+  }
+  let perfectWeeks = 0
+  for (const count of weekCounts.values()) {
+    if (count === 7) perfectWeeks++
+  }
+
+  const metrics = {
+    goals,
+    checkins,
+    completed_goals: completedGoals,
+    journals,
+    longest_streak: longest,
+    perfect_weeks: perfectWeeks
+  }
+
+  return BADGE_DEFS.map(def => {
+    const value = metrics[def.metric] || 0
+    return {
+      ...def,
+      unlocked: value >= def.target,
+      progress: Math.min(value, def.target)
+    }
+  })
+}
+
+/**
+ * ==================== EXPORT / IMPORT ====================
+ */
+
+const EXPORT_TABLES = ['goal_labels', 'user_profile', 'goals', 'goal_completions', 'journal', 'notifications', 'kai_chat']
+const IMPORT_DELETE_ORDER = ['notifications', 'goal_completions', 'journal', 'kai_chat', 'goals', 'goal_labels', 'user_profile']
+
+function isSafeIdentifier(name) {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)
+}
+
+async function exportAllData(filePath) {
+  const database = await getDB()
+  const out = {
+    app: 'kaizen',
+    version: 1,
+    exported_at: new Date().toISOString(),
+    tables: {}
+  }
+  for (const table of EXPORT_TABLES) {
+    const colsRes = database.exec(`PRAGMA table_info(${table})`)
+    const columns = colsRes.length > 0 ? colsRes[0].values.map(r => r[1]) : []
+    const rowsRes = database.exec(`SELECT * FROM ${table}`)
+    const rows = rowsRes.length > 0 ? rowsRes[0].values : []
+    out.tables[table] = { columns, rows }
+  }
+  fs.writeFileSync(filePath, JSON.stringify(out, null, 2), 'utf8')
+  return { filePath, tables: EXPORT_TABLES }
+}
+
+async function importAllData(filePath) {
+  const raw = fs.readFileSync(filePath, 'utf8')
+  let data
+  try {
+    data = JSON.parse(raw)
+  } catch {
+    throw new Error('This file is not valid JSON.')
+  }
+  if (!data || data.app !== 'kaizen' || !data.tables || typeof data.tables !== 'object') {
+    throw new Error('Invalid Kaizen backup file.')
+  }
+  for (const table of EXPORT_TABLES) {
+    const t = data.tables[table]
+    if (!t || !Array.isArray(t.columns) || !Array.isArray(t.rows)) {
+      throw new Error(`Backup is missing table: ${table}`)
+    }
+    for (const col of t.columns) {
+      if (!isSafeIdentifier(col)) {
+        throw new Error(`Backup has an invalid column name in ${table}.`)
+      }
+    }
+  }
+
+  const database = await getDB()
+  for (const table of IMPORT_DELETE_ORDER) {
+    database.run(`DELETE FROM ${table}`)
+  }
+  for (const table of EXPORT_TABLES) {
+    const { columns, rows } = data.tables[table]
+    if (columns.length === 0) continue
+    const placeholders = columns.map(() => '?').join(', ')
+    const colList = columns.join(', ')
+    const stmt = `INSERT INTO ${table} (${colList}) VALUES (${placeholders})`
+    for (const row of rows) {
+      database.run(stmt, row)
+    }
+  }
+  saveDB()
+  await initializeDefaultLabels()
+  await evaluateGoals()
+  return true
+}
+
 async function resetAllData() {
   const database = await getDB()
   const tables = [
@@ -827,7 +1323,8 @@ async function resetAllData() {
     'goals',
     'journal',
     'goal_labels',
-    'user_profile'
+    'user_profile',
+    'kai_chat'
   ]
   for (const table of tables) {
     database.run(`DELETE FROM ${table}`)
@@ -843,6 +1340,8 @@ module.exports = {
   setDBPath,
   // Streak & Contributions
   getContributionData,
+  getStreakStats,
+  getWeeklySummary,
   // Journal
   getLocalDateString,
   hasJournalForDate,
@@ -850,11 +1349,18 @@ module.exports = {
   getTodayJournal,
   getJournalByDate,
   getAllJournalEntries,
+  searchJournalEntries,
+  getMoodAnalytics,
+  getJournalEntriesBetween,
   deleteJournalEntry,
   // Notifications
   addNotification,
   getNotifications,
   markNotificationRead,
+  // Kai Chat
+  getKaiChatHistory,
+  addKaiChatMessage,
+  clearKaiChatHistory,
   // Goal Evaluation
   evaluateGoals,
   // Goals
@@ -876,10 +1382,16 @@ module.exports = {
   // Goal Tracking Grid
   getGoalTrackingGrid,
   toggleGoalCompletion,
+  toggleRestDay,
   recalculateGoalProgress,
   isDayScheduled,
   getTodayGoalStats,
+  getTodayOpenGoals,
+  getMeasurableDayCount,
   // Stats
   getDashboardStats,
+  getBadgeStats,
+  exportAllData,
+  importAllData,
   resetAllData
 }

@@ -20,6 +20,12 @@ const api = {
   getContributionData: () =>
     ipcRenderer.invoke('get-contribution-data'),
 
+  getStreakStats: () =>
+    ipcRenderer.invoke('get-streak-stats'),
+
+  getWeeklySummary: () =>
+    ipcRenderer.invoke('get-weekly-summary'),
+
   // ==================== JOURNAL ====================
   addJournalEntry: (content, mood = 'neutral', time = null, date = null, goalId = null) =>
     ipcRenderer.invoke('add-journal-entry', content, mood, time, date, goalId),
@@ -36,8 +42,27 @@ const api = {
   getAllJournalEntries: (limit = 50) =>
     ipcRenderer.invoke('get-all-journal-entries', limit),
 
+  searchJournalEntries: (query = '', mood = null, limit = 200) =>
+    ipcRenderer.invoke('search-journal-entries', query, mood, limit),
+
+  getMoodAnalytics: (days = 90) =>
+    ipcRenderer.invoke('get-mood-analytics', days),
+
+  getJournalEntriesBetween: (startDate, endDate) =>
+    ipcRenderer.invoke('get-journal-entries-between', startDate, endDate),
+
   deleteJournalEntry: (id) =>
     ipcRenderer.invoke('delete-journal-entry', id),
+
+  // ==================== KAI CHAT ====================
+  getKaiChatHistory: (limit = 100) =>
+    ipcRenderer.invoke('get-kai-chat-history', limit),
+
+  addKaiChatMessage: (role, content) =>
+    ipcRenderer.invoke('add-kai-chat-message', role, content),
+
+  clearKaiChatHistory: () =>
+    ipcRenderer.invoke('clear-kai-chat-history'),
 
   // ==================== GOALS ====================
   addGoal: (title, label = '', targetDate = null, frequency = 'daily', scheduledDays = null, startDate = null, time = null) =>
@@ -87,12 +112,27 @@ const api = {
   toggleGoalCompletion: (goalId, date) =>
     ipcRenderer.invoke('toggle-goal-completion', goalId, date),
 
+  toggleRestDay: (goalId, date) =>
+    ipcRenderer.invoke('toggle-rest-day', goalId, date),
+
   getTodayGoalStats: () =>
     ipcRenderer.invoke('get-today-goal-stats'),
+
+  getTodayOpenGoals: () =>
+    ipcRenderer.invoke('get-today-open-goals'),
 
   // ==================== STATS ====================
   getDashboardStats: () =>
     ipcRenderer.invoke('get-dashboard-stats'),
+
+  getBadgeStats: () =>
+    ipcRenderer.invoke('get-badge-stats'),
+
+  exportData: () =>
+    ipcRenderer.invoke('export-data'),
+
+  importData: () =>
+    ipcRenderer.invoke('import-data'),
 
   resetAllData: () =>
     ipcRenderer.invoke('reset-all-data'),

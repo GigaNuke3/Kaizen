@@ -22,30 +22,18 @@ async function isOllamaRunning() {
 }
 
 /**
- * Send journal entry to Ollama and stream back Kai's response
- * @param {string} journalText - The journal content to respond to
+ * Stream a chat completion from Ollama.
+ * @param {Array<{role:string, content:string}>} messages
  * @param {function} onChunk - Callback fired on each streamed chunk (chunk, fullText)
  * @returns {string} - The complete response text
  */
-async function getJournalCompanionResponse(journalText, onChunk = null) {
-  const systemPrompt = `You are Kai, a warm and supportive self-improvement companion inside the Kaizen app.
-The user has just written a journal entry. Your job is to:
-- Acknowledge what they shared with empathy
-- Celebrate any wins or efforts, no matter how small
-- Gently encourage them if they're struggling
-- Keep it short: 2-3 sentences max
-- Never be preachy or lecture them
-- Speak like a caring friend, not a therapist`
-
+async function streamKaiChat(messages, onChunk = null) {
   const response = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: journalText }
-      ],
+      messages,
       stream: true
     })
   })
@@ -81,6 +69,28 @@ The user has just written a journal entry. Your job is to:
   }
 
   return fullText
+}
+
+/**
+ * Send journal entry to Ollama and stream back Kai's response
+ * @param {string} journalText - The journal content to respond to
+ * @param {function} onChunk - Callback fired on each streamed chunk (chunk, fullText)
+ * @returns {string} - The complete response text
+ */
+async function getJournalCompanionResponse(journalText, onChunk = null) {
+  const systemPrompt = `You are Kai, a warm and supportive self-improvement companion inside the Kaizen app.
+The user has just written a journal entry. Your job is to:
+- Acknowledge what they shared with empathy
+- Celebrate any wins or efforts, no matter how small
+- Gently encourage them if they're struggling
+- Keep it short: 2-3 sentences max
+- Never be preachy or lecture them
+- Speak like a caring friend, not a therapist`
+
+  return streamKaiChat([
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: journalText }
+  ], onChunk)
 }
 
 /**

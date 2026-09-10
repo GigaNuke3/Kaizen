@@ -1,0 +1,106 @@
+/* Achievement Badges page */
+
+.badges-container {
+  padding: 32px 0;
+}
+
+.badges-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.badges-header h2 {
+  margin: 0;
+  color: #6ee7b7;
+  font-size: 1.6rem;
+}
+
+.badges-count {
+  background: #1a2a1a;
+  border: 1px solid #6ee7b7;
+  color: #6ee7b7;
+  padding: 4px 14px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.badge-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 20px 16px;
+  text-align: center;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.badge-card:hover {
+  transform: translateY(-2px);
+}
+
+.badge-card.unlocked {
+  border-color: #6ee7b7;
+  box-shadow: 0 6px 24px rgba(110, 231, 183, 0.15);
+}
+
+.badge-card.locked {
+  opacity: 0.65;
+}
+
+.badge-icon {
+  font-size: 2.2rem;
+  margin-bottom: 10px;
+}
+
+.badge-name {
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.badge-desc {
+  color: #888;
+  font-size: 0.78rem;
+  margin-bottom: 12px;
+  min-height: 2.4em;
+}
+
+.badge-progress {
+  background: #222;
+  border-radius: 4px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.badge-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6ee7b7, #39d353);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.badge-card.locked .badge-progress-fill {
+  background: #555;
+}
+
+.badge-status {
+  font-size: 0.75rem;
+  color: #aaa;
+}
+
+.badge-card.unlocked .badge-status {
+  color: #6ee7b7;
+  font-weight: 600;
+}

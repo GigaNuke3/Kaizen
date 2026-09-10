@@ -95,3 +95,17 @@
   color: #000;
   border-color: #6ee7b7;
 }
+
+/* Journal tools (search + mood filter chips) */
+.journal-tools {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mood-chip.selected {
+  background: #6ee7b7 !important;
+  color: #000 !important;
+  border-color: #6ee7b7 !important;
+}

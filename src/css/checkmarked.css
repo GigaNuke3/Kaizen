@@ -174,7 +174,7 @@
   background: rgba(255, 70, 70, 0.12);
   border-color: #ff4646;
   color: #ff6b6b;
-  cursor: default !important;
+  cursor: pointer;
   font-size: 1.1rem;
 }
 
@@ -182,6 +182,21 @@
   background: rgba(255, 70, 70, 0.18);
   border-color: #ff6b6b;
   box-shadow: 0 0 6px rgba(255, 70, 70, 0.3);
+}
+
+/* ── Excused 🌴 (rest day) ───────────────────────────── */
+.grid-cell.excused {
+  background: rgba(110, 231, 183, 0.08);
+  border-color: #6ee7b7;
+  color: #a7f3d0;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.grid-cell.excused:hover {
+  background: rgba(110, 231, 183, 0.16);
+  border-color: #6ee7b7;
+  box-shadow: 0 0 6px rgba(110, 231, 183, 0.3);
 }
 
 /* ── Disabled (not scheduled / future / outside window) */

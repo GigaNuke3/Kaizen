@@ -7,9 +7,13 @@ async function renderDashboard() {
 
   try {
     // Fetch data
-    const stats        = await window.api.getDashboardStats()
-    const journalEntries = await window.api.getAllJournalEntries(3)
-    const todayStats   = await window.api.getTodayGoalStats()
+    const [stats, journalEntries, todayStats, streakStats, weeklySummary] = await Promise.all([
+      window.api.getDashboardStats(),
+      window.api.getAllJournalEntries(3),
+      window.api.getTodayGoalStats(),
+      window.api.getStreakStats(),
+      window.api.getWeeklySummary()
+    ])
 
     content.innerHTML = `
       <div class="dashboard">
@@ -31,6 +35,19 @@ async function renderDashboard() {
             <span class="stat-num">${stats.journal_entries || 0}</span>
             <span class="stat-label">Journal Entries</span>
           </div>
+          <div class="stat-card">
+            <span class="stat-num">${streakStats.current || 0}</span>
+            <span class="stat-label">Current Streak 🔥</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num">${streakStats.longest || 0}</span>
+            <span class="stat-label">Longest Streak 🏆</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>This Week</h3>
+          <div id="weekly-summary"></div>
         </div>
 
         <div class="section">
@@ -95,6 +112,33 @@ async function renderDashboard() {
           </div>
         `
       }
+    }
+
+    // Render weekly summary
+    const weeklyEl = document.getElementById('weekly-summary')
+    if (weeklyEl && weeklySummary) {
+      const MOOD_EMOJI = { sad: '😢', neutral: '😐', good: '🙂', happy: '😄', excited: '🚀' }
+      const topMood = weeklySummary.topMood ? (MOOD_EMOJI[weeklySummary.topMood] || '😐') : '—'
+      weeklyEl.innerHTML = `
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:110px;">
+            <span style="font-size:1.4rem;font-weight:700;color:#6ee7b7;">${weeklySummary.checkins || 0}</span>
+            <div style="color:#888;font-size:0.8rem;">Check-ins</div>
+          </div>
+          <div style="flex:1;min-width:110px;">
+            <span style="font-size:1.4rem;font-weight:700;color:#6ee7b7;">${weeklySummary.journalEntries || 0}</span>
+            <div style="color:#888;font-size:0.8rem;">Journal Entries</div>
+          </div>
+          <div style="flex:1;min-width:110px;">
+            <span style="font-size:1.4rem;font-weight:700;color:#6ee7b7;">${weeklySummary.completionPct || 0}%</span>
+            <div style="color:#888;font-size:0.8rem;">Goal Completion</div>
+          </div>
+          <div style="flex:1;min-width:110px;">
+            <span style="font-size:1.4rem;">${topMood}</span>
+            <div style="color:#888;font-size:0.8rem;">Top Mood</div>
+          </div>
+        </div>
+      `
     }
 
     // Render recent journal

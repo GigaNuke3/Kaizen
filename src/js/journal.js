@@ -2,6 +2,8 @@
  * Global journal variables
  */
 let allJournalEntries = []
+let journalSearchQuery = ''
+let journalFilterMood = null
 
 function getPendingGoalCheck() {
   try {
@@ -27,7 +29,11 @@ async function renderJournal() {
   }
 
   try {
-    allJournalEntries = await window.api.getAllJournalEntries(100)
+    const [analytics, entries] = await Promise.all([
+      window.api.getMoodAnalytics(90),
+      window.api.searchJournalEntries(journalSearchQuery, journalFilterMood, 200)
+    ])
+    allJournalEntries = entries
 
     const pending = getPendingGoalCheck()
     let bannerHtml = ''
@@ -45,35 +51,7 @@ async function renderJournal() {
       `
     }
 
-    let entriesHtml = ''
-    if (allJournalEntries.length > 0) {
-      entriesHtml = allJournalEntries.map(entry => {
-        const date = new Date(entry[2] + 'T12:00:00').toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })
-        const mood = getMoodEmoji(entry[4])
-        const timeStr = entry[3] ? ` · ${entry[3]}` : ''
-
-        return `
-          <div class="journal-entry" data-id="${entry[0]}">
-            <div class="entry-header">
-              <div class="entry-meta">
-                <span class="entry-mood">${mood}</span>
-                <span class="entry-date">${date}${timeStr}</span>
-              </div>
-              <button class="icon-btn" onclick="deleteJournalEntryConfirm(${entry[0]})" title="Delete">🗑️</button>
-            </div>
-            <div class="entry-content">
-              ${escapeHtml(entry[1])}
-            </div>
-            <div class="kai-companion-slot" id="kai-slot-${entry[0]}"></div>
-          </div>
-        `
-      }).join('')
-    }
+    const entriesHtml = journalEntriesHtml(allJournalEntries)
 
     content.innerHTML = `
       <div class="journal-container">
@@ -85,6 +63,22 @@ async function renderJournal() {
           <button class="btn btn-primary" onclick="openAddJournalModal()">+ New Entry</button>
         </div>
         ${bannerHtml}
+        <div class="journal-tools">
+          <input type="text" id="journal-search" placeholder="Search entries..." style="flex:1;min-width:180px;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px 12px;color:#fff;">
+          <div class="mood-filter" style="display:flex;gap:6px;flex-wrap:wrap;">
+            <span class="mood-chip ${journalFilterMood === null ? 'selected' : ''}" data-mood="" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">All</span>
+            <span class="mood-chip ${journalFilterMood === 'sad' ? 'selected' : ''}" data-mood="sad" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">😢</span>
+            <span class="mood-chip ${journalFilterMood === 'neutral' ? 'selected' : ''}" data-mood="neutral" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">😐</span>
+            <span class="mood-chip ${journalFilterMood === 'good' ? 'selected' : ''}" data-mood="good" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">🙂</span>
+            <span class="mood-chip ${journalFilterMood === 'happy' ? 'selected' : ''}" data-mood="happy" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">😄</span>
+            <span class="mood-chip ${journalFilterMood === 'excited' ? 'selected' : ''}" data-mood="excited" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">🚀</span>
+          </div>
+        </div>
+        <div class="section">
+          <h3>Mood Trends (90 days)</h3>
+          <div style="height:220px;"><canvas id="moodTrendChart"></canvas></div>
+          <div id="mood-distribution" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
+        </div>
         <div class="journal-entries" id="journal-entries">
           ${allJournalEntries.length === 0
             ? `<p class="empty-msg">No journal entries yet. Start your first reflection! 🌟</p>`
@@ -94,6 +88,8 @@ async function renderJournal() {
     `
 
     ensureJournalModalExists()
+    renderMoodAnalytics(analytics)
+    bindJournalSearch()
 
     if (pending && !document.getElementById('journal-modal')?.classList.contains('active')) {
       openAddJournalModal(pending.date)
@@ -306,4 +302,153 @@ function getMoodEmoji(mood) {
     excited: '🚀'
   }
   return moods[mood] || '😐'
+}
+
+/**
+ * Build HTML for a list of journal entries.
+ */
+function journalEntriesHtml(entries) {
+  if (!entries || entries.length === 0) return ''
+  return entries.map(entry => {
+    const date = new Date(entry[2] + 'T12:00:00').toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+    const mood = getMoodEmoji(entry[4])
+    const timeStr = entry[3] ? ` · ${entry[3]}` : ''
+
+    return `
+      <div class="journal-entry" data-id="${entry[0]}">
+        <div class="entry-header">
+          <div class="entry-meta">
+            <span class="entry-mood">${mood}</span>
+            <span class="entry-date">${date}${timeStr}</span>
+          </div>
+          <button class="icon-btn" onclick="deleteJournalEntryConfirm(${entry[0]})" title="Delete">🗑️</button>
+        </div>
+        <div class="entry-content">
+          ${escapeHtml(entry[1])}
+        </div>
+        <div class="kai-companion-slot" id="kai-slot-${entry[0]}"></div>
+      </div>
+    `
+  }).join('')
+}
+
+/**
+ * Re-fetch and re-render just the entry list (keeps search input focused).
+ */
+async function refreshJournalEntries() {
+  const container = document.getElementById('journal-entries')
+  if (!container) return
+  const entries = await window.api.searchJournalEntries(journalSearchQuery, journalFilterMood, 200)
+  allJournalEntries = entries
+  container.innerHTML = entries.length === 0
+    ? '<p class="empty-msg">No journal entries match. Try a different search.</p>'
+    : journalEntriesHtml(entries)
+}
+
+/**
+ * Bind search input and mood filter chips.
+ */
+function bindJournalSearch() {
+  const input = document.getElementById('journal-search')
+  if (!input) return
+  input.value = journalSearchQuery
+  let debounce
+  input.addEventListener('input', () => {
+    journalSearchQuery = input.value
+    clearTimeout(debounce)
+    debounce = setTimeout(refreshJournalEntries, 200)
+  })
+
+  document.querySelectorAll('.mood-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const mood = chip.dataset.mood
+      journalFilterMood = mood === '' ? null : mood
+      document.querySelectorAll('.mood-chip').forEach(c => {
+        const active = c.dataset.mood === mood
+        c.classList.toggle('selected', active)
+        c.style.background = active ? '#6ee7b7' : 'transparent'
+        c.style.color = active ? '#000' : '#ccc'
+        c.style.borderColor = active ? '#6ee7b7' : '#444'
+      })
+      refreshJournalEntries()
+    })
+  })
+}
+
+/**
+ * Render the mood trend chart and distribution chips.
+ */
+function renderMoodAnalytics(analytics) {
+  const distEl = document.getElementById('mood-distribution')
+  if (distEl && analytics.distribution) {
+    const moods = [
+      { key: 'sad', emoji: '😢' },
+      { key: 'neutral', emoji: '😐' },
+      { key: 'good', emoji: '🙂' },
+      { key: 'happy', emoji: '😄' },
+      { key: 'excited', emoji: '🚀' }
+    ]
+    distEl.innerHTML = moods.map(m =>
+      `<span style="background:#1a1a1a;border:1px solid #444;border-radius:16px;padding:4px 12px;font-size:0.8rem;color:#ccc;">${m.emoji} ${analytics.distribution[m.key] || 0}</span>`
+    ).join('')
+  }
+
+  const canvas = document.getElementById('moodTrendChart')
+  if (!canvas) return
+  const trend = analytics.trend || []
+  if (trend.length === 0) {
+    canvas.parentElement.innerHTML = '<p class="empty-msg">No mood data yet. Write a journal entry to see trends!</p>'
+    return
+  }
+
+  if (window.moodTrendChartInstance) {
+    window.moodTrendChartInstance.destroy()
+  }
+
+  const moodScale = { sad: 1, neutral: 2, good: 3, happy: 4, excited: 5 }
+  const labels = trend.map(([date]) => date.slice(5))
+  const data = trend.map(([, mood]) => moodScale[mood] || 2)
+
+  window.moodTrendChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Mood',
+        data,
+        borderColor: '#6ee7b7',
+        backgroundColor: 'rgba(110, 231, 183, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+        pointBackgroundColor: '#6ee7b7'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          min: 1,
+          max: 5,
+          ticks: {
+            stepSize: 1,
+            color: '#666',
+            callback: v => ['', '😢', '😐', '🙂', '😄', '🚀'][v] || ''
+          },
+          grid: { color: 'rgba(255,255,255,0.08)' }
+        },
+        x: {
+          ticks: { color: '#666', maxTicksLimit: 12 },
+          grid: { display: false }
+        }
+      }
+    }
+  })
 }

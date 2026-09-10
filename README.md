@@ -58,8 +58,41 @@ Your personal self-improvement companion built with Electron. Track goals, journ
 ### 👤 Profile
 - Edit name and tagline
 - View stats: active goals, completed goals, journal entries, today's actions
-- Toggle desktop notifications on/off
+- Toggle desktop notifications, navigation sounds, and daily reminders on/off
+- Back up or restore all app data as JSON
 - Clear all app data (irreversible)
+
+### 🔥 Streaks & Weekly Summary
+- Current streak and all-time longest streak on the Dashboard
+- This Week card: check-ins, journal entries, goal completion %, top mood
+
+### 📊 Mood Analytics & Journal Search
+- Mood trend chart (last 90 days) and mood distribution on the Journal page
+- Search journal entries by text and filter by mood
+
+### 🏅 Achievement Badges
+- 12 badges: first goal, check-in milestones, streaks, completed goals, journaling, perfect week
+- Dedicated Badges page showing locked/unlocked progress
+
+### 🌴 Rest Days
+- Mark any past missed or today's scheduled slot as a rest day (reversible)
+- Excused days are removed from goal progress — missed days no longer permanently sink a goal
+
+### 💾 Backup & Restore
+- Export all data (goals, check-ins, journal, labels, notifications, Kai chat) to a JSON file
+- Restore from a backup file — replaces current data after confirmation
+
+### ⏰ Daily Reminders
+- Optional daily summary reminder at a time you choose
+- Per-goal reminder at each goal's own time window
+
+### 🤖 Kai Chat
+- Persistent multi-turn chat with Kai on the Companion page
+- Weekly Insight button — Kai summarizes your last 7 days of journal + stats
+
+### 🔊 Navigation Sounds
+- Synthesized page-click sounds (bell, digital, arrow, pencil, trophy, fail, book, robot) via Web Audio — no audio files needed
+- Toggleable in Profile settings
 
 ---
 
@@ -230,12 +263,8 @@ The renderer runs with `contextIsolation: true` and `nodeIntegration: false`; al
 
 ## 📈 Planned Future Features
 
-- 🔔 Time-based reminders via node-cron
-- 📊 Advanced analytics: streak tracking, weekly summaries
-- 🎖️ Achievement badges
-- 📤 Data export (JSON / CSV)
 - 🎨 Multiple theme options
-- 🗂️ Database backup and restore UI
+- 📱 Mobile companion app
 
 ---
 
@@ -249,5 +278,5 @@ Built on the philosophy of **Kaizen** (改善) — continuous improvement throug
 
 ---
 
-*Last Updated: June 16, 2026*
-*Version: 1.0.0*
+*Last Updated: September 10, 2026*
+*Version: 1.1.0*

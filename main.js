@@ -13,7 +13,7 @@ function settingsFilePath() {
 
 function loadAppSettings() {
   if (settingsCache) return settingsCache
-  const defaults = { notifications: true }
+  const defaults = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00' }
   try {
     const file = settingsFilePath()
     if (fs.existsSync(file)) {
@@ -104,6 +104,7 @@ async function createWindow() {
         const focused = BrowserWindow.getFocusedWindow() || win
         focused?.webContents.send('goals-updated', result)
       }
+      await runReminderCheck(win).catch(err => console.error('Reminder check error:', err))
     } catch (err) {
       console.error('Goal evaluation error:', err)
     }
@@ -132,6 +133,52 @@ app.on('activate', () => {
     createWindow()
   }
 })
+
+// In-memory per-date sent keys so reminders never double-fire within a day.
+const reminderSentKeys = new Set()
+
+function reminderHM() {
+  const n = new Date()
+  return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`
+}
+
+async function runReminderCheck(win) {
+  const settings = loadAppSettings()
+  if (!settings.remindersEnabled) return
+  if (!Notification.isSupported()) return
+
+  const today = backend.getLocalDateString()
+  const hm = reminderHM()
+
+  // Daily summary at the user's chosen time.
+  if (settings.reminderTime && hm === settings.reminderTime) {
+    const key = `summary_${today}`
+    if (!reminderSentKeys.has(key)) {
+      reminderSentKeys.add(key)
+      const open = await backend.getTodayOpenGoals()
+      if (open.length > 0) {
+        const names = open.slice(0, 3).map(g => g.title).join(', ') + (open.length > 3 ? ` +${open.length - 3} more` : '')
+        new Notification({
+          title: '⏰ Kaizen Reminder',
+          body: `${open.length} goal(s) still open today: ${names}`
+        }).show()
+      }
+    }
+  }
+
+  // Per-goal reminder at each goal's own time window.
+  const open = await backend.getTodayOpenGoals()
+  for (const g of open) {
+    if (!g.time || g.time !== hm) continue
+    const key = `goal_${g.id}_${today}`
+    if (reminderSentKeys.has(key)) continue
+    reminderSentKeys.add(key)
+    new Notification({
+      title: `🎯 ${g.title}`,
+      body: `Time to check in: ${g.title}`
+    }).show()
+  }
+}
 
 async function setupKaiFirstLaunch(win) {
   const settings = loadAppSettings()
@@ -251,6 +298,8 @@ ipcMain.handle('pull-ollama-model', (event, model = 'llama3.2:latest') => {
 
 // Contributions
 ipcMain.handle('get-contribution-data', () => backend.getContributionData())
+ipcMain.handle('get-streak-stats', () => backend.getStreakStats())
+ipcMain.handle('get-weekly-summary', () => backend.getWeeklySummary())
 
 // Journal
 ipcMain.handle('add-journal-entry', (event, content, mood, time, date, goalId) => backend.addJournalEntry(content, mood, time, date, goalId))
@@ -258,7 +307,15 @@ ipcMain.handle('has-journal-for-date', (event, date, goalId) => backend.hasJourn
 ipcMain.handle('get-today-journal', () => backend.getTodayJournal())
 ipcMain.handle('get-journal-by-date', (event, date) => backend.getJournalByDate(date))
 ipcMain.handle('get-all-journal-entries', (event, limit) => backend.getAllJournalEntries(limit))
+ipcMain.handle('search-journal-entries', (event, query, mood, limit) => backend.searchJournalEntries(query, mood, limit))
+ipcMain.handle('get-mood-analytics', (event, days) => backend.getMoodAnalytics(days))
+ipcMain.handle('get-journal-entries-between', (event, start, end) => backend.getJournalEntriesBetween(start, end))
 ipcMain.handle('delete-journal-entry', (event, id) => backend.deleteJournalEntry(id))
+
+// Kai Chat
+ipcMain.handle('get-kai-chat-history', (event, limit) => backend.getKaiChatHistory(limit))
+ipcMain.handle('add-kai-chat-message', (event, role, content) => backend.addKaiChatMessage(role, content))
+ipcMain.handle('clear-kai-chat-history', () => backend.clearKaiChatHistory())
 
 // Goals
 ipcMain.handle('add-goal', (event, title, description, targetDate, frequency, scheduledDays, startDate, time) => 
@@ -282,7 +339,9 @@ ipcMain.handle('get-top-labels', (event, limit = 5) => backend.getTopLabels(limi
 // Goal Tracking Grid
 ipcMain.handle('get-goal-tracking-grid', () => backend.getGoalTrackingGrid())
 ipcMain.handle('toggle-goal-completion', (event, goalId, date) => backend.toggleGoalCompletion(goalId, date))
+ipcMain.handle('toggle-rest-day', (event, goalId, date) => backend.toggleRestDay(goalId, date))
 ipcMain.handle('get-today-goal-stats', () => backend.getTodayGoalStats())
+ipcMain.handle('get-today-open-goals', () => backend.getTodayOpenGoals())
 
 // Notifications
 ipcMain.handle('get-notifications', (event, unreadOnly) => backend.getNotifications(unreadOnly))
@@ -291,15 +350,52 @@ ipcMain.handle('evaluate-goals', () => backend.evaluateGoals())
 
 // Stats
 ipcMain.handle('get-dashboard-stats', () => backend.getDashboardStats())
+ipcMain.handle('get-badge-stats', () => backend.getBadgeStats())
 ipcMain.handle('reset-all-data', () => backend.resetAllData())
+
+// Export / Import (backup & restore)
+ipcMain.handle('export-data', async () => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Back up Kaizen data',
+    defaultPath: `kaizen-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    filters: [{ name: 'JSON', extensions: ['json'] }]
+  })
+  if (canceled || !filePath) return { canceled: true }
+  const result = await backend.exportAllData(filePath)
+  return { canceled: false, ...result }
+})
+
+ipcMain.handle('import-data', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Restore Kaizen data',
+    properties: ['openFile'],
+    filters: [{ name: 'JSON', extensions: ['json'] }]
+  })
+  if (canceled || !filePaths || filePaths.length === 0) return { canceled: true }
+  await backend.importAllData(filePaths[0])
+  return { canceled: false, success: true }
+})
+
 ipcMain.handle('get-settings', () => {
-  const { notifications } = loadAppSettings()
-  return { notifications }
+  const s = loadAppSettings()
+  return {
+    notifications: s.notifications,
+    soundEnabled: s.soundEnabled,
+    remindersEnabled: s.remindersEnabled,
+    reminderTime: s.reminderTime
+  }
 })
 ipcMain.handle('set-settings', (_event, settings) => {
-  if (settings.notifications !== undefined) {
-    saveAppSettings({ notifications: settings.notifications })
+  const patch = {}
+  if (typeof settings.notifications === 'boolean') patch.notifications = settings.notifications
+  if (typeof settings.soundEnabled === 'boolean') patch.soundEnabled = settings.soundEnabled
+  if (typeof settings.remindersEnabled === 'boolean') patch.remindersEnabled = settings.remindersEnabled
+  if (typeof settings.reminderTime === 'string') patch.reminderTime = settings.reminderTime
+  const s = saveAppSettings(patch)
+  return {
+    notifications: s.notifications,
+    soundEnabled: s.soundEnabled,
+    remindersEnabled: s.remindersEnabled,
+    reminderTime: s.reminderTime
   }
-  const { notifications } = loadAppSettings()
-  return { notifications }
 })

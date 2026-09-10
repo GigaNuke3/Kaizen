@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="src/css/profile.css">
   <link rel="stylesheet" href="src/css/goals.css">
   <link rel="stylesheet" href="src/css/failed_goals.css">
+  <link rel="stylesheet" href="src/css/badges.css">
   <link rel="stylesheet" href="src/css/notification.css">
   <link rel="stylesheet" href="src/css/completed_goals.css">
 </head>
@@ -107,6 +108,19 @@
             > Failed Goals
           </span>
         </li>
+        <li data-page="badges" onclick="loadPage('badges')">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <img
+              src="assets/icons/badges_icon/Badges_Idle.png"
+              id="badges-nav-icon"
+              alt="Badges"
+              class="nav-icon"
+              style="width: 50px; height: 50px; image-rendering: pixelated; margin: 0;"
+              onmouseenter="this.src='assets/icons/badges_icon/Badges_gif.gif'"
+              onmouseleave="this.src='assets/icons/badges_icon/Badges_Idle.png'"
+            > Badges
+          </span>
+        </li>
         <li data-page="journal" onclick="loadPage('journal')">
           <span style="display: flex; align-items: center; gap: 8px;">
             <img
@@ -160,12 +174,14 @@
 
   <script src="node_modules/chart.js/dist/chart.umd.js"></script>
   <script src="src/js/utils.js"></script>
+  <script src="src/js/sounds.js"></script>
   <script src="src/js/dashboard.js"></script>
   <script src="src/js/journal.js"></script>
   <script src="src/js/goals.js"></script>
   <script src="src/js/checkmarked.js"></script>
   <script src="src/js/completed_goals.js"></script>
   <script src="src/js/failed_goals.js"></script>
+  <script src="src/js/badges.js"></script>
   <script src="src/js/notification.js"></script>
   <script src="src/js/profile.js"></script>
   <script src="src/js/sidebar-badges.js"></script>
@@ -191,6 +207,13 @@
 
         currentPage = page
 
+        // Navigation sound (respects the profile sound toggle)
+        try {
+          playNavSound(page)
+        } catch (soundErr) {
+          console.error('Nav sound error:', soundErr)
+        }
+
         // Sidebar icon switch (idle PNG ↔ animated GIF) for all pages
         const navIcons = [
           { id: 'notif-nav-icon',       page: 'notifications',   gif: 'assets/icons/bell_icon/Notification.gif',            idle: 'assets/icons/bell_icon/Notification_Idle.png' },
@@ -200,6 +223,7 @@
           { id: 'checkmarked-nav-icon', page: 'checkmarked',     gif: 'assets/icons/checkmarked_icon/CheckMarked_gif.gif',  idle: 'assets/icons/checkmarked_icon/CheckMarked_Idle.png' },
           { id: 'completed-nav-icon',   page: 'completed_goals', gif: 'assets/icons/completed_icon/Completed_gif.gif',      idle: 'assets/icons/completed_icon/Completed_Idle.png' },
           { id: 'failed-nav-icon',      page: 'failed_goals',    gif: 'assets/icons/failed_icon/Failed_gif.gif',            idle: 'assets/icons/failed_icon/Failed_Idle.png' },
+          { id: 'badges-nav-icon',      page: 'badges',          gif: 'assets/icons/badges_icon/Badges_gif.gif',            idle: 'assets/icons/badges_icon/Badges_Idle.png' },
           { id: 'companion-nav-icon',   page: 'ollama_journal',  gif: 'assets/icons/companion_icon/Companion_gif.gif',      idle: 'assets/icons/companion_icon/Companion_Idle.png' },
           { id: 'profile-nav-icon',     page: 'profile',         gif: 'assets/icons/profile_icon/Profile_gif.gif',          idle: 'assets/icons/profile_icon/Profile_Idle.png' }
         ]
@@ -213,6 +237,7 @@
           case 'journal':       await renderJournal(); sidebarBadges?.updateJournalBadge(); break
           case 'goals':         await renderGoals(); sidebarBadges?.updateGoalsBadge(); break
           case 'failed_goals':  await renderFailedGoals(); sidebarBadges?.updateFailedBadge(); break
+          case 'badges':        await renderBadges(); break
           case 'notifications': await renderNotifications(); sidebarBadges?.updateNotificationsBadge(); break
           case 'checkmarked':   await renderCheckmarks(); sidebarBadges?.updateCheckmarkedBadge(); break
           case 'completed_goals': await renderCompletedGoals(); sidebarBadges?.updateCompletedBadge(); break
@@ -278,7 +303,14 @@ ${err.stack?.substring(0, 500) || ''}</pre>
     })
 
     // Load dashboard once DOM is ready — preload.js already exposed window.api
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Load settings first so sounds and toggles have the right defaults
+      try {
+        window.kaizenSettings = await window.api.getSettings()
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+        window.kaizenSettings = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00' }
+      }
       // Evaluate goals immediately on launch so failed/completed goals appear right away
       window.api.evaluateGoals().catch(err => console.error('Startup evaluateGoals error:', err))
       loadPage('dashboard')

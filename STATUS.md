@@ -1,8 +1,8 @@
 # 改善 Kaizen — Project Status
 
-**Last Updated:** June 16, 2026
-**Version:** 1.0.0
-**Status:** 🔧 ACTIVE DEVELOPMENT — Core mechanics fixed, pending test run
+**Last Updated:** September 10, 2026
+**Version:** 1.1.0
+**Status:** ✅ v1.1 FEATURE WAVE COMPLETE — streaks, mood analytics, badges, backup/restore, reminders, Kai chat, rest days, sounds
 
 ---
 
@@ -133,6 +133,18 @@ Journal (written per goal, per day)
 | `journal` | `id, content, date, time, mood, goal_id` | `goal_id` added via migration |
 | `notifications` | `id, goal_id, message, type, created_at, read` | type = 'completed' or 'failed' |
 | `user_profile` | `id, name, tagline` | Single row |
+| `kai_chat` | `id, role, content, created_at` | Kai companion chat history |
+
+### v1.1 Additions (September 10, 2026)
+
+- ✅ Dashboard: current/longest streak cards + This Week summary
+- ✅ Journal: mood trend chart, mood distribution, search + mood filter
+- ✅ Badges page: 12 achievement badges with progress
+- ✅ Rest days: excused past/today slots excluded from progress denominator
+- ✅ Backup/restore: JSON export/import via native dialogs in Profile
+- ✅ Reminders: daily summary time + per-goal time notifications (app running only)
+- ✅ Kai chat: persistent multi-turn chat + weekly insight generation
+- ✅ Navigation sounds: Web Audio synthesis with Profile mute toggle
 
 ---
 
@@ -152,9 +164,9 @@ Journal (written per goal, per day)
 ## ⚠️ Known Limitations
 
 - Single-user only — no authentication
-- Profile name/tagline stored in `localStorage` (survives DB reset)
-- No data export yet
-- Goal evaluation runs on a `setInterval` loop — time-based reminders not yet wired
+- Profile name/tagline stored in `localStorage` (survives DB reset; excluded from JSON backup)
+- Reminders only fire while the app is running (no OS-level scheduled tasks)
+- Goal evaluation runs on a `setInterval` loop — time-based reminders use the same loop
 - Ollama requires manual install and `ollama serve` to be running for Kai
 
 ---

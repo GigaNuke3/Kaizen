@@ -114,7 +114,7 @@ async function renderCheckmarks() {
       const goalsGrid = document.createElement('div')
       goalsGrid.className = 'goals-grid'
       for (const goal of gridData.goals) {
-        goalsGrid.appendChild(createGoalInfoCard(goal))
+        goalsGrid.appendChild(createGoalInfoCard(goal, gridData))
       }
       goalsInfoSection.appendChild(goalsGrid)
       container.appendChild(goalsInfoSection)
@@ -225,6 +225,7 @@ async function renderCheckmarks() {
 
           const cellKey   = `${goal.id}_${date}`
           const isCompleted = gridData.completions[cellKey] === 1
+          const isExcused   = gridData.excused[cellKey] === 1
 
           const scheduled   = shouldShowDayForGoal(date, goal.frequency, goal.scheduled_days)
           const inWindow    = isDateWithinChecklistWindow(date, goal.start_date, goal.target_date)
@@ -251,19 +252,26 @@ async function renderCheckmarks() {
             cell.title = `${goal.title} - ${date} (Opens today at ${goalTime})`
 
           } else if (isPast) {
-            // ✅ Past date — completed is PERMANENT (no undo), missed is fixed
+            // ✅ Past date — completed is PERMANENT (no undo), missed/excused are clickable
             if (isCompleted) {
               cell.classList.add('completed')
               cell.textContent = '✓'
               cell.title = `${goal.title} - ${date} ✓ Completed (permanent)`
               cell.style.cursor = 'default'
               // No click handler — completed slots are locked forever
+            } else if (isExcused) {
+              cell.classList.add('excused')
+              cell.textContent = '🌴'
+              cell.title = `${goal.title} - ${date} 🌴 Rest day (click to undo)`
+              cell.style.cursor = 'pointer'
+              cell.addEventListener('click', () => toggleRestDayCell(goal.id, date, true))
             } else {
-              // ❌ Missed — was scheduled but not checked
+              // ❌ Missed — was scheduled but not checked; click to excuse as rest day
               cell.classList.add('missed')
               cell.textContent = '✗'
-              cell.title = `${goal.title} - ${date} ✗ Missed`
-              cell.style.cursor = 'default'
+              cell.title = `${goal.title} - ${date} ✗ Missed (click to mark as rest day)`
+              cell.style.cursor = 'pointer'
+              cell.addEventListener('click', () => toggleRestDayCell(goal.id, date, false))
             }
 
           } else {
@@ -383,7 +391,7 @@ function parseScheduledDays(scheduledDaysStr) {
 /**
  * Goal info card for the Active Goals section
  */
-function createGoalInfoCard(goal) {
+function createGoalInfoCard(goal, gridData = null) {
   const card = document.createElement('div')
   card.className = 'goal-card'
 
@@ -410,6 +418,17 @@ function createGoalInfoCard(goal) {
     'custom':   '📍 Custom days'
   }[frequency] || frequency
 
+  // Rest-today button when today is scheduled, in window, and not yet checked
+  const today = getLocalDateString()
+  const todayKey = `${goal.id}_${today}`
+  const todayScheduled = shouldShowDayForGoal(today, frequency, goal.scheduled_days) &&
+                         isDateWithinChecklistWindow(today, startDate, targetDate)
+  const todayCompleted = gridData?.completions?.[todayKey] === 1
+  const todayExcused = gridData?.excused?.[todayKey] === 1
+  const restButton = (todayScheduled && !todayCompleted)
+    ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%;" onclick="toggleRestDayFromCard(${goal.id}, '${today}')">${todayExcused ? '🌴 Un-rest today' : '🌴 Rest today'}</button>`
+    : ''
+
   card.innerHTML = `
     <div class="goal-card-header">
       <div class="goal-card-title">
@@ -430,8 +449,40 @@ function createGoalInfoCard(goal) {
         <span>Progress: ${progress}%</span>
       </div>
     </div>
+    ${restButton}
   `
   return card
+}
+
+/**
+ * Toggle a rest day from a grid cell (past missed or excused day).
+ */
+async function toggleRestDayCell(goalId, date, currentlyExcused) {
+  const msg = currentlyExcused
+    ? `Remove the rest day for ${date}? This day will count against the goal again.`
+    : `Mark ${date} as a rest day? This day will no longer count against the goal.`
+  if (!confirm(msg)) return
+  try {
+    await window.api.toggleRestDay(goalId, date)
+    await window.api.evaluateGoals()
+    await renderCheckmarks()
+  } catch (err) {
+    alert(err.message || 'Could not update rest day.')
+  }
+}
+
+/**
+ * Toggle a rest day from the goal card button (today only).
+ */
+async function toggleRestDayFromCard(goalId, date) {
+  try {
+    const grid = await window.api.getGoalTrackingGrid()
+    const key = `${goalId}_${date}`
+    const currentlyExcused = grid.excused?.[key] === 1
+    await toggleRestDayCell(goalId, date, currentlyExcused)
+  } catch (err) {
+    alert(err.message || 'Could not update rest day.')
+  }
 }
 
 /**

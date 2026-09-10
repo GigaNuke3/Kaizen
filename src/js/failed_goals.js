@@ -32,7 +32,8 @@ async function renderFailedGoals() {
 
         const key = `${goal.id}_${date}`
         const isCompleted = gridData.completions[key] === 1
-        if (!isCompleted) {
+        const isExcused = gridData.excused?.[key] === 1
+        if (!isCompleted && !isExcused) {
           missedDates.push(date)
         }
       }
