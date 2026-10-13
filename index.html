@@ -309,10 +309,8 @@ ${err.stack?.substring(0, 500) || ''}</pre>
         window.kaizenSettings = await window.api.getSettings()
       } catch (err) {
         console.error('Failed to load settings:', err)
-        window.kaizenSettings = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00' }
+        window.kaizenSettings = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00', companion: 'kai' }
       }
-      // Evaluate goals immediately on launch so failed/completed goals appear right away
-      window.api.evaluateGoals().catch(err => console.error('Startup evaluateGoals error:', err))
       loadPage('dashboard')
     })
 

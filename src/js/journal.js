@@ -243,7 +243,7 @@ async function saveJournalEntry(event) {
   if (latestEntry) {
     const kaiSlot = latestEntry.querySelector('.kai-companion-slot')
     if (kaiSlot) {
-      await renderKaiCompanion(journalText, kaiSlot)
+      await renderKaiCompanion(journalText, kaiSlot, mood)
     }
   }
 }

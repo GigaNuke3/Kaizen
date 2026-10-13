@@ -33,6 +33,11 @@ Your personal self-improvement companion built with Electron. Track goals, journ
 - Each journal entry is tied to a goal when written from the CheckMarked flow
 - Kai AI companion responds below each saved entry (requires Ollama running locally)
 
+### 🌱 Living Companion & Kaizen Compounding
+- Pick Kai or Zun in Profile — a pixel companion whose mood reacts to your real progress on the Dashboard
+- Journal replies mirror the mood you chose for the entry
+- Kaizen meter: 1% better on every day you check in, compounded (`1.01^days`)
+
 ### 🤖 Kai — AI Companion
 - Powered by Ollama running `llama3.2:latest` locally
 - Reads your journal entry and responds with empathy in 2–3 sentences

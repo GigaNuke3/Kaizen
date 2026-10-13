@@ -15,11 +15,21 @@ async function renderDashboard() {
       window.api.getWeeklySummary()
     ])
 
+    const companion = companionStatus(todayStats, streakStats.current || 0)
+    const days = streakStats.totalDays || 0
+    // Kaizen: 1% better on every day you showed up compounds to 1.01^days
+    const compound = Math.pow(1.01, days).toFixed(2)
+
     content.innerHTML = `
       <div class="dashboard">
-        <div class="dash-header">
-          <h2>Good ${getGreeting()}, Warrior</h2>
-          <p class="date">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <div class="dash-header companion-hero">
+          ${companionImg(companion.mood, 'companion-hero-sprite')}
+          <div>
+            <h2>Good ${getGreeting()}, ${escapeHtml(loadUserData().name)}</h2>
+            <p class="date">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p class="companion-line"><strong>${companionName()}:</strong> ${companion.line}</p>
+            <p class="kaizen-compound" title="1.01 to the power of the days you've checked in">📈 ${days > 0 ? `×${compound} — 1% better on each of ${days} check-in day${days !== 1 ? 's' : ''}` : 'Your first check-in starts the 1% climb.'}</p>
+          </div>
         </div>
 
         <div class="stats-row">
@@ -145,7 +155,7 @@ async function renderDashboard() {
     if (journalEntries.length > 0) {
       const journalHtml = journalEntries.map(j => `
         <div class="journal-preview">
-          <p><strong>${new Date(j[2] + 'T12:00:00').toLocaleDateString()}:</strong> ${j[1].substring(0, 100)}...</p>
+          <p><strong>${new Date(j[2] + 'T12:00:00').toLocaleDateString()}:</strong> ${escapeHtml(j[1].substring(0, 100))}...</p>
         </div>
       `).join('')
       document.getElementById('recent-journal').innerHTML = journalHtml
@@ -164,6 +174,17 @@ async function renderDashboard() {
     `
   }
 }
+/** Companion mood + line from today's real progress */
+function companionStatus(today, streak, hour = new Date().getHours()) {
+  const { completed = 0, scheduled = 0, percentage = 0 } = today || {}
+  if (scheduled === 0) return { mood: streak > 0 ? 'good' : 'neutral', line: 'Nothing scheduled today. Rest is part of the process.' }
+  if (completed >= scheduled) return { mood: 'excited', line: 'Every goal checked in today. That is Kaizen.' }
+  if (percentage >= 50) return { mood: 'happy', line: `${scheduled - completed} to go. You're past halfway.` }
+  if (completed > 0) return { mood: 'good', line: 'Good start. One small step at a time.' }
+  if (streak > 0 && hour >= 18) return { mood: 'sad', line: `Your ${streak}-day streak ends at midnight. One check-in keeps it alive.` }
+  return { mood: 'neutral', line: `${scheduled} goal${scheduled !== 1 ? 's' : ''} waiting. Start with the smallest one.` }
+}
+
 function getGreeting() {
   const h = new Date().getHours()
   if (h < 12) return 'morning'

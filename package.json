@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron . --ozone-platform=x11",
     "start:win": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "User <user@example.com>",
@@ -27,7 +28,7 @@
       "index.html",
       "src/**",
       "assets/**",
-      "database/**",
+      "database/backend.js",
       "node_modules/**"
     ],
     "linux": {

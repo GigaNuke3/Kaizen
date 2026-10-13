@@ -77,7 +77,7 @@ Journal (written per goal, per day)
 
 - ❌ **Habits page** — removed entirely. No habits table references remain in active pages.
 - ❌ **electron-store** — removed as a dependency. Settings now use a local JSON file via `loadAppSettings()` / `saveAppSettings()`
-- ❌ `db.js` — legacy DB helper, unused, can be deleted
+- ❌ `db.js` — legacy DB helper, deleted
 - ❌ `CHECKMARKED_REBUILD.md` — deleted, superseded by this status doc
 
 ---

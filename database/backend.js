@@ -266,7 +266,7 @@ async function getStreakStats() {
     prev = d
   }
 
-  return { current, longest }
+  return { current, longest, totalDays: dates.length }
 }
 
 async function getWeeklySummary() {
@@ -499,7 +499,7 @@ async function evaluateGoals() {
   `)
   if (activeResult.length > 0) {
     for (const row of activeResult[0].values) {
-      await recalculateGoalProgress(row[0])
+      await recalculateGoalProgress(row[0], false) // evaluateGoals saves once at the end
     }
   }
 
@@ -1001,7 +1001,7 @@ async function getMeasurableDayCount(goalId) {
   return Math.max(0, scheduled - excused)
 }
 
-async function recalculateGoalProgress(goalId) {
+async function recalculateGoalProgress(goalId, save = true) {
   const database = await getDB()
 
   const goalResult = database.exec(
@@ -1042,7 +1042,7 @@ async function recalculateGoalProgress(goalId) {
   if (measurableCount <= 0) {
     // Every scheduled day is excused — nothing to measure, never auto-fail.
     database.run('UPDATE goals SET progress = 0 WHERE id = ?', [goalId])
-    saveDB()
+    if (save) saveDB()
     return
   }
 
@@ -1054,7 +1054,7 @@ async function recalculateGoalProgress(goalId) {
     [progress, goalId]
   )
 
-  saveDB()
+  if (save) saveDB()
 }
 
 function isDayScheduled(dayOfWeek, frequency, scheduledDaysStr) {

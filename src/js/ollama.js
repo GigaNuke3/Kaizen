@@ -78,7 +78,7 @@ async function streamKaiChat(messages, onChunk = null) {
  * @returns {string} - The complete response text
  */
 async function getJournalCompanionResponse(journalText, onChunk = null) {
-  const systemPrompt = `You are Kai, a warm and supportive self-improvement companion inside the Kaizen app.
+  const systemPrompt = `You are ${companionName()}, a warm and supportive self-improvement companion inside the Kaizen app.
 The user has just written a journal entry. Your job is to:
 - Acknowledge what they shared with empathy
 - Celebrate any wins or efforts, no matter how small
@@ -114,8 +114,9 @@ async function getAvailableModels() {
  *
  * @param {string} journalContent - The journal text Kai will read
  * @param {HTMLElement} containerEl - The DOM element to append Kai's response into
+ * @param {string} mood - The entry's mood; the companion sprite mirrors it
  */
-async function renderKaiCompanion(journalContent, containerEl) {
+async function renderKaiCompanion(journalContent, containerEl, mood = 'neutral') {
   if (!containerEl) return
 
   const running = await isOllamaRunning()
@@ -127,9 +128,9 @@ async function renderKaiCompanion(journalContent, containerEl) {
     // Kai is offline — show helpful message
     kaiSection.innerHTML = `
       <div class="kai-offline">
-        <span class="kai-avatar">🤖</span>
+        ${companionImg(mood)}
         <div class="kai-message">
-          <strong>Kai is offline</strong>
+          <strong>${companionName()} is offline</strong>
           <p>Start Ollama to get your companion's thoughts on your entry.</p>
           <code>ollama serve</code>
         </div>
@@ -142,9 +143,9 @@ async function renderKaiCompanion(journalContent, containerEl) {
   // Kai is online — show typing bubble
   kaiSection.innerHTML = `
     <div class="kai-online">
-      <span class="kai-avatar">🤖</span>
+      ${companionImg(mood)}
       <div class="kai-bubble">
-        <span class="kai-name">Kai</span>
+        <span class="kai-name">${companionName()}</span>
         <p class="kai-text"></p>
       </div>
     </div>

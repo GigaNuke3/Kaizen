@@ -114,6 +114,17 @@ async function renderProfile() {
           <h3>Settings</h3>
           <div class="settings-list">
             <div class="setting-item">
+              <span>Companion</span>
+              <div class="companion-picker">
+                ${['kai', 'zun'].map(c => `
+                  <button type="button" class="companion-choice ${(settings.companion || 'kai') === c ? 'selected' : ''}"
+                    onclick="setCompanion('${c}')" aria-pressed="${(settings.companion || 'kai') === c}">
+                    <img src="assets/Kai-Zun/${c === 'kai' ? 'Kai/Kai' : 'Zun/Zun'}_Happy.png" alt="">
+                    ${c === 'kai' ? 'Kai' : 'Zun'}
+                  </button>`).join('')}
+              </div>
+            </div>
+            <div class="setting-item">
               <label>
                 <input type="checkbox" id="notifications-enabled" ${user.notifications ? 'checked' : ''}
                   onchange="toggleNotificationsSetting(this.checked)">
@@ -243,6 +254,12 @@ async function saveProfile(event) {
 async function toggleNotificationsSetting(enabled) {
   await window.api.setSettings({ notifications: enabled })
   if (window.kaizenSettings) window.kaizenSettings.notifications = enabled
+}
+
+async function setCompanion(companion) {
+  await window.api.setSettings({ companion })
+  if (window.kaizenSettings) window.kaizenSettings.companion = companion
+  await renderProfile()
 }
 
 function toggleSoundSetting(enabled) {

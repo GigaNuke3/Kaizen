@@ -24,3 +24,15 @@ function escapeHtml(str) {
 
 /** sessionStorage key for pending CheckMarked journal-gated check-ins */
 const PENDING_GOAL_CHECK_KEY = 'kaizen_pending_goal_check'
+
+/** Chosen companion ('Kai' or 'Zun'), picked in Profile settings */
+function companionName() {
+  return window.kaizenSettings?.companion === 'zun' ? 'Zun' : 'Kai'
+}
+
+/** Companion pixel sprite for a journal mood: sad | neutral | good | happy | excited */
+function companionImg(mood = 'neutral', cls = 'kai-avatar') {
+  const who = companionName()
+  const m = ['sad', 'neutral', 'good', 'happy', 'excited'].includes(mood) ? mood : 'neutral'
+  return `<img class="${cls} companion-sprite" src="assets/Kai-Zun/${who}/${who}_${m[0].toUpperCase()}${m.slice(1)}.png" alt="${who}">`
+}

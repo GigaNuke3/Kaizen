@@ -4,7 +4,7 @@
  * renderKaiCompanion() lives in ollama.js and is still used by the journal page.
  */
 
-const KAI_SYSTEM_PROMPT = `You are Kai, a warm and supportive self-improvement companion inside the Kaizen app.
+const kaiSystemPrompt = () => `You are ${companionName()}, a warm and supportive self-improvement companion inside the Kaizen app.
 Your job is to:
 - Acknowledge what the user shares with empathy
 - Celebrate any wins or efforts, no matter how small
@@ -19,9 +19,9 @@ async function renderKaiPage() {
 
   content.innerHTML = `
     <div class="kai-page-container" style="padding:32px 0;">
-      <h2 style="color:#6ee7b7;margin-bottom:8px;">🤖 Kai Companion</h2>
+      <h2 style="color:#6ee7b7;margin-bottom:8px;" class="companion-title">${companionImg('happy')} ${companionName()} Companion</h2>
       <p style="color:#888;font-size:0.9rem;margin-bottom:24px;">
-        Chat with Kai — your personal self-improvement companion. Kai remembers the conversation.
+        Chat with ${companionName()} — your personal self-improvement companion. ${companionName()} remembers the conversation.
       </p>
       <div id="kai-page"></div>
     </div>
@@ -93,7 +93,7 @@ async function renderKaiChat(container) {
       padding:16px;height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
     </div>
     <div class="kai-chat-input-row" style="display:flex;gap:8px;margin-top:12px;">
-      <input id="kai-chat-input" placeholder="Message Kai..."
+      <input id="kai-chat-input" placeholder="Message ${companionName()}..."
         onkeydown="if(event.key==='Enter')sendKaiMessage()"
         style="flex:1;background:#1a1a1a;border:1px solid #444;border-radius:8px;padding:10px 12px;color:#fff;">
       <button id="kai-send-btn" class="btn btn-primary" onclick="sendKaiMessage()">Send</button>
@@ -106,7 +106,7 @@ async function renderKaiChat(container) {
 
   const thread = document.getElementById('kai-chat-thread')
   if (history.length === 0) {
-    thread.innerHTML = '<p class="empty-msg">Say hello to Kai! 👋</p>'
+    thread.innerHTML = `<p class="empty-msg">Say hello to ${companionName()}! 👋</p>`
   } else {
     thread.innerHTML = history.map(msg => kaiMessageHtml(msg[1], msg[2])).join('')
   }
@@ -117,7 +117,7 @@ function kaiMessageHtml(role, text) {
   const isUser = role === 'user'
   return `
     <div class="kai-msg" style="display:flex;gap:8px;${isUser ? 'flex-direction:row-reverse;' : ''}">
-      <span class="kai-msg-avatar" style="font-size:1.3rem;line-height:1;">${isUser ? '🧑' : '🤖'}</span>
+      ${isUser ? '<span class="kai-msg-avatar" style="font-size:1.3rem;line-height:1;">🧑</span>' : companionImg('good', 'kai-msg-avatar')}
       <div class="kai-msg-bubble" style="
         max-width:75%;padding:8px 12px;border-radius:10px;font-size:0.9rem;line-height:1.45;white-space:pre-wrap;
         ${isUser
@@ -143,7 +143,7 @@ async function streamAssistantReply(messages) {
 
   const typing = document.createElement('div')
   typing.className = 'kai-msg'
-  typing.innerHTML = '<span class="kai-msg-avatar" style="font-size:1.3rem;">🤖</span><div class="kai-msg-bubble" style="max-width:75%;padding:8px 12px;border-radius:10px;background:#1a1a1a;border:1px solid #333;color:#ccc;">▋</div>'
+  typing.innerHTML = companionImg('neutral', 'kai-msg-avatar') + '<div class="kai-msg-bubble" style="max-width:75%;padding:8px 12px;border-radius:10px;background:#1a1a1a;border:1px solid #333;color:#ccc;">▋</div>'
   thread.appendChild(typing)
   thread.scrollTop = thread.scrollHeight
 
@@ -152,7 +152,7 @@ async function streamAssistantReply(messages) {
     const running = await isOllamaRunning()
     if (!running) {
       typing.remove()
-      appendKaiMessage('assistant', 'Kai is offline. Start Ollama (ollama serve) to chat.')
+      appendKaiMessage('assistant', `${companionName()} is offline. Start Ollama (ollama serve) to chat.`)
       return
     }
 
@@ -185,7 +185,7 @@ async function sendKaiMessage() {
 
   const history = await window.api.getKaiChatHistory(100)
   const messages = [
-    { role: 'system', content: KAI_SYSTEM_PROMPT },
+    { role: 'system', content: kaiSystemPrompt() },
     ...history.slice(-20).map(h => ({ role: h[1], content: h[2] }))
   ]
 
@@ -213,7 +213,7 @@ async function generateKaiWeeklyInsight() {
   const prompt = `Here is my journal from the last 7 days:\n${journalText}\n\nWeekly stats: ${summary.checkins} check-ins, ${summary.journalEntries} journal entries, ${summary.completionPct}% goal completion.\n\nGive me a warm, specific weekly insight in 4-6 sentences: celebrate wins, notice patterns, and suggest one small next step.`
 
   await streamAssistantReply([
-    { role: 'system', content: KAI_SYSTEM_PROMPT },
+    { role: 'system', content: kaiSystemPrompt() },
     { role: 'user', content: prompt }
   ])
 }

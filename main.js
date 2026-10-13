@@ -13,7 +13,7 @@ function settingsFilePath() {
 
 function loadAppSettings() {
   if (settingsCache) return settingsCache
-  const defaults = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00' }
+  const defaults = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00', companion: 'kai' }
   try {
     const file = settingsFilePath()
     if (fs.existsSync(file)) {
@@ -38,13 +38,8 @@ function saveAppSettings(patch) {
 
 async function createWindow() {
   if (app.isPackaged) {
-    const userDb = path.join(app.getPath('userData'), 'kaizen.db')
-    const bundledDb = path.join(__dirname, 'database', 'kaizen.db')
-    if (!fs.existsSync(userDb) && fs.existsSync(bundledDb)) {
-      fs.mkdirSync(path.dirname(userDb), { recursive: true })
-      fs.copyFileSync(bundledDb, userDb)
-    }
-    backend.setDBPath(userDb)
+    fs.mkdirSync(app.getPath('userData'), { recursive: true })
+    backend.setDBPath(path.join(app.getPath('userData'), 'kaizen.db'))
   }
 
   // Initialize database
@@ -134,8 +129,9 @@ app.on('activate', () => {
   }
 })
 
-// In-memory per-date sent keys so reminders never double-fire within a day.
+// In-memory per-date sent keys so reminders never double-fire within a day (e.g. DST fall-back repeats an hour).
 const reminderSentKeys = new Set()
+let lastReminderTick = null // { day, hm } of the previous check
 
 function reminderHM() {
   const n = new Date()
@@ -143,33 +139,36 @@ function reminderHM() {
 }
 
 async function runReminderCheck(win) {
+  const today = backend.getLocalDateString()
+  const hm = reminderHM()
+  // Fire anything whose time fell in (prev, hm], so setInterval drift skipping a minute can't drop a reminder.
+  // First tick backfills nothing; a new day starts from midnight; a clock moved back fires nothing.
+  const prev = !lastReminderTick ? hm : lastReminderTick.day !== today ? '' : lastReminderTick.hm
+  lastReminderTick = { day: today, hm }
+  const isDue = (t) => !!t && prev < t && t <= hm
+
   const settings = loadAppSettings()
   if (!settings.remindersEnabled) return
   if (!Notification.isSupported()) return
 
-  const today = backend.getLocalDateString()
-  const hm = reminderHM()
+  const open = await backend.getTodayOpenGoals()
 
   // Daily summary at the user's chosen time.
-  if (settings.reminderTime && hm === settings.reminderTime) {
-    const key = `summary_${today}`
-    if (!reminderSentKeys.has(key)) {
-      reminderSentKeys.add(key)
-      const open = await backend.getTodayOpenGoals()
-      if (open.length > 0) {
-        const names = open.slice(0, 3).map(g => g.title).join(', ') + (open.length > 3 ? ` +${open.length - 3} more` : '')
-        new Notification({
-          title: '⏰ Kaizen Reminder',
-          body: `${open.length} goal(s) still open today: ${names}`
-        }).show()
-      }
+  const summaryKey = `summary_${today}`
+  if (isDue(settings.reminderTime) && !reminderSentKeys.has(summaryKey)) {
+    reminderSentKeys.add(summaryKey)
+    if (open.length > 0) {
+      const names = open.slice(0, 3).map(g => g.title).join(', ') + (open.length > 3 ? ` +${open.length - 3} more` : '')
+      new Notification({
+        title: '⏰ Kaizen Reminder',
+        body: `${open.length} goal(s) still open today: ${names}`
+      }).show()
     }
   }
 
   // Per-goal reminder at each goal's own time window.
-  const open = await backend.getTodayOpenGoals()
   for (const g of open) {
-    if (!g.time || g.time !== hm) continue
+    if (!isDue(g.time)) continue
     const key = `goal_${g.id}_${today}`
     if (reminderSentKeys.has(key)) continue
     reminderSentKeys.add(key)
@@ -382,7 +381,8 @@ ipcMain.handle('get-settings', () => {
     notifications: s.notifications,
     soundEnabled: s.soundEnabled,
     remindersEnabled: s.remindersEnabled,
-    reminderTime: s.reminderTime
+    reminderTime: s.reminderTime,
+    companion: s.companion
   }
 })
 ipcMain.handle('set-settings', (_event, settings) => {
@@ -391,11 +391,13 @@ ipcMain.handle('set-settings', (_event, settings) => {
   if (typeof settings.soundEnabled === 'boolean') patch.soundEnabled = settings.soundEnabled
   if (typeof settings.remindersEnabled === 'boolean') patch.remindersEnabled = settings.remindersEnabled
   if (typeof settings.reminderTime === 'string') patch.reminderTime = settings.reminderTime
+  if (settings.companion === 'kai' || settings.companion === 'zun') patch.companion = settings.companion
   const s = saveAppSettings(patch)
   return {
     notifications: s.notifications,
     soundEnabled: s.soundEnabled,
     remindersEnabled: s.remindersEnabled,
-    reminderTime: s.reminderTime
+    reminderTime: s.reminderTime,
+    companion: s.companion
   }
 })
