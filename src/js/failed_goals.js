@@ -69,17 +69,10 @@ async function renderFailedGoals() {
     container.className = 'failed-goals-container'
 
     // Header
-    const header = document.createElement('div')
-    header.className = 'failed-goals-header'
-    header.innerHTML = `
-      <h2>❌ Failed &amp; Overdue</h2>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-        <span class="badge-count">${allFailingGoals.length} failing goal${allFailingGoals.length !== 1 ? 's' : ''}</span>
-        <button id="force-fail-btn" class="btn btn-warning">⚠️ Force Fail Past Goals</button>
-        <button id="refresh-failed-btn" class="btn btn-secondary">🔄 Refresh</button>
-      </div>
-    `
-    container.appendChild(header)
+    container.insertAdjacentHTML('beforeend', pageHeader('x', 'Failed &amp; Overdue',
+      `${allFailingGoals.length} failing goal${allFailingGoals.length !== 1 ? 's' : ''}. Restore one and go again — that's Kaizen.`,
+      `<button id="force-fail-btn" class="btn btn-warning">${px('warning')} Force Fail Past Goals</button>
+       <button id="refresh-failed-btn" class="btn btn-secondary">${px('refresh')} Refresh</button>`))
 
     // Goals section
     const goalsSection = document.createElement('div')
@@ -87,13 +80,13 @@ async function renderFailedGoals() {
 
     if (allFailingGoals.length === 0) {
       goalsSection.innerHTML = `
-        <h3 style="color:#ff6b6b;margin-bottom:12px;">🎯 Failing Goals</h3>
+        <h3 style="color:#ff6b6b;margin-bottom:12px;">${px('target')} Failing Goals</h3>
         <p style="color:#666;text-align:center;padding:40px 0;font-size:1rem;">
-          No failing goals. You're crushing it! 💪
+          No failing goals. You're crushing it! ${px('bolt')}
         </p>
       `
     } else {
-      goalsSection.innerHTML = `<h3 style="color:#ff6b6b;margin-bottom:16px;">🎯 Failing Goals (${allFailingGoals.length})</h3>`
+      goalsSection.innerHTML = `<h3 style="color:#ff6b6b;margin-bottom:16px;">${px('target')} Failing Goals (${allFailingGoals.length})</h3>`
       const grid = document.createElement('div')
       grid.className = 'failed-goals-grid'
 
@@ -102,61 +95,44 @@ async function renderFailedGoals() {
           ? new Date(goal.target_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
           : 'No deadline'
 
-        const freqLabel = {
-          daily: '📅 Every Day',
-          weekdays: '💼 Weekdays',
-          weekends: '🎉 Weekends',
-          '3x': '⭐ 3x/week',
-          custom: '📍 Custom'
-        }[goal.frequency] || goal.frequency || 'Daily'
+        const freqLabel = frequencyLabel(goal.frequency)
 
         const missedCount = goal.missedDates?.length || 0
         const failureRate = 100 - (goal.progress || 0)
 
         // Status badge
         const statusBadge = goal.hardFailed
-          ? `<span style="background:#7f1d1d;color:#fca5a5;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600;">⛔ DEADLINE PASSED · ${failureRate}% failed</span>`
-          : `<span style="background:#3b1f1f;color:#fca5a5;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600;">⚠️ ${missedCount} DAY${missedCount !== 1 ? 'S' : ''} MISSED · ${failureRate}% failed</span>`
+          ? `<span class="fg-status fg-status--hard">${px('warning')} Deadline passed · ${failureRate}% failed</span>`
+          : `<span class="fg-status">${px('warning')} ${missedCount} day${missedCount !== 1 ? 's' : ''} missed · ${failureRate}% failed</span>`
 
         // Show last 5 missed dates as pills
-        const missedPills = goal.missedDates?.slice(-5).map(d => {
-          const label = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          return `<span style="background:#2a1010;border:1px solid #7f1d1d;color:#fca5a5;padding:2px 7px;border-radius:8px;font-size:0.72rem;">${label}</span>`
-        }).join('') || ''
+        const missedPills = goal.missedDates?.slice(-5).map(d =>
+          `<span class="fg-pill">${new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>`
+        ).join('') || ''
 
         const card = document.createElement('div')
         card.className = 'failed-goal-card'
         card.innerHTML = `
-          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
-            <span style="font-size:1.6rem;line-height:1;">${goal.icon || '🎯'}</span>
-            <div style="flex:1;min-width:0;">
-              <h3 style="margin:0 0 6px;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(goal.title)}</h3>
+          <div class="fg-head">
+            <span class="fg-icon">${px('target', 28)}</span>
+            <div class="fg-title">
+              <h3 title="${escapeHtml(goal.title)}">${escapeHtml(goal.title)}</h3>
               ${statusBadge}
             </div>
           </div>
-          ${goal.description ? `<p style="color:#aaa;font-size:0.85rem;margin-bottom:10px;">${escapeHtml(goal.description)}</p>` : ''}
-          <div class="meta" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;font-size:0.85rem;color:#999;">
-            <span>⏱️ Deadline: <strong style="color:#ff6b6b;">${targetStr}</strong></span>
-            <span>❌ Failure Rate: <strong style="color:#ff6b6b;">${100 - (goal.progress || 0)}%</strong></span>
-            <span>✅ Completion Rate: <strong style="color:#aaa;">${goal.progress || 0}%</strong></span>
+          ${goal.description ? `<p class="fg-desc">${escapeHtml(goal.description)}</p>` : ''}
+          <div class="fg-progress">
+            <div class="fg-progress-bar"><div style="width:${goal.progress || 0}%"></div></div>
+            <span>${goal.progress || 0}% done</span>
+          </div>
+          <div class="fg-meta">
+            <span>${px('clock')} Deadline <strong>${targetStr}</strong></span>
             <span>${freqLabel}</span>
           </div>
-          <div style="background:#1a1a1a;border-radius:4px;height:5px;overflow:hidden;margin-bottom:12px;">
-            <div style="height:100%;width:${100 - (goal.progress || 0)}%;background:#ff6b6b;border-radius:4px;transition:width 0.3s;"></div>
-          </div>
-          ${missedPills ? `
-            <div style="margin-bottom:12px;">
-              <div style="font-size:0.75rem;color:#666;margin-bottom:5px;">Recent missed days:</div>
-              <div style="display:flex;flex-wrap:wrap;gap:4px;">${missedPills}</div>
-            </div>
-          ` : ''}
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-secondary btn-sm restore-goal-btn" data-id="${goal.id}" style="flex:1;">
-              🔄 Restore
-            </button>
-            <button class="btn btn-danger btn-sm delete-goal-btn" data-id="${goal.id}" style="flex:1;">
-              🗑️ Delete
-            </button>
+          ${missedPills ? `<div class="fg-missed"><span>Recent missed days</span><div>${missedPills}</div></div>` : ''}
+          <div class="fg-actions">
+            <button class="btn btn-secondary btn-sm restore-goal-btn" data-id="${goal.id}">${px('refresh')} Restore</button>
+            <button class="btn btn-danger btn-sm delete-goal-btn" data-id="${goal.id}">${px('trash')} Delete</button>
           </div>
         `
         grid.appendChild(card)
@@ -195,9 +171,10 @@ async function renderFailedGoals() {
           const extended = new Date()
           extended.setDate(extended.getDate() + 7)
           const defaultDate = getLocalDateString(extended)
-          const input = prompt(
-            `Goal deadline (${goal.target_date}) has passed.\nEnter a new target date (YYYY-MM-DD):`,
-            defaultDate
+          const input = await kzPrompt(
+            `The deadline (${goal.target_date}) has passed. Pick a new target date to restore this goal.`,
+            { type: 'date', value: defaultDate, min: today },
+            { title: 'New deadline', okText: 'Restore' }
           )
           if (input === null) return
           const trimmed = input.trim()
@@ -209,14 +186,14 @@ async function renderFailedGoals() {
           await window.api.restoreGoal(restoreId, newTarget)
           renderFailedGoals()
         } catch (err) {
-          alert(err.message || 'Could not restore goal.')
+          kzAlert(err.message || 'Could not restore goal.')
         }
         return
       }
 
       const deleteGoalBtn = e.target.closest('.delete-goal-btn')
       if (deleteGoalBtn) {
-        if (confirm('Permanently delete this goal? Journal entries linked to it will be kept.')) {
+        if (await kzConfirm('Journal entries linked to it will be kept.', { title: 'Permanently delete this goal?', danger: true, okText: 'Delete' })) {
           await window.api.deleteGoal(Number(deleteGoalBtn.dataset.id))
           renderFailedGoals()
         }
@@ -227,7 +204,7 @@ async function renderFailedGoals() {
     console.error('❌ Error rendering failed goals:', error)
     content.innerHTML = `
       <div style="padding:40px;text-align:center;color:#ff6b6b;">
-        <h2>❌ Error Loading Failed Goals</h2>
+        <h2>${px('x')} Error Loading Failed Goals</h2>
         <p>${escapeHtml(error.message)}</p>
         <pre style="text-align:left;background:#1a1a1a;padding:12px;border-radius:6px;margin-top:16px;overflow-x:auto;font-size:0.8rem;">${escapeHtml(error.stack || '')}</pre>
       </div>

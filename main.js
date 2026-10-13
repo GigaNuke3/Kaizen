@@ -1,11 +1,15 @@
-const { app, BrowserWindow, Menu, ipcMain, Notification, dialog } = require('electron')
+const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, Notification, dialog, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
-const { execFile } = require('child_process')
+const { execFile, spawn } = require('child_process')
 const backend = require('./database/backend.js')
 
 let goalEvaluationInterval = null
 let settingsCache = null
+let mainWindow = null
+let tray = null
+let isQuitting = false
+const ICON_PATH = path.join(__dirname, 'assets/icons/desktop/kaizen_desktop_icon.png')
 
 function settingsFilePath() {
   return path.join(app.getPath('userData'), 'kaizen-settings.json')
@@ -13,7 +17,7 @@ function settingsFilePath() {
 
 function loadAppSettings() {
   if (settingsCache) return settingsCache
-  const defaults = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00', companion: 'kai' }
+  const defaults = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00', companion: 'kai', closeToTray: true, launchAtLogin: false, autoBackup: true }
   try {
     const file = settingsFilePath()
     if (fs.existsSync(file)) {
@@ -57,13 +61,14 @@ async function createWindow() {
   // Remove menu bar completely
   Menu.setApplicationMenu(null)
 
-  const win = new BrowserWindow({
+  const win = mainWindow = new BrowserWindow({
+    show: !process.argv.includes('--hidden'), // autostart launches straight to the tray
     width: 1280,
     height: 800,
     minWidth: 900,
     minHeight: 600,
     title: 'Kaizen',
-    icon: path.join(__dirname, 'assets/icons/desktop/kaizen_desktop_icon.png'),
+    icon: ICON_PATH,
     webPreferences: {
       preload: path.join(__dirname, 'src/preload.js'),
       nodeIntegration: false,
@@ -72,6 +77,17 @@ async function createWindow() {
   })
 
   win.loadFile('index.html')
+
+  // Close hides to the tray so reminders keep firing; Quit lives in the tray menu
+  win.on('close', (e) => {
+    if (!isQuitting && loadAppSettings().closeToTray) {
+      e.preventDefault()
+      win.hide()
+    }
+  })
+
+  createTray()
+  runDailyBackup().catch(err => console.error('Auto-backup error:', err))
 
   // Start Kai setup after window is ready (non-blocking)
   win.webContents.once('did-finish-load', () => {
@@ -100,6 +116,8 @@ async function createWindow() {
         focused?.webContents.send('goals-updated', result)
       }
       await runReminderCheck(win).catch(err => console.error('Reminder check error:', err))
+      await updateTrayMenu().catch(err => console.error('Tray update error:', err))
+      await runDailyBackup().catch(err => console.error('Auto-backup error:', err))
     } catch (err) {
       console.error('Goal evaluation error:', err)
     }
@@ -114,7 +132,87 @@ async function createWindow() {
 }
 
 // App event listeners
-app.on('ready', createWindow)
+// One instance only: launching Kaizen again just shows the running window
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', showMainWindow)
+  app.on('ready', createWindow)
+}
+
+app.on('before-quit', () => { isQuitting = true })
+
+function showMainWindow() {
+  if (!mainWindow) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+// ==================== TRAY ====================
+
+function createTray() {
+  if (tray) return
+  tray = new Tray(nativeImage.createFromPath(ICON_PATH).resize({ width: 22, height: 22 }))
+  tray.setToolTip('Kaizen')
+  tray.on('click', showMainWindow)
+  updateTrayMenu().catch(err => console.error('Tray update error:', err))
+}
+
+/** Tray menu lists what's still open today, so a glance is enough */
+async function updateTrayMenu() {
+  if (!tray) return
+  const [stats, open] = await Promise.all([backend.getTodayGoalStats(), backend.getTodayOpenGoals()])
+  const today = stats.scheduled > 0 ? `Today: ${stats.completed}/${stats.scheduled} checked in` : 'Nothing scheduled today'
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Open Kaizen', click: showMainWindow },
+    { type: 'separator' },
+    { label: today, enabled: false },
+    ...open.slice(0, 5).map(g => ({ label: `○ ${g.title}`, click: showMainWindow })),
+    { type: 'separator' },
+    { label: 'Quit Kaizen', click: () => { isQuitting = true; app.quit() } }
+  ]))
+}
+
+// ==================== LAUNCH AT LOGIN ====================
+
+function applyLaunchAtLogin(enabled) {
+  if (process.platform !== 'linux') {
+    app.setLoginItemSettings({ openAtLogin: enabled, args: ['--hidden'] })
+    return
+  }
+  // Linux has no login-item API; use an XDG autostart entry
+  const file = path.join(app.getPath('home'), '.config', 'autostart', 'kaizen.desktop')
+  if (!enabled) {
+    fs.rmSync(file, { force: true })
+    return
+  }
+  const exe = process.env.APPIMAGE || process.execPath
+  const flags = process.argv.slice(1).filter(a => a.startsWith('--') && a !== '--hidden').join(' ') // e.g. --ozone-platform=x11
+  const cmd = (app.isPackaged ? `"${exe}"` : `"${exe}" "${app.getAppPath()}"`) + (flags ? ' ' + flags : '')
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=Kaizen\nExec=${cmd} --hidden\nIcon=${ICON_PATH}\nX-GNOME-Autostart-enabled=true\n`)
+}
+
+// ==================== DAILY AUTO-BACKUP ====================
+
+const BACKUPS_TO_KEEP = 7
+
+function backupDir() {
+  return path.join(app.getPath('userData'), 'backups')
+}
+
+/** One JSON backup per day; keeps the newest BACKUPS_TO_KEEP */
+async function runDailyBackup() {
+  if (!loadAppSettings().autoBackup) return
+  const dir = backupDir()
+  const file = path.join(dir, `kaizen-${backend.getLocalDateString()}.json`)
+  if (fs.existsSync(file)) return
+  fs.mkdirSync(dir, { recursive: true })
+  await backend.exportAllData(file)
+  const old = fs.readdirSync(dir).filter(f => /^kaizen-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().reverse().slice(BACKUPS_TO_KEEP)
+  for (const f of old) fs.rmSync(path.join(dir, f))
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -123,10 +221,8 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-  const allWindows = BrowserWindow.getAllWindows()
-  if (allWindows.length === 0) {
-    createWindow()
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  else showMainWindow()
 })
 
 // In-memory per-date sent keys so reminders never double-fire within a day (e.g. DST fall-back repeats an hour).
@@ -179,33 +275,67 @@ async function runReminderCheck(win) {
   }
 }
 
+let ollamaServer = null // the `ollama serve` we started (stopped when Kaizen quits)
+
+function findOllama() {
+  const ollamaPaths = process.platform === 'win32'
+    ? [`${process.env.LOCALAPPDATA}\\Programs\\Ollama\\ollama.exe`, `${process.env.LOCALAPPDATA}\\Ollama\\ollama.exe`]
+    : ['/usr/local/bin/ollama', '/usr/bin/ollama', `${process.env.HOME}/.local/bin/ollama`]
+  return ollamaPaths.find(p => fs.existsSync(p)) || 'ollama' // fall back to PATH
+}
+
+async function isOllamaServing() {
+  try {
+    return (await fetch('http://127.0.0.1:11434/api/tags', { signal: AbortSignal.timeout(1500) })).ok
+  } catch {
+    return false
+  }
+}
+
+/** `ollama pull` and the chat both need the local server; start it if nothing is listening */
+async function ensureOllamaServer(exe = findOllama()) {
+  if (await isOllamaServing()) return true
+  if (!ollamaServer) {
+    ollamaServer = spawn(exe, ['serve'], { stdio: 'ignore' }) // ignore output: execFile would kill it past 1MB of logs
+    ollamaServer.on('error', (err) => { console.log('Ollama serve error:', err.message); ollamaServer = null })
+    ollamaServer.on('exit', () => { ollamaServer = null })
+  }
+  for (let i = 0; i < 20; i++) {
+    await new Promise(r => setTimeout(r, 500))
+    if (await isOllamaServing()) return true
+    if (!ollamaServer) return false // failed to start (not installed, crashed)
+  }
+  return false
+}
+
+/** Run `ollama pull`; on failure, reject with Ollama's own last output line */
+function pullOllamaModel(exe, model) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(exe, ['pull', model], { stdio: ['ignore', 'pipe', 'pipe'] })
+    let tail = '' // progress output is huge, keep only the end
+    const keep = (d) => { tail = (tail + d).slice(-600) }
+    child.stdout.on('data', keep)
+    child.stderr.on('data', keep)
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code === 0) return resolve()
+      const lastLine = tail.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').split(/[\r\n]+/).map(l => l.trim()).filter(Boolean).pop()
+      reject(new Error(lastLine || `ollama pull exited with code ${code}`))
+    })
+  })
+}
+
+app.on('will-quit', () => ollamaServer?.kill())
+
 async function setupKaiFirstLaunch(win) {
+  const ollamaExe = findOllama()
+  // Kai needs the server on every launch, not only the first one
+  const serving = await ensureOllamaServer(ollamaExe)
+
   const settings = loadAppSettings()
   if (settings.kaiModelReady || settings.kaiModelPrompted) return
-
-  // Cross-platform ollama paths
-  const isWin = process.platform === 'win32'
-  const ollamaPaths = isWin
-    ? [
-        `${process.env.LOCALAPPDATA}\\Programs\\Ollama\\ollama.exe`,
-        `${process.env.LOCALAPPDATA}\\Ollama\\ollama.exe`,
-        'ollama'
-      ]
-    : [
-        '/usr/local/bin/ollama',
-        '/usr/bin/ollama',
-        `${process.env.HOME}/.local/bin/ollama`,
-        'ollama'
-      ]
-
-  let ollamaExe = null
-  for (const p of ollamaPaths) {
-    if (p === 'ollama') { ollamaExe = 'ollama'; break }
-    if (fs.existsSync(p)) { ollamaExe = p; break }
-  }
-
-  if (!ollamaExe) {
-    console.log('⚠️ Ollama not found, skipping Kai setup')
+  if (!serving) {
+    console.log('⚠️ Ollama not available, skipping Kai setup')
     return
   }
 
@@ -231,12 +361,6 @@ async function setupKaiFirstLaunch(win) {
 
   if (choice !== 0) return
 
-  execFile(ollamaExe, ['serve'], (err) => {
-    if (err) console.log('Ollama serve note:', err.message)
-  })
-
-  await new Promise(r => setTimeout(r, 2000))
-
   if (Notification.isSupported()) {
     new Notification({
       title: '🤖 Setting up Kai...',
@@ -244,22 +368,19 @@ async function setupKaiFirstLaunch(win) {
     }).show()
   }
 
-  const pull = execFile(ollamaExe, ['pull', 'llama3.2:latest'])
-
-  pull.on('close', (code) => {
-    if (code === 0) {
-      saveAppSettings({ kaiModelReady: true })
-      if (Notification.isSupported()) {
-        new Notification({
-          title: '🤖 Kai is ready!',
-          body: 'Your AI companion is now active. Write a journal entry to chat!'
-        }).show()
-      }
-      win?.webContents.send('kai-ready')
-    } else {
-      console.log('Ollama pull exited with code', code)
+  try {
+    await pullOllamaModel(ollamaExe, 'llama3.2:latest')
+    saveAppSettings({ kaiModelReady: true })
+    if (Notification.isSupported()) {
+      new Notification({
+        title: '🤖 Kai is ready!',
+        body: 'Your AI companion is now active. Write a journal entry to chat!'
+      }).show()
     }
-  })
+    win?.webContents.send('kai-ready')
+  } catch (err) {
+    console.log('Ollama pull failed:', err.message)
+  }
 }
 
 // ==================== OLLAMA IPC HANDLERS ====================
@@ -272,23 +393,18 @@ ipcMain.handle('check-ollama-installed', () => {
   })
 })
 
-ipcMain.handle('pull-ollama-model', (event, model = 'llama3.2:latest') => {
-  return new Promise((resolve, reject) => {
-    // Validate model name — it goes straight into an execFile argv, never a shell
-    if (typeof model !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.:\/-]*$/.test(model)) {
-      reject(new Error('Invalid model name'))
-      return
-    }
-    const child = execFile('ollama', ['pull', model])
-    child.on('close', (code) => {
-      if (code === 0) {
-        saveAppSettings({ kaiModelReady: true })
-        resolve(true)
-      } else {
-        reject(new Error(`Pull failed with code ${code}`))
-      }
-    })
-  })
+ipcMain.handle('pull-ollama-model', async (event, model = 'llama3.2:latest') => {
+  // Validate model name — it goes straight into a spawn argv, never a shell
+  if (typeof model !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.:\/-]*$/.test(model)) {
+    throw new Error('Invalid model name')
+  }
+  const exe = findOllama()
+  if (!(await ensureOllamaServer(exe))) {
+    throw new Error('Could not start the Ollama server. Try running "ollama serve" in a terminal, then retry.')
+  }
+  await pullOllamaModel(exe, model)
+  saveAppSettings({ kaiModelReady: true })
+  return true
 })
 
 /**
@@ -382,7 +498,10 @@ ipcMain.handle('get-settings', () => {
     soundEnabled: s.soundEnabled,
     remindersEnabled: s.remindersEnabled,
     reminderTime: s.reminderTime,
-    companion: s.companion
+    companion: s.companion,
+    closeToTray: s.closeToTray,
+    launchAtLogin: s.launchAtLogin,
+    autoBackup: s.autoBackup
   }
 })
 ipcMain.handle('set-settings', (_event, settings) => {
@@ -392,12 +511,27 @@ ipcMain.handle('set-settings', (_event, settings) => {
   if (typeof settings.remindersEnabled === 'boolean') patch.remindersEnabled = settings.remindersEnabled
   if (typeof settings.reminderTime === 'string') patch.reminderTime = settings.reminderTime
   if (settings.companion === 'kai' || settings.companion === 'zun') patch.companion = settings.companion
+  for (const key of ['closeToTray', 'launchAtLogin', 'autoBackup']) {
+    if (typeof settings[key] === 'boolean') patch[key] = settings[key]
+  }
+  if ('launchAtLogin' in patch) applyLaunchAtLogin(patch.launchAtLogin)
   const s = saveAppSettings(patch)
+  if (patch.autoBackup) runDailyBackup().catch(err => console.error('Auto-backup error:', err))
   return {
     notifications: s.notifications,
     soundEnabled: s.soundEnabled,
     remindersEnabled: s.remindersEnabled,
     reminderTime: s.reminderTime,
-    companion: s.companion
+    companion: s.companion,
+    closeToTray: s.closeToTray,
+    launchAtLogin: s.launchAtLogin,
+    autoBackup: s.autoBackup
   }
+})
+
+ipcMain.handle('open-backups-folder', async () => {
+  fs.mkdirSync(backupDir(), { recursive: true })
+  const err = await shell.openPath(backupDir())
+  if (err) throw new Error(err)
+  return backupDir()
 })

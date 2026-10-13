@@ -33,19 +33,6 @@
   animation: cgFadeIn 0.5s ease;
 }
 
-.goals-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.goals-header-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
 .goals-section {
   display: flex;
   flex-direction: column;
@@ -82,11 +69,6 @@
   border-color: #6ee7b7;
   transform: translateY(-3px);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-}
-
-.goal-card.completed {
-  opacity: 0.6;
-  border-color: #2a2a2a;
 }
 
 .goal-card-header {
@@ -149,30 +131,6 @@
 .progress-text input[type="range"] {
   flex: 1;
   margin-left: 8px;
-}
-
-.goal-date {
-  font-size: 0.8rem;
-  color: #666;
-}
-
-.goal-footer {
-  margin-top: 8px;
-}
-
-.goal-footer .btn {
-  width: 100%;
-  justify-content: center;
-}
-
-.goal-badge {
-  display: inline-block;
-  background: #6ee7b7;
-  color: #000;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 600;
 }
 
 /* Labels */
@@ -310,27 +268,142 @@
   color: #ff6b9d;
 }
 
-/* Goal Time Window */
-.goal-time {
-  display: block;
-  font-size: 0.85rem;
-  color: #888;
-  margin-top: 4px;
-}
-
-/* Goal Completion Date */
-.goal-completion {
-  display: block;
-  font-size: 0.85rem;
+.goals-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #252525;
   color: #6ee7b7;
-  margin-top: 4px;
-  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0;
 }
 
-/* Goal Time Window */
-.goal-time {
-  display: block;
-  font-size: 0.85rem;
-  color: #888;
-  margin-top: 4px;
+.goals-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 20px;
+  border: 1px dashed #333;
+  border-radius: 12px;
+  text-align: center;
 }
+
+.goals-container .goal-card {
+  --goal-color: #6ee7b7;
+  position: relative;
+  overflow: hidden;
+  gap: 14px;
+  padding: 18px 18px 16px;
+  border-top: 3px solid var(--goal-color);
+}
+
+.goals-container .goal-card:hover {
+  border-color: var(--goal-color);
+}
+
+.goals-container .goal-card-header {
+  align-items: center;
+  gap: 12px;
+}
+
+.goals-container .goal-card-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--goal-color) 18%, #111);
+  border: 1px solid color-mix(in srgb, var(--goal-color) 40%, transparent);
+}
+
+.goals-container .goal-card-title {
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.goals-container .goal-card-title h4 {
+  margin: 0;
+  max-width: 100%;
+  font-size: 1.05rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.goals-container .goal-label-badge {
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  background: color-mix(in srgb, var(--goal-color) 22%, transparent);
+  color: var(--goal-color);
+  border: 1px solid color-mix(in srgb, var(--goal-color) 45%, transparent);
+}
+
+.goals-container .goal-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.goals-container .goal-card:hover .goal-actions,
+.goals-container .goal-actions:focus-within {
+  opacity: 1;
+}
+
+.goal-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.goal-progress span {
+  color: var(--goal-color);
+  font-weight: 700;
+  font-size: 0.9rem;
+  min-width: 3ch;
+  text-align: right;
+}
+
+.goal-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #262626;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.goal-progress-bar div {
+  height: 100%;
+  background: repeating-linear-gradient(90deg, var(--goal-color) 0 6px, color-mix(in srgb, var(--goal-color) 75%, #000) 6px 8px);
+  transition: width 0.4s;
+}
+
+.goal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  color: #aaa;
+  font-size: 0.82rem;
+}
+
+.goal-footer-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #262626;
+  color: #777;
+  font-size: 0.78rem;
+}
+
+.goal-days-left {
+  color: #ccc;
+}
+

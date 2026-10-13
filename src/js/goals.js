@@ -28,40 +28,34 @@ async function renderGoals() {
     const container = document.createElement('div')
     container.className = 'goals-container'
     
-    const header = document.createElement('div')
-    header.className = 'goals-header'
-    header.innerHTML = `
-      <div class="goals-header-content">
-        <h2>🎯 Goals Management</h2>
-        <button class="btn btn-primary" onclick="openAddGoalModal()">+ Create Goal</button>
-        <button class="btn btn-primary" onclick="openCustomLabelModal()">+ Manage Labels</button>
+    const avgProgress = activeGoals.length
+      ? Math.round(activeGoals.reduce((sum, g) => sum + (g[7] || 0), 0) / activeGoals.length)
+      : 0
+    const next = activeGoals.filter(g => g[4]).sort((x, y) => x[4].localeCompare(y[4]))[0]
+
+    container.innerHTML = `
+      ${pageHeader('target', 'Goals', 'Small steps, every day. Check in on <strong>CheckMarked</strong>.', `
+        <button class="btn btn-secondary" onclick="openCustomLabelModal()">${px('pin')} Labels</button>
+        <button class="btn btn-primary" onclick="openAddGoalModal()">+ New Goal</button>`)}
+
+      <div class="summary-row">
+        <div class="summary-tile">${px('flag', 28)}<div><strong>${activeGoals.length}</strong><span>Active goals</span></div></div>
+        <div class="summary-tile">${px('chartUp', 28)}<div><strong>${avgProgress}%</strong><span>Average progress</span></div></div>
+        <div class="summary-tile">${px('clock', 28)}<div><strong>${next ? escapeHtml(next[1]) : '—'}</strong><span>${next ? `Next deadline · ${daysLeftLabel(next[3], next[4])}` : 'Next deadline'}</span></div></div>
+      </div>
+
+      <div class="goals-section">
+        <h3>In progress <span class="goals-count">${activeGoals.length}</span></h3>
+        ${activeGoals.length === 0 ? `
+          <div class="goals-empty">
+            ${px('target', 72)}
+            <p>No active goals yet. Start with one small, daily step.</p>
+            <button class="btn btn-primary" onclick="openAddGoalModal()">+ Create your first goal</button>
+          </div>` : '<div class="goals-grid"></div>'}
       </div>
     `
-    container.appendChild(header)
-    
-    const banner = document.createElement('div')
-    banner.className = 'info-banner'
-    banner.innerHTML = `
-      <p>💡 Track your goals in the <strong>CheckMarked</strong> page with the 365-day grid</p>
-    `
-    container.appendChild(banner)
-    
-    // Active goals section
-    const activeSection = document.createElement('div')
-    activeSection.className = 'goals-section'
-    activeSection.innerHTML = `<h3>In Progress (${activeGoals.length})</h3>`
-    
-    if (activeGoals.length === 0) {
-      activeSection.innerHTML += '<p class="empty-msg">No active goals yet. Create one to get started!</p>'
-    } else {
-      const goalsGrid = document.createElement('div')
-      goalsGrid.className = 'goals-grid'
-      for (const goal of activeGoals) {
-        goalsGrid.appendChild(createGoalCard(goal))
-      }
-      activeSection.appendChild(goalsGrid)
-    }
-    container.appendChild(activeSection)
+    const goalsGrid = container.querySelector('.goals-grid')
+    for (const goal of activeGoals) goalsGrid.appendChild(createGoalCard(goal))
 
     content.appendChild(container)
     ensureGoalModalExists()
@@ -72,55 +66,58 @@ async function renderGoals() {
   }
 }
 
-function createGoalCard(goal, isCompleted = false) {
-  const card = document.createElement('div')
-  card.className = `goal-card ${isCompleted ? 'completed' : ''}`
-  
-  // FIXED: correct indices
-  const id = goal[0]
-  const title = goal[1]
-  const label = goal[15]
-  const startDate = goal[3]
-  const targetDate = goal[4]
-  const completed = goal[5]
-  const failed = goal[6]
-  const progress = goal[7]          // was incorrectly goal[6]
-  const completionDate = goal[11]
-  const color = goal[12]
-  const icon = goal[13] || '🎯'
-  const time = goal[14]
-  
-  const startStr = startDate ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
-  const targetStr = targetDate ? new Date(targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
-  const completionStr = completionDate ? new Date(completionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
-  
-  let timeInfo = ''
+/** "12 days left" / "Starts in 3 days" / "Last day" / "Ended" for a goal window */
+function daysLeftLabel(startDate, targetDate) {
+  const today = new Date(getLocalDateString() + 'T12:00:00')
+  const diff = (d) => Math.round((new Date(d + 'T12:00:00') - today) / 86400000)
+  if (startDate && diff(startDate) > 0) return `Starts in ${diff(startDate)} day${diff(startDate) !== 1 ? 's' : ''}`
+  if (!targetDate) return 'No deadline'
+  const left = diff(targetDate)
+  if (left < 0) return 'Ended'
+  if (left === 0) return 'Last day'
+  return `${left} day${left !== 1 ? 's' : ''} left`
+}
+
+function createGoalCard(goal) {
+  // [0]=id [1]=title [3]=start_date [4]=target_date [7]=progress [8]=frequency [12]=color [14]=time [15]=label
+  const [id, title, , startDate, targetDate, , , progress = 0, frequency, , , , color = '#6ee7b7', , time, label] = goal
+  const fmt = (d) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  let timeStr = ''
   if (time) {
-    // Format the time as h:mm A
-    try {
-      const [hours, minutes] = time.split(':')
-      const d = new Date()
-      d.setHours(parseInt(hours), parseInt(minutes), 0)
-      timeInfo = ` &middot; ⌚ ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-    } catch(e) {
-      timeInfo = ` &middot; ⌚ ${time}`
-    }
+    const [h, m] = time.split(':').map(Number)
+    const d = new Date()
+    d.setHours(h, m, 0)
+    timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   }
 
+  const card = document.createElement('div')
+  card.className = 'goal-card'
+  card.style.setProperty('--goal-color', color || '#6ee7b7')
   card.innerHTML = `
     <div class="goal-card-header">
+      <span class="goal-card-icon">${px('target', 28)}</span>
       <div class="goal-card-title">
-        <span class="goal-card-icon">${icon}</span>
-        <h4>${isCompleted ? '✓' : ''} ${escapeHtml(title)}</h4>
+        <h4 title="${escapeHtml(title)}">${escapeHtml(title)}</h4>
+        ${label ? `<span class="goal-label-badge">${escapeHtml(label)}</span>` : ''}
       </div>
       <div class="goal-actions">
-        <button class="icon-btn" onclick="editGoal(${id})" title="Edit">✏️</button>
-        <button class="icon-btn" onclick="deleteGoalConfirm(${id})" title="Delete">🗑️</button>
+        <button class="icon-btn" onclick="editGoal(${id})" title="Edit" aria-label="Edit goal">${px('pencil')}</button>
+        <button class="icon-btn" onclick="deleteGoalConfirm(${id})" title="Delete" aria-label="Delete goal">${px('trash')}</button>
       </div>
     </div>
-    ${label ? `<div class="goal-labels"><span class="goal-label-badge">${escapeHtml(label)}</span></div>` : ''}
-    ${startDate && targetDate ? `<span class="goal-time">⏱️ Window: ${startStr} → ${targetStr}${timeInfo}</span>` : ''}
-    ${isCompleted && completionStr ? `<span class="goal-completion">✓ Completed on ${completionStr}</span>` : ''}
+    <div class="goal-progress">
+      <div class="goal-progress-bar"><div style="width:${progress}%"></div></div>
+      <span>${progress}%</span>
+    </div>
+    <div class="goal-meta">
+      <span>${frequencyLabel(frequency)}</span>
+      ${timeStr ? `<span>${px('clock')} ${timeStr}</span>` : ''}
+    </div>
+    <div class="goal-footer-row">
+      <span>${startDate && targetDate ? `${fmt(startDate)} → ${fmt(targetDate)}` : ''}</span>
+      <span class="goal-days-left">${daysLeftLabel(startDate, targetDate)}</span>
+    </div>
   `
   return card
 }
@@ -389,7 +386,7 @@ function displayCustomLabels() {
     html += `
       <div style="display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 12px; border-radius: 6px; border-left: 3px solid #6ee7b7;">
         <span style="color: #fff;">${escapeHtml(labelName)}</span>
-        <button type="button" onclick="deleteCustomLabelFromModal(${labelId})" class="btn-delete" title="Delete">🗑️</button>
+        <button type="button" onclick="deleteCustomLabelFromModal(${labelId})" class="btn-delete" title="Delete">${px('trash')}</button>
       </div>
     `
   }
@@ -401,13 +398,13 @@ function addNewCustomLabel() {
   const labelValue = input.value.trim()
   
   if (!labelValue) {
-    alert('Please enter a label name')
+    kzAlert('Please enter a label name')
     return
   }
   
   const existingLabel = allLabels.find(l => l[1].toLowerCase() === labelValue.toLowerCase())
   if (existingLabel) {
-    alert('This label already exists!')
+    kzAlert('This label already exists!')
     input.value = ''
     return
   }
@@ -422,11 +419,11 @@ function addNewCustomLabel() {
   })
 }
 
-function deleteCustomLabelFromModal(labelId) {
+async function deleteCustomLabelFromModal(labelId) {
   const label = allLabels.find(l => l[0] === labelId)
   if (!label) return
   
-  if (confirm(`Delete custom label "${label[1]}"?`)) {
+  if (await kzConfirm(`Delete custom label "${label[1]}"?`, { danger: true, okText: 'Delete' })) {
     window.api.deleteLabel(labelId).then(() => {
       window.api.getAllLabels().then(labels => {
         allLabels = labels
@@ -522,19 +519,19 @@ async function saveGoal(event) {
   const time = timeInput ? timeInput.value : null
   
   if (!title) {
-    alert('Goal title is required!')
+    kzAlert('Goal title is required!')
     return
   }
   if (!label) {
-    alert('Please select or create a label!')
+    kzAlert('Please select or create a label!')
     return
   }
   if (!startDate) {
-    alert('Start date is required!')
+    kzAlert('Start date is required!')
     return
   }
   if (!targetDate) {
-    alert('Target date is required!')
+    kzAlert('Target date is required!')
     return
   }
 
@@ -548,7 +545,7 @@ async function saveGoal(event) {
   if (frequency === 'custom') {
     const checked = [...document.querySelectorAll('input[name="day"]:checked')]
     if (checked.length === 0) {
-      alert('Select at least one day!')
+      kzAlert('Select at least one day!')
       return
     }
     scheduledDays = JSON.stringify(checked.map(cb => parseInt(cb.value)))
@@ -566,14 +563,14 @@ async function saveGoal(event) {
     renderGoals()
   } catch (error) {
     console.error('Error saving goal:', error)
-    alert('Error saving goal')
+    kzAlert('Error saving goal')
   }
 }
 
-function deleteGoalConfirm(goalId) {
+async function deleteGoalConfirm(goalId) {
   const goal = allGoals.find(g => g[0] === goalId)
   if (!goal) return
-  if (confirm(`Delete goal "${goal[1]}"? This action cannot be undone. Journal entries linked to it will be kept.`)) {
+  if (await kzConfirm('This cannot be undone. Journal entries linked to it will be kept.', { title: `Delete "${goal[1]}"?`, danger: true, okText: 'Delete' })) {
     deleteGoal(goalId)
   }
 }

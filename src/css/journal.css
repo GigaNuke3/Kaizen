@@ -6,13 +6,6 @@
   animation: cgFadeIn 0.5s ease;
 }
 
-.journal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
 .journal-entries {
   display: flex;
   flex-direction: column;
@@ -109,3 +102,4 @@
   color: #000 !important;
   border-color: #6ee7b7 !important;
 }
+

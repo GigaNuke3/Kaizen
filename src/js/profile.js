@@ -4,13 +4,13 @@ const PROFILE_DEFAULTS = {
 }
 
 const PROFILE_FEATURES = [
-  { icon: '📊', name: 'Dashboard', desc: 'See your daily activity and progress at a glance' },
-  { icon: '🔔', name: 'Notifications', desc: 'Goal completed and failed alerts in one place' },
-  { icon: '🎯', name: 'Goals', desc: 'Set goals with deadlines and track progress' },
-  { icon: '📝', name: 'CheckMarked', desc: '365-day grid with frequency-based scheduling' },
-  { icon: '✅', name: 'Completed Goals', desc: 'Review finished goals and restore if needed' },
-  { icon: '❌', name: 'Failed Goals', desc: 'See missed goals and overdue checkmark tasks' },
-  { icon: '📓', name: 'Journal', desc: 'Reflect on your day and track your mood' }
+  { icon: 'dashboard', name: 'Dashboard', desc: 'See your daily activity and progress at a glance' },
+  { icon: 'bell', name: 'Notifications', desc: 'Goal completed and failed alerts in one place' },
+  { icon: 'target', name: 'Goals', desc: 'Set goals with deadlines and track progress' },
+  { icon: 'clipboard', name: 'CheckMarked', desc: '365-day grid with frequency-based scheduling' },
+  { icon: 'trophy', name: 'Completed Goals', desc: 'Review finished goals and restore if needed' },
+  { icon: 'x', name: 'Failed Goals', desc: 'See missed goals and overdue checkmark tasks' },
+  { icon: 'book', name: 'Journal', desc: 'Reflect on your day and track your mood' }
 ]
 
 function loadUserData() {
@@ -49,7 +49,7 @@ async function renderProfile() {
     const featuresHtml = PROFILE_FEATURES.map(
       f => `
         <div class="feature-item">
-          <span>${f.icon} ${f.name}</span>
+          <span>${px(f.icon)} ${f.name}</span>
           <p>${f.desc}</p>
         </div>
       `
@@ -58,7 +58,7 @@ async function renderProfile() {
     content.innerHTML = `
       <div class="profile-container">
         <div class="profile-header">
-          <div class="profile-avatar" aria-hidden="true">👤</div>
+          <div class="profile-avatar" aria-hidden="true">${px('warrior', 72)}</div>
           <div class="profile-info">
             <h2 id="profile-name">${escapeHtml(user.name)}</h2>
             <p class="profile-tagline" id="profile-tagline">${escapeHtml(user.tagline)}</p>
@@ -68,28 +68,28 @@ async function renderProfile() {
 
         <div class="profile-stats">
           <div class="stat-item">
-            <span class="stat-icon">🎯</span>
+            <span class="stat-icon">${px('target', 32)}</span>
             <div class="stat-details">
               <span class="stat-value">${activeGoals}</span>
               <span class="stat-name">Active Goals</span>
             </div>
           </div>
           <div class="stat-item">
-            <span class="stat-icon">✅</span>
+            <span class="stat-icon">${px('check', 32)}</span>
             <div class="stat-details">
               <span class="stat-value">${completedGoals}</span>
               <span class="stat-name">Completed Goals</span>
             </div>
           </div>
           <div class="stat-item">
-            <span class="stat-icon">📓</span>
+            <span class="stat-icon">${px('book', 32)}</span>
             <div class="stat-details">
               <span class="stat-value">${stats.journal_entries || 0}</span>
               <span class="stat-name">Journal Entries</span>
             </div>
           </div>
           <div class="stat-item">
-            <span class="stat-icon">🔥</span>
+            <span class="stat-icon">${px('flame', 32)}</span>
             <div class="stat-details">
               <span class="stat-value">${stats.contributions_today || 0}</span>
               <span class="stat-name">Today's Actions</span>
@@ -148,6 +148,17 @@ async function renderProfile() {
                 onchange="updateReminderTime(this.value)"
                 style="background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:6px 8px;color:#fff;">
             </div>
+            ${[
+              ['closeToTray', 'Keep running in the tray when the window is closed (reminders keep working)'],
+              ['launchAtLogin', 'Launch Kaizen at login (starts in the tray)'],
+              ['autoBackup', 'Back up automatically every day (keeps the last 7)']
+            ].map(([key, text]) => `
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" ${settings[key] ? 'checked' : ''} onchange="toggleAppSetting('${key}', this.checked)">
+                <span>${text}</span>
+              </label>
+            </div>`).join('')}
             <div class="setting-item setting-item--stacked">
               <button class="btn btn-secondary" onclick="clearAllData()">Clear All Data</button>
               <span class="setting-hint">Deletes all goals, journal entries, checkmarks, and habits. Profile name is kept.</span>
@@ -159,11 +170,15 @@ async function renderProfile() {
           <h3>Data</h3>
           <div class="settings-list">
             <div class="setting-item setting-item--stacked">
-              <button class="btn btn-secondary" onclick="backupData()">⬇️ Back up now</button>
+              <button class="btn btn-secondary" onclick="backupData()">${px('arrowDown')} Back up now</button>
               <span class="setting-hint">Exports all goals, check-ins, journal entries, badges data, and Kai chat to a JSON file.</span>
             </div>
             <div class="setting-item setting-item--stacked">
-              <button class="btn btn-secondary" onclick="restoreData()">⬆️ Restore from backup</button>
+              <button class="btn btn-secondary" onclick="openBackupsFolder()">${px('box')} Open daily backups folder</button>
+              <span class="setting-hint">Automatic daily backups live here. Restore any of them with the button below.</span>
+            </div>
+            <div class="setting-item setting-item--stacked">
+              <button class="btn btn-secondary" onclick="restoreData()">${px('arrowUp')} Restore from backup</button>
               <span class="setting-hint">Replaces all current data with the selected backup file. This cannot be undone.</span>
             </div>
           </div>
@@ -177,7 +192,7 @@ async function renderProfile() {
     console.error('❌ Profile render error:', err)
     content.innerHTML = `
       <div class="error-state" style="padding:40px; text-align:center;">
-        <h2>❌ Failed to load profile</h2>
+        <h2>${px('x')} Failed to load profile</h2>
         <p>${escapeHtml(err.message || 'Unknown error occurred')}</p>
       </div>
     `
@@ -256,6 +271,23 @@ async function toggleNotificationsSetting(enabled) {
   if (window.kaizenSettings) window.kaizenSettings.notifications = enabled
 }
 
+async function toggleAppSetting(key, enabled) {
+  try {
+    await window.api.setSettings({ [key]: enabled })
+    if (window.kaizenSettings) window.kaizenSettings[key] = enabled
+  } catch (err) {
+    kzAlert('Could not save setting: ' + err.message)
+  }
+}
+
+async function openBackupsFolder() {
+  try {
+    await window.api.openBackupsFolder()
+  } catch (err) {
+    kzAlert('Could not open the backups folder: ' + err.message)
+  }
+}
+
 async function setCompanion(companion) {
   await window.api.setSettings({ companion })
   if (window.kaizenSettings) window.kaizenSettings.companion = companion
@@ -283,41 +315,41 @@ async function backupData() {
   try {
     const res = await window.api.exportData()
     if (res && res.canceled) return
-    alert('Backup saved to:\n' + (res.filePath || 'unknown'))
+    kzAlert('Backup saved to:\n' + (res.filePath || 'unknown'))
   } catch (err) {
     console.error('Backup failed:', err)
-    alert('Backup failed: ' + err.message)
+    kzAlert('Backup failed: ' + err.message)
   }
 }
 
 async function restoreData() {
-  if (!confirm('Restore from backup? This REPLACES all current data (goals, journal, check-ins, chat).')) return
-  if (!confirm('Last chance — current data will be permanently replaced by the backup.')) return
+  if (!(await kzConfirm('This REPLACES all current data (goals, journal, check-ins, chat).', { title: 'Restore from backup?', danger: true, okText: 'Continue' }))) return
+  if (!(await kzConfirm('Current data will be permanently replaced by the backup.', { title: 'Last chance', danger: true, okText: 'Replace my data' }))) return
   try {
     const res = await window.api.importData()
     if (res && res.canceled) return
-    alert('Data restored successfully.')
+    kzAlert('Data restored successfully.')
     if (typeof loadPage === 'function') {
       loadPage('dashboard')
     }
   } catch (err) {
     console.error('Restore failed:', err)
-    alert('Restore failed: ' + err.message)
+    kzAlert('Restore failed: ' + err.message)
   }
 }
 
 async function clearAllData() {
-  if (!confirm('Delete ALL app data (goals, journal, checkmarks, habits)? This cannot be undone.')) return
-  if (!confirm('Last chance — permanently erase everything except your profile name and tagline?')) return
+  if (!(await kzConfirm('Goals, journal, check-ins and chat will be deleted. This cannot be undone.', { title: 'Delete ALL app data?', danger: true, okText: 'Continue' }))) return
+  if (!(await kzConfirm('Permanently erase everything except your profile name and tagline?', { title: 'Last chance', danger: true, okText: 'Erase everything' }))) return
 
   try {
     await window.api.resetAllData()
-    alert('All data has been cleared.')
+    kzAlert('All data has been cleared.')
     if (typeof loadPage === 'function') {
       loadPage('dashboard')
     }
   } catch (err) {
     console.error('Error clearing data:', err)
-    alert('Could not clear data: ' + err.message)
+    kzAlert('Could not clear data: ' + err.message)
   }
 }

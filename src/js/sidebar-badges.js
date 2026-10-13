@@ -33,7 +33,7 @@ class SidebarBadges {
           min-width: 20px;
           height: 20px;
           padding: 0 6px;
-          margin-left: 8px;
+          margin-left: auto;
           background-color: #ff4444;
           color: white;
           border-radius: 10px;
@@ -44,12 +44,6 @@ class SidebarBadges {
 
         .badge.zero {
           display: none;
-        }
-
-        .sidebar nav.sidebar .nav-links li:has(.badge) {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
         }
 
         .badge.notifications-badge {

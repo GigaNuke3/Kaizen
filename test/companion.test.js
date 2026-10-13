@@ -19,3 +19,15 @@ test('companion mood follows today\'s progress', () => {
   assert.equal(mood({ completed: 0, scheduled: 3, percentage: 0 }, 0, 19), 'neutral') // nothing to lose
   assert.equal(mood(null, 0), 'neutral')
 })
+
+test('companion rank follows total check-in days', () => {
+  const lvl = (d) => ctx.companionLevel(d)
+  assert.equal(lvl(0).title, 'Novice')
+  assert.equal(lvl(6).title, 'Novice')
+  assert.equal(lvl(7).title, 'Apprentice')
+  assert.equal(lvl(18).pct, Math.round((11 / 23) * 100)) // 7→30
+  assert.equal(lvl(100).title, 'Master')
+  assert.equal(lvl(400).title, 'Sensei')
+  assert.equal(lvl(400).next, null)
+  assert.equal(lvl(400).pct, 100)
+})

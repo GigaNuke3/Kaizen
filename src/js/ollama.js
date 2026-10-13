@@ -72,6 +72,35 @@ async function streamKaiChat(messages, onChunk = null) {
 }
 
 /**
+ * What Kai knows about the user: name, active goals, today's check-ins, streak.
+ * Appended to every system prompt so replies are about *their* goals.
+ */
+async function kaiUserContext() {
+  try {
+    const [goals, today, streak] = await Promise.all([
+      window.api.getActiveGoals(),
+      window.api.getTodayGoalStats(),
+      window.api.getStreakStats()
+    ])
+    // [1]=title [4]=target_date [7]=progress [15]=label
+    const list = goals.slice(0, 8)
+      .map(g => `- ${g[1]}${g[15] ? ` (${g[15]})` : ''}: ${g[7] || 0}% done, ends ${g[4]}`)
+      .join('\n') || '- (no active goals yet)'
+    return `
+
+What you know about the user (use it naturally, never recite it as a list):
+Name: ${loadUserData().name}
+Active goals:
+${list}
+Today: ${today.completed} of ${today.scheduled} scheduled goals checked in
+Streak: ${streak.current} day(s), best ${streak.longest}`
+  } catch (err) {
+    console.error('Kai context error:', err)
+    return ''
+  }
+}
+
+/**
  * Send journal entry to Ollama and stream back Kai's response
  * @param {string} journalText - The journal content to respond to
  * @param {function} onChunk - Callback fired on each streamed chunk (chunk, fullText)
@@ -88,7 +117,7 @@ The user has just written a journal entry. Your job is to:
 - Speak like a caring friend, not a therapist`
 
   return streamKaiChat([
-    { role: 'system', content: systemPrompt },
+    { role: 'system', content: systemPrompt + await kaiUserContext() },
     { role: 'user', content: journalText }
   ], onChunk)
 }

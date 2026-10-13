@@ -71,28 +71,15 @@ async function renderCheckmarks() {
     container.className = 'checkmarked-container'
 
     // ===== HEADER =====
-    const header = document.createElement('div')
-    header.className = 'checkmarked-header'
-    header.innerHTML = `
-      <h2>✅ CheckMarked - Goal Tracker</h2>
-      <p>Track your goals with frequency-based scheduling</p>
-    `
-    container.appendChild(header)
-
-    // ===== TODAY'S STATS =====
-    const statsDiv = document.createElement('div')
-    statsDiv.className = 'checkmarked-stats'
-    statsDiv.innerHTML = `
-      <div class="stat-item">
-        <span class="stat-label">Today's Progress</span>
-        <span class="stat-value">${todayStats.completed}/${todayStats.scheduled}</span>
+    const open = todayStats.scheduled - todayStats.completed
+    container.insertAdjacentHTML('beforeend', `
+      ${pageHeader('clipboard', 'CheckMarked', "Today's slots open on each goal's schedule. Every check-in needs a journal entry.")}
+      <div class="summary-row">
+        <div class="summary-tile">${px('check', 28)}<div><strong>${todayStats.completed}/${todayStats.scheduled}</strong><span>Checked in today</span></div></div>
+        <div class="summary-tile">${px('chartUp', 28)}<div><strong>${todayStats.percentage}%</strong><span>Today's completion</span></div></div>
+        <div class="summary-tile">${px('clock', 28)}<div><strong>${open > 0 ? open : 'None'}</strong><span>${open > 0 ? 'Slots still open' : 'All done for today'}</span></div></div>
       </div>
-      <div class="stat-item">
-        <span class="stat-label">Completion Rate</span>
-        <span class="stat-value">${todayStats.percentage}%</span>
-      </div>
-    `
-    container.appendChild(statsDiv)
+    `)
 
     // ===== EMPTY STATE =====
     if (gridData.goals.length === 0) {
@@ -100,7 +87,7 @@ async function renderCheckmarks() {
       emptyState.className = 'empty-state'
       emptyState.innerHTML = `
         <p style="color:#888; text-align:center; padding:40px 20px;">
-          📝 No active goals yet. Create goals in the <strong>Goals</strong> page to start tracking!
+          ${px('pencil')} No active goals yet. Create goals in the <strong>Goals</strong> page to start tracking!
         </p>
       `
       container.appendChild(emptyState)
@@ -109,7 +96,7 @@ async function renderCheckmarks() {
       // ===== GOALS INFO CARDS =====
       const goalsInfoSection = document.createElement('div')
       goalsInfoSection.className = 'goals-section'
-      goalsInfoSection.innerHTML = `<h3>📋 Active Goals (${gridData.goals.length})</h3>`
+      goalsInfoSection.innerHTML = `<h3>${px('clipboard')} Active Goals (${gridData.goals.length})</h3>`
 
       const goalsGrid = document.createElement('div')
       goalsGrid.className = 'goals-grid'
@@ -124,7 +111,7 @@ async function renderCheckmarks() {
       gridSection.className = 'goal-grid-section'
       const earliestDate = gridData.dates.length > 0 ? gridData.dates[0] : 'N/A'
       const latestDate   = gridData.dates.length > 0 ? gridData.dates[gridData.dates.length - 1] : 'N/A'
-      gridSection.innerHTML = `<h3>📅 Tracking Grid (${earliestDate} → ${latestDate})</h3>`
+      gridSection.innerHTML = `<h3>${px('calendar')} Tracking Grid (${earliestDate} → ${latestDate})</h3>`
 
       const gridContainer = document.createElement('div')
       gridContainer.className = 'goal-grid-container'
@@ -144,15 +131,15 @@ async function renderCheckmarks() {
             const [h, m] = goal.time.split(':')
             const d = new Date()
             d.setHours(parseInt(h), parseInt(m), 0)
-            timeLabel = `<div style="font-size:0.7rem;color:#888;margin-top:2px;">⌚ ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`
+            timeLabel = `<div style="font-size:0.7rem;color:#888;margin-top:2px;">${px('clock')} ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`
           } catch {
-            timeLabel = `<div style="font-size:0.7rem;color:#888;margin-top:2px;">⌚ ${goal.time}</div>`
+            timeLabel = `<div style="font-size:0.7rem;color:#888;margin-top:2px;">${px('clock')} ${goal.time}</div>`
           }
         }
 
         label.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:center;width:30px;">
-            <span class="goal-icon">${goal.icon || '🎯'}</span>
+            <span class="goal-icon">${px('target')}</span>
           </div>
           <div style="display:flex;flex-direction:column;overflow:hidden;">
             <span class="goal-name" title="${escapeHtml(goal.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(goal.title)}</span>
@@ -255,21 +242,21 @@ async function renderCheckmarks() {
             // ✅ Past date — completed is PERMANENT (no undo), missed/excused are clickable
             if (isCompleted) {
               cell.classList.add('completed')
-              cell.textContent = '✓'
-              cell.title = `${goal.title} - ${date} ✓ Completed (permanent)`
+              cell.innerHTML = px('check', null, 'px-still')
+              cell.title = `${goal.title} - ${date} · Completed (permanent)`
               cell.style.cursor = 'default'
               // No click handler — completed slots are locked forever
             } else if (isExcused) {
               cell.classList.add('excused')
-              cell.textContent = '🌴'
-              cell.title = `${goal.title} - ${date} 🌴 Rest day (click to undo)`
+              cell.innerHTML = px('palm', null, 'px-still')
+              cell.title = `${goal.title} - ${date} · Rest day (click to undo)`
               cell.style.cursor = 'pointer'
               cell.addEventListener('click', () => toggleRestDayCell(goal.id, date, true))
             } else {
               // ❌ Missed — was scheduled but not checked; click to excuse as rest day
               cell.classList.add('missed')
-              cell.textContent = '✗'
-              cell.title = `${goal.title} - ${date} ✗ Missed (click to mark as rest day)`
+              cell.innerHTML = px('x', null, 'px-still')
+              cell.title = `${goal.title} - ${date} · Missed (click to mark as rest day)`
               cell.style.cursor = 'pointer'
               cell.addEventListener('click', () => toggleRestDayCell(goal.id, date, false))
             }
@@ -278,8 +265,8 @@ async function renderCheckmarks() {
             // Today and available
             if (isCompleted) {
               cell.classList.add('completed')
-              cell.textContent = '✓'
-              cell.title = `${goal.title} - ${date} ✓ Completed (permanent)`
+              cell.innerHTML = px('check', null, 'px-still')
+              cell.title = `${goal.title} - ${date} · Completed (permanent)`
               cell.style.cursor = 'default'
               // No click handler — completed slots are locked forever
             } else {
@@ -302,7 +289,7 @@ async function renderCheckmarks() {
                     await window.api.evaluateGoals()
                     await renderCheckmarks()
                   } catch (err) {
-                    alert(err.message || 'Could not check this slot.')
+                    kzAlert(err.message || 'Could not check this slot.')
                   }
                 } else {
                   // No journal for this goal yet — prompt user to write one
@@ -334,7 +321,7 @@ async function renderCheckmarks() {
     console.error('❌ Error rendering checkmarked:', error)
     content.innerHTML = `
       <div class="error-state" style="padding:40px;text-align:center;">
-        <h2>❌ Error Loading CheckMarked</h2>
+        <h2>${px('x')} Error Loading CheckMarked</h2>
         <p><strong>${error.message || 'Unknown error'}</strong></p>
         <pre style="text-align:left;background:#1a1a1a;padding:12px;border-radius:6px;overflow-x:auto;">
 ${error.stack || 'No stack trace available'}</pre>
@@ -400,7 +387,6 @@ function createGoalInfoCard(goal, gridData = null) {
   const startDate   = goal.start_date
   const targetDate  = goal.target_date
   const progress    = goal.progress    || 0
-  const icon        = goal.icon        || '🎯'
   const frequency   = goal.frequency   || 'daily'
 
   const startStr = startDate
@@ -410,13 +396,7 @@ function createGoalInfoCard(goal, gridData = null) {
     ? new Date(targetDate + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     : ''
 
-  const frequencyDisplay = {
-    'daily':    '📅 Every Day',
-    'weekdays': '💼 Weekdays (Mon-Fri)',
-    'weekends': '🎉 Weekends (Sat-Sun)',
-    '3x':       '⭐ 3 times per week',
-    'custom':   '📍 Custom days'
-  }[frequency] || frequency
+  const frequencyDisplay = frequencyLabel(frequency)
 
   // Rest-today button when today is scheduled, in window, and not yet checked
   const today = getLocalDateString()
@@ -426,20 +406,20 @@ function createGoalInfoCard(goal, gridData = null) {
   const todayCompleted = gridData?.completions?.[todayKey] === 1
   const todayExcused = gridData?.excused?.[todayKey] === 1
   const restButton = (todayScheduled && !todayCompleted)
-    ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%;" onclick="toggleRestDayFromCard(${goal.id}, '${today}')">${todayExcused ? '🌴 Un-rest today' : '🌴 Rest today'}</button>`
+    ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%;" onclick="toggleRestDayFromCard(${goal.id}, '${today}')">${px('palm')} ${todayExcused ? 'Un-rest today' : 'Rest today'}</button>`
     : ''
 
   card.innerHTML = `
     <div class="goal-card-header">
       <div class="goal-card-title">
-        <span class="goal-card-icon">${icon}</span>
+        <span class="goal-card-icon">${px('target')}</span>
         <h4>${escapeHtml(title)}</h4>
       </div>
     </div>
     ${description ? `<p class="goal-desc">${escapeHtml(description)}</p>` : ''}
     <div class="goal-card-meta">
       <span class="goal-card-frequency"><strong>${frequencyDisplay}</strong></span>
-      ${startDate && targetDate ? `<span class="goal-card-target">⏱️ ${startStr} → ${targetStr}</span>` : ''}
+      ${startDate && targetDate ? `<span class="goal-card-target">${px('calendar')} ${startStr} → ${targetStr}</span>` : ''}
     </div>
     <div class="progress-container">
       <div class="progress-bar">
@@ -461,13 +441,13 @@ async function toggleRestDayCell(goalId, date, currentlyExcused) {
   const msg = currentlyExcused
     ? `Remove the rest day for ${date}? This day will count against the goal again.`
     : `Mark ${date} as a rest day? This day will no longer count against the goal.`
-  if (!confirm(msg)) return
+  if (!(await kzConfirm(msg))) return
   try {
     await window.api.toggleRestDay(goalId, date)
     await window.api.evaluateGoals()
     await renderCheckmarks()
   } catch (err) {
-    alert(err.message || 'Could not update rest day.')
+    kzAlert(err.message || 'Could not update rest day.')
   }
 }
 
@@ -481,7 +461,7 @@ async function toggleRestDayFromCard(goalId, date) {
     const currentlyExcused = grid.excused?.[key] === 1
     await toggleRestDayCell(goalId, date, currentlyExcused)
   } catch (err) {
-    alert(err.message || 'Could not update rest day.')
+    kzAlert(err.message || 'Could not update rest day.')
   }
 }
 
@@ -512,7 +492,7 @@ function showJournalRequiredModal(goalId, date, errorMessage) {
     text-align:center;box-shadow:0 10px 40px rgba(110,231,183,0.2);
   `
   inner.innerHTML = `
-    <div style="font-size:48px;margin-bottom:20px;"><img src="assets/icons/Journal_icon/Journal_gif.gif" style="width: 150px; height: 150px; image-rendering: pixelated; margin: 0;"></div>
+    <div style="margin-bottom:20px;">${px('book', 96)}</div>
     <h2 style="color:#6ee7b7;margin-bottom:15px;font-size:24px;">Journal Entry Required</h2>
     <p style="color:#ccc;line-height:1.6;margin-bottom:12px;">${escapeHtml(errorMessage)}</p>
     <p style="color:#888;font-size:14px;margin-bottom:30px;">
@@ -521,7 +501,7 @@ function showJournalRequiredModal(goalId, date, errorMessage) {
     </p>
     <div style="display:flex;gap:12px;justify-content:center;">
       <button type="button" id="jrm-cancel" class="btn btn-secondary">Cancel</button>
-      <button type="button" id="jrm-go"     class="btn btn-primary">➔ Go to Journal</button>
+      <button type="button" id="jrm-go"     class="btn btn-primary">Go to Journal ${px('arrowRight')}</button>
     </div>
   `
 

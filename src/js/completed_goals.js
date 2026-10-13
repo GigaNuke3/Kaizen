@@ -31,16 +31,9 @@ async function renderCompletedGoals() {
     container.className = 'cg-container'
 
     // ── HEADER ────────────────────────────────────────────────────────────
-    const header = document.createElement('div')
-    header.className = 'cg-header'
-    header.innerHTML = `
-      <div class="cg-header-left">
-        <h2>✅ Completed Goals</h2>
-        <span class="cg-count-badge">${completedGoals.length} completed</span>
-      </div>
-      <button id="cg-refresh-btn" class="cg-refresh-btn">🔄 Refresh</button>
-    `
-    container.appendChild(header)
+    container.insertAdjacentHTML('beforeend', pageHeader('trophy', 'Completed Goals',
+      `${completedGoals.length} completed — proof that small steps add up.`,
+      `<button id="cg-refresh-btn" class="btn btn-secondary">${px('refresh')} Refresh</button>`))
 
     // ── READY TO COMPLETE BANNER ──────────────────────────────────────────
     if (readyGoals.length > 0) {
@@ -52,7 +45,7 @@ async function renderCompletedGoals() {
       `
       banner.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="font-size:1.3rem;">🎉</span>
+          ${px('sparkle', 24)}
           <strong style="color:#6ee7b7;font-size:0.95rem;">
             ${readyGoals.length} goal${readyGoals.length !== 1 ? 's' : ''} reached 100% — mark as complete?
           </strong>
@@ -68,13 +61,13 @@ async function renderCompletedGoals() {
         `
         row.innerHTML = `
           <span style="color:#ccc;font-size:0.88rem;">
-            ${g[13] || '🎯'} <strong style="color:#fff;">${escapeHtmlCG(g[1])}</strong>
+            ${px('target')} <strong style="color:#fff;">${escapeHtmlCG(g[1])}</strong>
             <span style="color:#888;font-size:0.78rem;margin-left:8px;">${g[7]}% done</span>
           </span>
           <button class="btn-force-complete" data-id="${g[0]}" data-title="${escapeHtmlCG(g[1])}"
             style="background:#6ee7b7;color:#000;border:none;border-radius:6px;
                    padding:5px 14px;font-size:0.82rem;font-weight:600;cursor:pointer;">
-            Mark Complete ✓
+            Mark Complete ${px('check')}
           </button>
         `
         list.appendChild(row)
@@ -104,7 +97,7 @@ async function renderCompletedGoals() {
         <span class="cg-stat-label">Days Tracked</span>
       </div>
       <div class="cg-stat-card">
-        <span class="cg-stat-num">🏆</span>
+        <span class="cg-stat-num">${px('trophy', 36)}</span>
         <span class="cg-stat-label">Keep it up!</span>
       </div>
     `
@@ -115,15 +108,15 @@ async function renderCompletedGoals() {
 
     if (completedGoals.length === 0) {
       goalsSection.innerHTML = `
-        <p class="cg-section-heading">🏅 Completed Goals</p>
+        <p class="cg-section-heading">${px('medal')} Completed Goals</p>
         <div class="cg-empty">
-          <div class="cg-empty-icon">🏅</div>
+          <div class="cg-empty-icon">${px('medal', 64)}</div>
           <p class="cg-empty-title">No completed goals yet</p>
-          <p class="cg-empty-sub">Keep checking in on <strong>CheckMarked</strong> and your achievements will appear here! 💪</p>
+          <p class="cg-empty-sub">Keep checking in on <strong>CheckMarked</strong> and your achievements will appear here! ${px('bolt')}</p>
         </div>
       `
     } else {
-      goalsSection.innerHTML = `<p class="cg-section-heading">🏅 Completed Goals (${completedGoals.length})</p>`
+      goalsSection.innerHTML = `<p class="cg-section-heading">${px('medal')} Completed Goals (${completedGoals.length})</p>`
       const grid = document.createElement('div')
       grid.className = 'cg-grid'
       for (const goal of completedGoals) {
@@ -143,7 +136,7 @@ async function renderCompletedGoals() {
     console.error('Error rendering completed goals:', err)
     content.innerHTML = `
       <div class="cg-error">
-        <h2>❌ Error Loading Completed Goals</h2>
+        <h2>${px('x')} Error Loading Completed Goals</h2>
         <p>${escapeHtmlCG(err.message)}</p>
         <pre>${escapeHtmlCG(err.stack || '')}</pre>
       </div>
@@ -161,7 +154,6 @@ function buildCGCard(goal) {
   const frequency      = goal[8]  || 'daily'
   const completionDate = goal[11]
   const color          = goal[12] || '#6ee7b7'
-  const icon           = goal[13] || '🎯'
 
   const completedStr = fmtDateCG(completionDate)
   const targetStr    = fmtDateCG(targetDate)
@@ -175,11 +167,7 @@ function buildCGCard(goal) {
     durationStr = `${days} day${days !== 1 ? 's' : ''}`
   }
 
-  const freqMap = {
-    daily: '📅 Every Day', weekdays: '💼 Weekdays',
-    weekends: '🎉 Weekends', '3x': '⭐ 3x/week', custom: '📍 Custom'
-  }
-  const freqLabel = freqMap[frequency] || frequency
+  const freqLabel = frequencyLabel(frequency)
 
   const card = document.createElement('div')
   card.className = 'cg-card'
@@ -188,18 +176,18 @@ function buildCGCard(goal) {
   card.innerHTML = `
     <div class="cg-card-top">
       <div class="cg-card-title-row">
-        <span class="cg-card-icon">${icon}</span>
+        <span class="cg-card-icon">${px('target')}</span>
         <h3 class="cg-card-title">${escapeHtmlCG(title)}</h3>
-        <span class="cg-card-badge">✅ COMPLETED</span>
+        <span class="cg-card-badge">${px('check')} COMPLETED</span>
       </div>
       ${description ? `<p class="cg-card-desc">${escapeHtmlCG(description)}</p>` : ''}
     </div>
 
     <div class="cg-card-meta">
-      ${completedStr ? `<div class="cg-meta-row">🏆 Completed: <strong>${completedStr}</strong></div>` : ''}
-      ${targetStr    ? `<div class="cg-meta-row">⏰ Deadline: <strong>${targetStr}</strong></div>`    : ''}
+      ${completedStr ? `<div class="cg-meta-row">${px('trophy')} Completed: <strong>${completedStr}</strong></div>` : ''}
+      ${targetStr    ? `<div class="cg-meta-row">${px('clock')} Deadline: <strong>${targetStr}</strong></div>`    : ''}
       <div class="cg-meta-row">${freqLabel}</div>
-      ${durationStr  ? `<div class="cg-meta-row">📆 Duration: <strong>${durationStr}</strong></div>` : ''}
+      ${durationStr  ? `<div class="cg-meta-row">${px('calendar')} Duration: <strong>${durationStr}</strong></div>` : ''}
     </div>
 
     <div class="cg-progress-wrap">
@@ -213,10 +201,10 @@ function buildCGCard(goal) {
 
     <div class="cg-card-actions">
       <button class="cg-btn-restore" data-id="${id}" data-title="${escapeHtmlCG(title)}">
-        🔄 Restore
+        ${px('refresh')} Restore
       </button>
       <button class="cg-btn-delete" data-id="${id}" data-title="${escapeHtmlCG(title)}">
-        🗑️ Delete
+        ${px('trash')} Delete
       </button>
     </div>
   `
@@ -234,11 +222,11 @@ function attachCGEvents(content) {
     if (forceBtn) {
       const id = Number(forceBtn.dataset.id)
       const title = forceBtn.dataset.title
-      if (!confirm(`Mark "${title}" as complete now?`)) return
+      if (!(await kzConfirm(`Mark "${title}" as complete now?`))) return
       try {
         await window.api.forceCompleteGoal(id)
         renderCompletedGoals()
-      } catch (err) { alert('Could not complete: ' + err.message) }
+      } catch (err) { kzAlert('Could not complete: ' + err.message) }
       return
     }
 
@@ -246,11 +234,11 @@ function attachCGEvents(content) {
     if (restoreBtn) {
       const id = Number(restoreBtn.dataset.id)
       const title = restoreBtn.dataset.title
-      if (!confirm(`Restore "${title}" back to active?\n\nProgress will be recalculated from existing check-ins.`)) return
+      if (!(await kzConfirm('Progress will be recalculated from existing check-ins.', { title: `Restore "${title}" to active?`, okText: 'Restore' }))) return
       try {
         await window.api.restoreGoal(id)
         renderCompletedGoals()
-      } catch (err) { alert('Could not restore: ' + err.message) }
+      } catch (err) { kzAlert('Could not restore: ' + err.message) }
       return
     }
 
@@ -258,11 +246,11 @@ function attachCGEvents(content) {
     if (deleteBtn) {
       const id = Number(deleteBtn.dataset.id)
       const title = deleteBtn.dataset.title
-      if (!confirm(`Permanently delete "${title}"?\n\nThis cannot be undone. Journal entries linked to it will be kept.`)) return
+      if (!(await kzConfirm('This cannot be undone. Journal entries linked to it will be kept.', { title: `Permanently delete "${title}"?`, danger: true, okText: 'Delete' }))) return
       try {
         await window.api.deleteGoal(id)
         renderCompletedGoals()
-      } catch (err) { alert('Could not delete: ' + err.message) }
+      } catch (err) { kzAlert('Could not delete: ' + err.message) }
     }
   })
 }

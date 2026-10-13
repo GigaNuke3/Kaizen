@@ -9,18 +9,6 @@
     animation: cgFadeIn 0.5s ease;
 }
 
-.notifications-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.notifications-header h2 {
-    font-size: 1.8rem;
-    color: #57a9ff;
-}
-
 .notification-list {
     display: flex;
     flex-direction: column;
@@ -56,38 +44,9 @@
 .notification-item.read {
   opacity: 0.6;
 }
+
 .notification-item.unread {
   background-color: #2a3a2a;
   border-left-color: #6ee7b7;
 }
 
-
-  .nav-icon {
-    width: 64px;           /* Increased container size */
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-
-  .pixel-bell {
-    width: 52px;           /* Slightly bigger than before */
-    height: 52px;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    transition: transform 0.1s;
-  }
-
-  .bell-container:hover .pixel-bell,
-  .bell-container.active .pixel-bell {
-    animation: ring 0.7s ease-in-out;
-  }
-
-  @keyframes ring {
-    0%   { transform: rotate(-22deg); }
-    25%  { transform: rotate(22deg); }
-    50%  { transform: rotate(-14deg); }
-    75%  { transform: rotate(14deg); }
-    100% { transform: rotate(0deg); }
-  }

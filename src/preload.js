@@ -143,6 +143,9 @@ const api = {
   setSettings: (settings) =>
     ipcRenderer.invoke('set-settings', settings),
 
+  openBackupsFolder: () =>
+    ipcRenderer.invoke('open-backups-folder'),
+
   // ==================== OLLAMA / KAI ====================
   checkOllamaInstalled: () =>
     ipcRenderer.invoke('check-ollama-installed'),

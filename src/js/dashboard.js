@@ -19,16 +19,24 @@ async function renderDashboard() {
     const days = streakStats.totalDays || 0
     // Kaizen: 1% better on every day you showed up compounds to 1.01^days
     const compound = Math.pow(1.01, days).toFixed(2)
+    const rank = companionLevel(days)
 
     content.innerHTML = `
       <div class="dashboard">
         <div class="dash-header companion-hero">
-          ${companionImg(companion.mood, 'companion-hero-sprite')}
+          <div class="companion-avatar" title="${companionName()} · ${rank.title}">
+            ${companionImg(companion.mood, 'companion-hero-sprite')}
+            ${rank.icon ? `<span class="companion-accessory">${px(rank.icon, 32)}</span>` : ''}
+          </div>
           <div>
             <h2>Good ${getGreeting()}, ${escapeHtml(loadUserData().name)}</h2>
             <p class="date">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             <p class="companion-line"><strong>${companionName()}:</strong> ${companion.line}</p>
-            <p class="kaizen-compound" title="1.01 to the power of the days you've checked in">📈 ${days > 0 ? `×${compound} — 1% better on each of ${days} check-in day${days !== 1 ? 's' : ''}` : 'Your first check-in starts the 1% climb.'}</p>
+            <p class="kaizen-compound" title="1.01 to the power of the days you've checked in">${px('chartUp')} ${days > 0 ? `×${compound} — 1% better on each of ${days} check-in day${days !== 1 ? 's' : ''}` : 'Your first check-in starts the 1% climb.'}</p>
+            <div class="companion-rank">
+              <span>${companionName()} · <strong>${rank.title}</strong>${rank.next ? ` — ${rank.next.days - days} check-in day${rank.next.days - days !== 1 ? 's' : ''} to ${rank.next.title}` : ' — highest rank'}</span>
+              <div class="companion-rank-bar"><div style="width:${rank.pct}%"></div></div>
+            </div>
           </div>
         </div>
 
@@ -47,11 +55,11 @@ async function renderDashboard() {
           </div>
           <div class="stat-card">
             <span class="stat-num">${streakStats.current || 0}</span>
-            <span class="stat-label">Current Streak 🔥</span>
+            <span class="stat-label">${px('flame')} Current Streak</span>
           </div>
           <div class="stat-card">
             <span class="stat-num">${streakStats.longest || 0}</span>
-            <span class="stat-label">Longest Streak 🏆</span>
+            <span class="stat-label">${px('trophy')} Longest Streak</span>
           </div>
         </div>
 
@@ -72,6 +80,11 @@ async function renderDashboard() {
             <div class="legend-box l4"></div>
             <span>More</span>
           </div>
+        </div>
+
+        <div class="section">
+          <h3>${px('calendar')} Year in Pixels</h3>
+          <div id="year-in-pixels"></div>
         </div>
 
         <div class="section section--chart">
@@ -117,7 +130,7 @@ async function renderDashboard() {
             <p style="color:#666;font-size:0.82rem;margin:0;">
               ${remaining > 0
                 ? `${remaining} goal${remaining !== 1 ? 's' : ''} still open today — head to <strong style="color:#6ee7b7;">CheckMarked</strong> to check in.`
-                : '🎉 All goals checked in for today!'}
+                : `${px('sparkle')} All goals checked in for today!`}
             </p>
           </div>
         `
@@ -127,8 +140,7 @@ async function renderDashboard() {
     // Render weekly summary
     const weeklyEl = document.getElementById('weekly-summary')
     if (weeklyEl && weeklySummary) {
-      const MOOD_EMOJI = { sad: '😢', neutral: '😐', good: '🙂', happy: '😄', excited: '🚀' }
-      const topMood = weeklySummary.topMood ? (MOOD_EMOJI[weeklySummary.topMood] || '😐') : '—'
+      const topMood = weeklySummary.topMood ? companionImg(weeklySummary.topMood, 'mood-face') : '—'
       weeklyEl.innerHTML = `
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
           <div style="flex:1;min-width:110px;">
@@ -155,25 +167,86 @@ async function renderDashboard() {
     if (journalEntries.length > 0) {
       const journalHtml = journalEntries.map(j => `
         <div class="journal-preview">
-          <p><strong>${new Date(j[2] + 'T12:00:00').toLocaleDateString()}:</strong> ${escapeHtml(j[1].substring(0, 100))}...</p>
+          <p>${companionImg(j[4], 'mood-face')} <strong>${new Date(j[2] + 'T12:00:00').toLocaleDateString()}:</strong> ${escapeHtml(j[1].substring(0, 100))}...</p>
         </div>
       `).join('')
       document.getElementById('recent-journal').innerHTML = journalHtml
     }
 
     renderContributionGrid()
+    renderYearInPixels()
+    celebrateRankUp(rank)
     renderSpiderChart()
   } catch (err) {
     console.error('❌ Dashboard render error:', err)
     content.innerHTML = `
       <div class="error-state" style="padding:40px; text-align:center;">
-        <h2>❌ Failed to load dashboard</h2>
+        <h2>${px('x')} Failed to load dashboard</h2>
         <p>${err.message || 'Unknown error occurred'}</p>
         <button class="btn btn-primary" onclick="location.reload()">Reload Page</button>
       </div>
     `
   }
 }
+const COMPANION_LEVELS = [
+  { days: 0, title: 'Novice', icon: '' },
+  { days: 7, title: 'Apprentice', icon: 'star' },
+  { days: 30, title: 'Adept', icon: 'medal' },
+  { days: 100, title: 'Master', icon: 'crown' },
+  { days: 365, title: 'Sensei', icon: 'sun' }
+]
+
+/** Companion rank from total check-in days, plus progress toward the next rank */
+function companionLevel(days) {
+  const i = COMPANION_LEVELS.findLastIndex(l => days >= l.days)
+  const cur = COMPANION_LEVELS[i]
+  const next = COMPANION_LEVELS[i + 1] || null
+  const pct = next ? Math.round(((days - cur.days) / (next.days - cur.days)) * 100) : 100
+  return { ...cur, next, pct }
+}
+
+/** One-time dialog when the companion reaches a new rank (remembered per device) */
+function celebrateRankUp(rank) {
+  let seen = null
+  try { seen = localStorage.getItem('kaizen_companion_rank') } catch {}
+  try { localStorage.setItem('kaizen_companion_rank', rank.title) } catch {}
+  const seenIndex = COMPANION_LEVELS.findIndex(l => l.title === seen)
+  if (seen !== null && COMPANION_LEVELS.findIndex(l => l.title === rank.title) > seenIndex) {
+    kzAlert(`${rank.days} days of showing up. One percent at a time.`, { title: `${companionName()} is now ${rank.title}!`, okText: 'Keep going' })
+  }
+}
+
+const MOOD_COLORS = { sad: '#5fb8ff', neutral: '#8a94a6', good: '#6ee7b7', happy: '#ffd84a', excited: '#ff9f43' }
+
+/** 12 rows (months) x 31 columns (days), each cell colored by that day's journal mood */
+async function renderYearInPixels() {
+  const el = document.getElementById('year-in-pixels')
+  if (!el) return
+  const { trend = [] } = await window.api.getMoodAnalytics(366)
+  const moodByDate = Object.fromEntries(trend) // rows are oldest → newest, so the day's last entry wins
+
+  const now = new Date()
+  const todayStr = getLocalDateString(now)
+  let html = '<div class="yip-grid"><span></span>'
+  for (let d = 1; d <= 31; d++) html += `<span class="yip-day">${d % 5 === 0 || d === 1 ? d : ''}</span>`
+  for (let m = 11; m >= 0; m--) {
+    const month = new Date(now.getFullYear(), now.getMonth() - m, 1)
+    const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
+    html += `<span class="yip-month">${month.toLocaleDateString('en-US', { month: 'short' })}</span>`
+    for (let d = 1; d <= 31; d++) {
+      if (d > daysInMonth) { html += '<span></span>'; continue }
+      const date = getLocalDateString(new Date(month.getFullYear(), month.getMonth(), d))
+      const mood = moodByDate[date]
+      const future = date > todayStr
+      html += `<span class="yip-cell${future ? ' yip-future' : ''}${date === todayStr ? ' yip-today' : ''}"${mood ? ` style="background:${MOOD_COLORS[mood] || MOOD_COLORS.neutral}"` : ''} title="${date}${mood ? ' · ' + mood : ''}"></span>`
+    }
+  }
+  html += '</div><div class="yip-legend">' +
+    Object.keys(MOOD_COLORS).map(m => `<span><i style="background:${MOOD_COLORS[m]}"></i>${companionImg(m, 'mood-face')}</span>`).join('') +
+    '</div>'
+  el.innerHTML = html
+}
+
 /** Companion mood + line from today's real progress */
 function companionStatus(today, streak, hour = new Date().getHours()) {
   const { completed = 0, scheduled = 0, percentage = 0 } = today || {}

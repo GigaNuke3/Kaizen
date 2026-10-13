@@ -10,58 +10,6 @@
   animation: cgFadeIn 0.35s ease;
 }
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
-
-.cg-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.cg-header-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.cg-header-left h2 {
-  font-size: 1.8rem;
-  color: #6ee7b7;
-  margin: 0;
-  font-weight: 700;
-}
-
-.cg-count-badge {
-  background: rgba(110, 231, 183, 0.12);
-  border: 1px solid rgba(110, 231, 183, 0.3);
-  color: #6ee7b7;
-  border-radius: 20px;
-  padding: 4px 14px;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.cg-refresh-btn {
-  background: #1e1e1e;
-  border: 1px solid #333;
-  color: #aaa;
-  border-radius: 8px;
-  padding: 8px 18px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.15s;
-  font-weight: 500;
-}
-
-.cg-refresh-btn:hover {
-  border-color: #6ee7b7;
-  color: #6ee7b7;
-  background: rgba(110, 231, 183, 0.06);
-}
-
 /* ── Stats Row ──────────────────────────────────────────────────────────── */
 
 .cg-stats-row {
@@ -357,11 +305,6 @@
   .cg-grid {
     grid-template-columns: 1fr;
   }
-
-  .cg-header-left h2 {
-    font-size: 1.4rem;
-  }
-
   .cg-stat-card {
     flex: 1;
     min-width: 90px;

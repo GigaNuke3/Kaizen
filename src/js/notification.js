@@ -12,13 +12,8 @@ async function renderNotifications() {
   
   content.innerHTML = `
     <div class="notifications-container">
-      <div class="notifications-header">
-      <h2 style="display: flex; align-items: center; gap: 12.1px;">
-        <img src="assets/icons/bell_icon/Static_Bell.png" style="width: 66px; height: 66px; image-rendering: pixelated; margin: 0;"> 
-            Notifications
-          </h2>
-        <button class="btn btn-secondary" onclick="markAllRead()">Mark all as read</button>
-      </div>
+      ${pageHeader('bell', 'Notifications', 'Goals completed and failed, newest first.',
+        '<button class="btn btn-secondary" onclick="markAllRead()">Mark all as read</button>')}
       <div id="notification-list" class="notification-list">Loading...</div>
     </div>
   `
@@ -42,7 +37,7 @@ async function renderNotifications() {
 
       html += `
         <div class="notification-item ${read ? 'read' : 'unread'}" data-id="${id}">
-          <p><strong>${type === 'completed' ? '✅' : '❌'}</strong> ${escapeHtml(message)}</p>
+          <p>${px(type === 'completed' ? 'check' : 'x')} ${escapeHtml(message)}</p>
           <div class="timestamp">${createdAt}</div>
           ${!read ? `<button class="btn-small" onclick="markRead(${id})">Mark read</button>` : ''}
         </div>

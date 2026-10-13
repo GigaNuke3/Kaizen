@@ -9,18 +9,6 @@
     animation: fadeIn 0.5s ease-in-out;
 }
 
-.failed-goals-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.failed-goals-header h2 {
-    font-size: 1.8rem;
-    color: #ff6b6b;
-}
-
 .failed-goals-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -28,30 +16,139 @@
 }
 
 .failed-goal-card {
-    background-color: #2a2a2a;
-    border-radius: 8px;
-    padding: 20px;
-    border-left: 5px solid #ff6b6b;
-    transition: transform 0.3s, box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-top: 3px solid #ff6b6b;
+    border-radius: 12px;
+    padding: 18px;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
 
 .failed-goal-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    transform: translateY(-3px);
+    border-color: #ff6b6b;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
 }
 
-.failed-goal-card h3 {
-    margin-top: 0;
-    color: #ff6b6b;
+.fg-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.failed-goal-card p {
-    color: #ccc;
-    font-size: 0.9rem;
-    margin-bottom: 10px;
+.fg-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: #2a1414;
+    border: 1px solid #5a2020;
 }
 
-.failed-goal-card .meta {
+.fg-title {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.fg-title h3 {
+    margin: 0;
+    max-width: 100%;
+    color: #fff;
+    font-size: 1.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fg-status {
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #3b1f1f;
+    color: #fca5a5;
+    font-size: 0.72rem;
+}
+
+.fg-status--hard {
+    background: #7f1d1d;
+}
+
+.fg-desc {
+    margin: 0;
+    color: #aaa;
+    font-size: 0.85rem;
+}
+
+.fg-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #aaa;
     font-size: 0.8rem;
-    color: #888;
+}
+
+.fg-progress-bar {
+    flex: 1;
+    height: 8px;
+    background: #2a1414;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.fg-progress-bar div {
+    height: 100%;
+    background: repeating-linear-gradient(90deg, #ff6b6b 0 6px, #c94f4f 6px 8px);
+}
+
+.fg-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    color: #999;
+    font-size: 0.82rem;
+}
+
+.fg-meta strong {
+    color: #ff8a8a;
+}
+
+.fg-missed span {
+    display: block;
+    margin-bottom: 6px;
+    color: #666;
+    font-size: 0.75rem;
+}
+
+.fg-missed div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.fg-pill {
+    padding: 2px 7px;
+    border: 1px solid #7f1d1d;
+    border-radius: 6px;
+    background: #2a1010;
+    color: #fca5a5;
+    font-size: 0.72rem;
+}
+
+.fg-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid #262626;
+}
+
+.fg-actions .btn {
+    flex: 1;
+    justify-content: center;
 }

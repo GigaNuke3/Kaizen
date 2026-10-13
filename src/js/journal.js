@@ -45,7 +45,7 @@ async function renderJournal() {
       })
       bannerHtml = `
         <div class="journal-pending-banner" style="background:#1a2a1a;border:1px solid #6ee7b7;border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#ccc;">
-          📌 Write a journal entry for <strong style="color:#6ee7b7;">${dateLabel}</strong> linked to this goal to unlock your CheckMarked slot.
+          ${px('pin')} Write a journal entry for <strong style="color:#6ee7b7;">${dateLabel}</strong> linked to this goal to unlock your CheckMarked slot.
           <br><span style="font-size:0.8rem;color:#888;margin-top:4px;display:block;">This journal entry will be saved specifically for that goal's check-in.</span>
         </div>
       `
@@ -55,23 +55,19 @@ async function renderJournal() {
 
     content.innerHTML = `
       <div class="journal-container">
-        <div class="journal-header">
-          <h2 style="display: flex; align-items: center; gap: 12.1px;">
-            <img src="assets/icons/Journal_icon/Journal_Idle.png" style="width: 66px; height: 66px; image-rendering: pixelated; margin: 0;"> 
-            Journal
-          </h2>
-          <button class="btn btn-primary" onclick="openAddJournalModal()">+ New Entry</button>
+        ${pageHeader('book', 'Journal', 'Reflect on your day. <span class="kbd">Ctrl+N</span> starts a new entry.',
+          '<button class="btn btn-primary" onclick="openAddJournalModal()">+ New Entry</button>')}
         </div>
         ${bannerHtml}
         <div class="journal-tools">
           <input type="text" id="journal-search" placeholder="Search entries..." style="flex:1;min-width:180px;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px 12px;color:#fff;">
           <div class="mood-filter" style="display:flex;gap:6px;flex-wrap:wrap;">
             <span class="mood-chip ${journalFilterMood === null ? 'selected' : ''}" data-mood="" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">All</span>
-            <span class="mood-chip ${journalFilterMood === 'sad' ? 'selected' : ''}" data-mood="sad" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">😢</span>
-            <span class="mood-chip ${journalFilterMood === 'neutral' ? 'selected' : ''}" data-mood="neutral" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">😐</span>
-            <span class="mood-chip ${journalFilterMood === 'good' ? 'selected' : ''}" data-mood="good" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">🙂</span>
-            <span class="mood-chip ${journalFilterMood === 'happy' ? 'selected' : ''}" data-mood="happy" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">😄</span>
-            <span class="mood-chip ${journalFilterMood === 'excited' ? 'selected' : ''}" data-mood="excited" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">🚀</span>
+            <span class="mood-chip ${journalFilterMood === 'sad' ? 'selected' : ''}" data-mood="sad" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">${companionImg('sad', 'mood-face')}</span>
+            <span class="mood-chip ${journalFilterMood === 'neutral' ? 'selected' : ''}" data-mood="neutral" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">${companionImg('neutral', 'mood-face')}</span>
+            <span class="mood-chip ${journalFilterMood === 'good' ? 'selected' : ''}" data-mood="good" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">${companionImg('good', 'mood-face')}</span>
+            <span class="mood-chip ${journalFilterMood === 'happy' ? 'selected' : ''}" data-mood="happy" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">${companionImg('happy', 'mood-face')}</span>
+            <span class="mood-chip ${journalFilterMood === 'excited' ? 'selected' : ''}" data-mood="excited" style="cursor:pointer;padding:6px 10px;border-radius:16px;border:1px solid #444;color:#ccc;font-size:0.8rem;user-select:none;">${companionImg('excited', 'mood-face')}</span>
           </div>
         </div>
         <div class="section">
@@ -81,7 +77,7 @@ async function renderJournal() {
         </div>
         <div class="journal-entries" id="journal-entries">
           ${allJournalEntries.length === 0
-            ? `<p class="empty-msg">No journal entries yet. Start your first reflection! 🌟</p>`
+            ? `<p class="empty-msg">No journal entries yet. Start your first reflection! ${px('sparkle')}</p>`
             : entriesHtml}
         </div>
       </div>
@@ -121,11 +117,11 @@ function ensureJournalModalExists() {
             <div class="form-group">
               <label for="journal-mood">How are you feeling?</label>
               <div class="mood-selector">
-                <span class="mood-option" data-mood="😢" onclick="selectMood(event, 'sad')">😢 Sad</span>
-                <span class="mood-option" data-mood="😐" onclick="selectMood(event, 'neutral')">😐 Neutral</span>
-                <span class="mood-option" data-mood="🙂" onclick="selectMood(event, 'good')">🙂 Good</span>
-                <span class="mood-option" data-mood="😄" onclick="selectMood(event, 'happy')">😄 Happy</span>
-                <span class="mood-option" data-mood="🚀" onclick="selectMood(event, 'excited')">🚀 Excited</span>
+                <span class="mood-option" onclick="selectMood(event, 'sad')">${companionImg('sad', 'mood-face')} Sad</span>
+                <span class="mood-option" onclick="selectMood(event, 'neutral')">${companionImg('neutral', 'mood-face')} Neutral</span>
+                <span class="mood-option" onclick="selectMood(event, 'good')">${companionImg('good', 'mood-face')} Good</span>
+                <span class="mood-option" onclick="selectMood(event, 'happy')">${companionImg('happy', 'mood-face')} Happy</span>
+                <span class="mood-option" onclick="selectMood(event, 'excited')">${companionImg('excited', 'mood-face')} Excited</span>
               </div>
               <input type="hidden" id="journal-mood" value="neutral">
             </div>
@@ -205,11 +201,11 @@ async function saveJournalEntry(event) {
     getLocalDateString()
 
   if (!journalText.trim()) {
-    alert('Please write something!')
+    kzAlert('Please write something!')
     return
   }
   if (!time) {
-    alert('Please select a time for your journal entry.')
+    kzAlert('Please select a time for your journal entry.')
     return
   }
 
@@ -231,7 +227,7 @@ async function saveJournalEntry(event) {
       }
     } catch (err) {
       console.error('Could not complete pending goal check:', err)
-      alert(err.message || 'Journal saved, but the goal cell could not be checked. Try again on CheckMarked.')
+      kzAlert(err.message || 'Journal saved, but the goal cell could not be checked. Try again on CheckMarked.')
     }
   }
 
@@ -251,8 +247,8 @@ async function saveJournalEntry(event) {
 /**
  * Delete journal entry with confirmation
  */
-function deleteJournalEntryConfirm(entryId) {
-  if (confirm('Delete this entry? This action cannot be undone.')) {
+async function deleteJournalEntryConfirm(entryId) {
+  if (await kzConfirm('This cannot be undone.', { title: 'Delete this entry?', danger: true, okText: 'Delete' })) {
     deleteJournalEntry(entryId)
   }
 }
@@ -273,7 +269,7 @@ function selectMood(event, mood) {
   document.querySelectorAll('.mood-option').forEach(el => {
     el.classList.remove('selected')
   })
-  event.target.classList.add('selected')
+  event.currentTarget.classList.add('selected')
 }
 
 /**
@@ -291,17 +287,10 @@ function resetMoodSelector() {
 }
 
 /**
- * Get mood emoji
+ * Companion face for a mood
  */
 function getMoodEmoji(mood) {
-  const moods = {
-    sad: '😢',
-    neutral: '😐',
-    good: '🙂',
-    happy: '😄',
-    excited: '🚀'
-  }
-  return moods[mood] || '😐'
+  return companionImg(mood, 'mood-face')
 }
 
 /**
@@ -326,7 +315,7 @@ function journalEntriesHtml(entries) {
             <span class="entry-mood">${mood}</span>
             <span class="entry-date">${date}${timeStr}</span>
           </div>
-          <button class="icon-btn" onclick="deleteJournalEntryConfirm(${entry[0]})" title="Delete">🗑️</button>
+          <button class="icon-btn" onclick="deleteJournalEntryConfirm(${entry[0]})" title="Delete">${px('trash')}</button>
         </div>
         <div class="entry-content">
           ${escapeHtml(entry[1])}
@@ -386,13 +375,7 @@ function bindJournalSearch() {
 function renderMoodAnalytics(analytics) {
   const distEl = document.getElementById('mood-distribution')
   if (distEl && analytics.distribution) {
-    const moods = [
-      { key: 'sad', emoji: '😢' },
-      { key: 'neutral', emoji: '😐' },
-      { key: 'good', emoji: '🙂' },
-      { key: 'happy', emoji: '😄' },
-      { key: 'excited', emoji: '🚀' }
-    ]
+    const moods = ['sad', 'neutral', 'good', 'happy', 'excited'].map(key => ({ key, emoji: companionImg(key, 'mood-face') }))
     distEl.innerHTML = moods.map(m =>
       `<span style="background:#1a1a1a;border:1px solid #444;border-radius:16px;padding:4px 12px;font-size:0.8rem;color:#ccc;">${m.emoji} ${analytics.distribution[m.key] || 0}</span>`
     ).join('')
@@ -440,7 +423,7 @@ function renderMoodAnalytics(analytics) {
           ticks: {
             stepSize: 1,
             color: '#666',
-            callback: v => ['', '😢', '😐', '🙂', '😄', '🚀'][v] || ''
+            callback: v => ['', 'Sad', 'Meh', 'Good', 'Happy', 'Wow'][v] || ''
           },
           grid: { color: 'rgba(255,255,255,0.08)' }
         },

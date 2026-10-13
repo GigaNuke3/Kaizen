@@ -18,11 +18,9 @@ async function renderKaiPage() {
   if (!content) return
 
   content.innerHTML = `
-    <div class="kai-page-container" style="padding:32px 0;">
-      <h2 style="color:#6ee7b7;margin-bottom:8px;" class="companion-title">${companionImg('happy')} ${companionName()} Companion</h2>
-      <p style="color:#888;font-size:0.9rem;margin-bottom:24px;">
-        Chat with ${companionName()} — your personal self-improvement companion. ${companionName()} remembers the conversation.
-      </p>
+    <div class="kai-page-container">
+      ${pageHeader(companionImg('happy', 'page-header-sprite'), `${companionName()} Companion`,
+        `${companionName()} knows your goals and remembers the conversation. Runs fully offline.`)}
       <div id="kai-page"></div>
     </div>
   `
@@ -41,7 +39,7 @@ async function renderKaiPage() {
   if (!installed) {
     container.innerHTML = `
       <div class="kai-card" style="background:#1a1a1a;border:1px solid #444;border-radius:10px;padding:24px;text-align:center;color:#ccc;">
-        <div style="font-size:2rem;margin-bottom:12px;">🤖</div>
+        <div style="margin-bottom:12px;">${companionImg('sad', 'companion-hero-sprite')}</div>
         <strong style="color:#6ee7b7;">Ollama is not installed</strong>
         <p style="color:#888;margin:8px 0 16px;">
           Kai runs on Ollama, a free local AI runtime.<br>
@@ -64,14 +62,14 @@ async function renderKaiPage() {
   if (!modelReady) {
     container.innerHTML = `
       <div class="kai-card" style="background:#1a1a1a;border:1px solid #6ee7b7;border-radius:10px;padding:24px;text-align:center;color:#ccc;">
-        <div style="font-size:2rem;margin-bottom:12px;">📦</div>
+        <div style="margin-bottom:12px;">${px('box', 64)}</div>
         <strong style="color:#6ee7b7;">Kai's model isn't downloaded yet</strong>
         <p style="color:#888;margin:8px 0 16px;">
           The llama3.2 model (~1.5GB) must be downloaded once.<br>
           Kaizen stays fully usable while it downloads.
         </p>
         <button type="button" onclick="downloadKaiModel(this)" class="btn btn-primary">
-          ⬇️ Download Kai model
+          ${px('arrowDown')} Download ${companionName()}'s model
         </button>
       </div>
     `
@@ -99,14 +97,14 @@ async function renderKaiChat(container) {
       <button id="kai-send-btn" class="btn btn-primary" onclick="sendKaiMessage()">Send</button>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button class="btn btn-secondary" onclick="generateKaiWeeklyInsight()">✨ Weekly Insight</button>
-      <button class="btn btn-secondary" onclick="clearKaiChat()">🗑️ Clear chat</button>
+      <button class="btn btn-secondary" onclick="generateKaiWeeklyInsight()">${px('sparkle')} Weekly Insight</button>
+      <button class="btn btn-secondary" onclick="clearKaiChat()">${px('trash')} Clear chat</button>
     </div>
   `
 
   const thread = document.getElementById('kai-chat-thread')
   if (history.length === 0) {
-    thread.innerHTML = `<p class="empty-msg">Say hello to ${companionName()}! 👋</p>`
+    thread.innerHTML = `<p class="empty-msg">Say hello to ${companionName()}! ${px('sparkle')}</p>`
   } else {
     thread.innerHTML = history.map(msg => kaiMessageHtml(msg[1], msg[2])).join('')
   }
@@ -117,7 +115,7 @@ function kaiMessageHtml(role, text) {
   const isUser = role === 'user'
   return `
     <div class="kai-msg" style="display:flex;gap:8px;${isUser ? 'flex-direction:row-reverse;' : ''}">
-      ${isUser ? '<span class="kai-msg-avatar" style="font-size:1.3rem;line-height:1;">🧑</span>' : companionImg('good', 'kai-msg-avatar')}
+      ${isUser ? px('warrior', 32, 'kai-msg-avatar') : companionImg('good', 'kai-msg-avatar')}
       <div class="kai-msg-bubble" style="
         max-width:75%;padding:8px 12px;border-radius:10px;font-size:0.9rem;line-height:1.45;white-space:pre-wrap;
         ${isUser
@@ -185,7 +183,7 @@ async function sendKaiMessage() {
 
   const history = await window.api.getKaiChatHistory(100)
   const messages = [
-    { role: 'system', content: kaiSystemPrompt() },
+    { role: 'system', content: kaiSystemPrompt() + await kaiUserContext() },
     ...history.slice(-20).map(h => ({ role: h[1], content: h[2] }))
   ]
 
@@ -193,8 +191,8 @@ async function sendKaiMessage() {
 }
 
 async function generateKaiWeeklyInsight() {
-  appendKaiMessage('user', '✨ Generate my weekly insight')
-  await window.api.addKaiChatMessage('user', '✨ Generate my weekly insight')
+  appendKaiMessage('user', 'Generate my weekly insight')
+  await window.api.addKaiChatMessage('user', 'Generate my weekly insight')
 
   const start = new Date()
   start.setDate(start.getDate() - 6)
@@ -213,13 +211,13 @@ async function generateKaiWeeklyInsight() {
   const prompt = `Here is my journal from the last 7 days:\n${journalText}\n\nWeekly stats: ${summary.checkins} check-ins, ${summary.journalEntries} journal entries, ${summary.completionPct}% goal completion.\n\nGive me a warm, specific weekly insight in 4-6 sentences: celebrate wins, notice patterns, and suggest one small next step.`
 
   await streamAssistantReply([
-    { role: 'system', content: kaiSystemPrompt() },
+    { role: 'system', content: kaiSystemPrompt() + await kaiUserContext() },
     { role: 'user', content: prompt }
   ])
 }
 
 async function clearKaiChat() {
-  if (!confirm('Clear the entire Kai conversation?')) return
+  if (!(await kzConfirm('The whole conversation will be erased.', { title: `Clear chat with ${companionName()}?`, danger: true, okText: 'Clear' }))) return
   await window.api.clearKaiChatHistory()
   const container = document.getElementById('kai-page')
   if (container) await renderKaiChat(container)
@@ -231,16 +229,16 @@ async function clearKaiChat() {
 async function downloadKaiModel(btn) {
   if (!btn) return
   btn.disabled = true
-  btn.textContent = '⬇️ Downloading… (~1.5GB, keep Kaizen open)'
+  btn.innerHTML = `${px('arrowDown')} Downloading… (~1.5GB, keep Kaizen open)`
 
   try {
     await window.api.pullOllamaModel('llama3.2:latest')
-    btn.textContent = '✅ Done!'
+    btn.innerHTML = `${px('check')} Done!`
     renderKaiPage()
   } catch (err) {
     console.error('Kai model download failed:', err)
     btn.disabled = false
-    btn.textContent = '⬇️ Retry download'
-    alert('Download failed: ' + (err.message || 'unknown error'))
+    btn.innerHTML = `${px('refresh')} Retry download`
+    kzAlert('Download failed: ' + (err.message || 'unknown error').replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
   }
 }

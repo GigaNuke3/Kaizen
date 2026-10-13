@@ -6,28 +6,6 @@
   animation: cgFadeIn 0.5s ease;
 }
 
-.checkmarked-header {
-  margin-bottom: 12px;
-}
-
-.checkmarked-header h2 {
-  margin: 0 0 8px 0;
-  color: #6ee7b7;
-}
-
-.checkmarked-header p {
-  margin: 0;
-  color: #888;
-  font-size: 0.9rem;
-}
-
-.checkmarked-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-bottom: 12px;
-}
-
 /* Goal Grid Section */
 .goal-grid-section {
   background: #1a1a1a;
@@ -265,8 +243,11 @@
 }
 
 .error-state h2 { color: #f472b6; margin: 0 0 15px 0; }
-.error-state p  { color: #888; font-size: 0.85rem; }
+
+.error-state p { color: #888; font-size: 0.85rem; }
+
 .error-state details summary { cursor: pointer; color: #888; font-size: 0.85rem; }
+
 .error-state pre { color: #888; font-size: 0.85rem; overflow-x: auto; }
 
 /* Goal card styling within checkmarked page */
@@ -278,4 +259,6 @@
 }
 
 .goal-card-frequency { color: #6ee7b7; }
-.goal-card-target    { color: #888; }
+
+.goal-card-target { color: #888; }
+

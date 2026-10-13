@@ -2,6 +2,12 @@
  * Achievement Badges page
  */
 
+const BADGE_PX = {
+  'first-goal': 'target', 'first-checkin': 'check', 'checkins-10': 'bolt', 'checkins-50': 'flag',
+  'checkins-100': 'crown', 'streak-7': 'flame', 'streak-30': 'rocket', 'first-completed-goal': 'trophy',
+  'goals-5': 'medal', 'journals-10': 'book', 'journals-25': 'bulb', 'perfect-week': 'star'
+}
+
 async function renderBadges() {
   const content = document.getElementById('main-content')
   if (!content) {
@@ -19,26 +25,21 @@ async function renderBadges() {
       const pct = b.target > 0 ? Math.min(100, Math.round((b.progress / b.target) * 100)) : 0
       return `
         <div class="badge-card ${b.unlocked ? 'unlocked' : 'locked'}">
-          <div class="badge-icon">${b.icon}</div>
+          <div class="badge-icon">${px(BADGE_PX[b.id] || 'star', 48)}</div>
           <div class="badge-name">${escapeHtml(b.name)}</div>
           <div class="badge-desc">${escapeHtml(b.description)}</div>
           <div class="badge-progress">
             <div class="badge-progress-fill" style="width:${pct}%"></div>
           </div>
-          <div class="badge-status">${b.unlocked ? '✅ Unlocked' : `${b.progress}/${b.target}`}</div>
+          <div class="badge-status">${b.unlocked ? `${px('check')} Unlocked` : `${b.progress}/${b.target}`}</div>
         </div>
       `
     }).join('')
 
     content.innerHTML = `
       <div class="badges-container">
-        <div class="badges-header">
-          <h2 style="display: flex; align-items: center; gap: 12.1px;">
-            <img src="assets/icons/badges_icon/Badges_Idle.png" style="width: 66px; height: 66px; image-rendering: pixelated; margin: 0;">
-            Achievement Badges
-          </h2>
-          <span class="badges-count">${unlockedCount}/${badges.length} unlocked</span>
-        </div>
+        ${pageHeader('medal', 'Achievement Badges', 'Milestones you earn by showing up.',
+          `<span class="badges-count">${unlockedCount}/${badges.length} unlocked</span>`)}
         <div class="badges-grid">${grid}</div>
       </div>
     `
@@ -46,7 +47,7 @@ async function renderBadges() {
     console.error('❌ Badges render error:', err)
     content.innerHTML = `
       <div class="error-state" style="padding:40px;text-align:center;">
-        <h2>❌ Failed to load badges</h2>
+        <h2>${px('x')} Failed to load badges</h2>
         <p>${escapeHtml(err.message || 'Unknown error occurred')}</p>
       </div>
     `
