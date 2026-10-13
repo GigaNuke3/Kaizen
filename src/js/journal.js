@@ -56,7 +56,8 @@ async function renderJournal() {
     content.innerHTML = `
       <div class="journal-container">
         ${pageHeader('book', 'Journal', 'Reflect on your day. <span class="kbd">Ctrl+N</span> starts a new entry.',
-          '<button class="btn btn-primary" onclick="openAddJournalModal()">+ New Entry</button>')}
+          `<button class="btn btn-secondary" onclick="exportJournal()">${px('arrowDown')} Export</button>
+           <button class="btn btn-primary" onclick="openAddJournalModal()">+ New Entry</button>`)}
         </div>
         ${bannerHtml}
         <div class="journal-tools">
@@ -247,18 +248,8 @@ async function saveJournalEntry(event) {
 /**
  * Delete journal entry with confirmation
  */
-async function deleteJournalEntryConfirm(entryId) {
-  if (await kzConfirm('This cannot be undone.', { title: 'Delete this entry?', danger: true, okText: 'Delete' })) {
-    deleteJournalEntry(entryId)
-  }
-}
-
-/**
- * Delete journal entry
- */
-async function deleteJournalEntry(entryId) {
-  await window.api.deleteJournalEntry(entryId)
-  renderJournal()
+function deleteJournalEntryConfirm(entryId) {
+  undoableDelete('Journal entry deleted', document.querySelector(`.journal-entry[data-id="${entryId}"]`), () => window.api.deleteJournalEntry(entryId))
 }
 
 /**
@@ -284,6 +275,15 @@ function resetMoodSelector() {
       el.classList.add('selected')
     }
   })
+}
+
+async function exportJournal() {
+  try {
+    const res = await window.api.exportJournal()
+    if (!res.canceled) kzAlert(`${res.entries} entries saved to:\n${res.filePath}`, { title: 'Journal exported' })
+  } catch (err) {
+    kzAlert('Export failed: ' + err.message)
+  }
 }
 
 /**

@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kaizen</title>
+  <!-- Local-only app: no remote scripts or connections except the local Ollama server.
+       'unsafe-inline' is needed for the inline onclick handlers used across pages. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src http://localhost:11434 http://127.0.0.1:11434; object-src 'none'; base-uri 'none'">
   <link rel="icon" type="image/png" href="assets/icons/desktop/kaizen_desktop_icon.png">
   <link rel="stylesheet" href="src/css/style.css">
   <link rel="stylesheet" href="src/css/dashboard.css">
@@ -30,36 +33,36 @@
       </div>
 
       <ul class="nav-links">
-        <li data-page="notifications" onclick="loadPage('notifications')">
+        <li data-page="notifications" role="link" tabindex="0" onclick="loadPage('notifications')">
           <span class="nav-icon" data-px="bell"></span><span class="nav-label">Notifications</span>
         </li>
-        <li data-page="dashboard" onclick="loadPage('dashboard')">
+        <li data-page="dashboard" role="link" tabindex="0" onclick="loadPage('dashboard')">
           <span class="nav-icon" data-px="dashboard"></span><span class="nav-label">Dashboard</span>
         </li>
-        <li data-page="goals" onclick="loadPage('goals')">
+        <li data-page="goals" role="link" tabindex="0" onclick="loadPage('goals')">
           <span class="nav-icon" data-px="target"></span><span class="nav-label">Goals</span>
         </li>
-        <li data-page="checkmarked" onclick="loadPage('checkmarked')">
+        <li data-page="checkmarked" role="link" tabindex="0" onclick="loadPage('checkmarked')">
           <span class="nav-icon" data-px="clipboard"></span><span class="nav-label">CheckMarked</span>
         </li>
-        <li data-page="completed_goals" onclick="loadPage('completed_goals')">
+        <li data-page="completed_goals" role="link" tabindex="0" onclick="loadPage('completed_goals')">
           <span class="nav-icon" data-px="trophy"></span><span class="nav-label">Completed Goals</span>
         </li>
-        <li data-page="failed_goals" onclick="loadPage('failed_goals')">
+        <li data-page="failed_goals" role="link" tabindex="0" onclick="loadPage('failed_goals')">
           <span class="nav-icon" data-px="x"></span><span class="nav-label">Failed Goals</span>
         </li>
-        <li data-page="badges" onclick="loadPage('badges')">
+        <li data-page="badges" role="link" tabindex="0" onclick="loadPage('badges')">
           <span class="nav-icon" data-px="medal"></span><span class="nav-label">Badges</span>
         </li>
-        <li data-page="journal" onclick="loadPage('journal')">
+        <li data-page="journal" role="link" tabindex="0" onclick="loadPage('journal')">
           <span class="nav-icon" data-px="book"></span><span class="nav-label">Journal</span>
         </li>
-        <li data-page="ollama_journal" onclick="loadPage('ollama_journal')">
+        <li data-page="ollama_journal" role="link" tabindex="0" onclick="loadPage('ollama_journal')">
           <span class="nav-icon" data-px="chat"></span><span class="nav-label">Companion</span>
         </li>
       </ul>
 
-      <div class="sidebar-footer" data-page="profile" onclick="loadPage('profile')">
+      <div class="sidebar-footer" data-page="profile" role="link" tabindex="0" onclick="loadPage('profile')">
         <span class="nav-icon" data-px="warrior"></span><span class="nav-label">Profile</span>
       </div>
     </nav>
@@ -88,6 +91,7 @@
   <script src="src/js/sidebar-badges.js"></script>
   <script src="src/js/ollama.js"></script>
   <script src="src/js/ollama_journal.js"></script>
+  <script src="src/js/review.js"></script>
   <script>
     // Track current page
     let currentPage = 'dashboard'
@@ -103,8 +107,9 @@
         mainContent.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:400px;color:#6ee7b7;">Loading...</div>'
 
         // Update sidebar active state
-        document.querySelectorAll('[data-page]').forEach(el => el.classList.remove('active'))
+        document.querySelectorAll('[data-page]').forEach(el => { el.classList.remove('active'); el.removeAttribute('aria-current') })
         document.querySelector(`[data-page="${page}"]`)?.classList.add('active')
+        document.querySelector(`[data-page="${page}"]`)?.setAttribute('aria-current', 'page')
 
         currentPage = page
 
@@ -126,6 +131,7 @@
           case 'completed_goals': await renderCompletedGoals(); sidebarBadges?.updateCompletedBadge(); break
           case 'profile':       await renderProfile(); break
           case 'ollama_journal':   await renderKaiPage(); break
+          case 'review':        await renderWeeklyReview(); break
           default: throw new Error(`Unknown page: ${page}`)
         }
 
@@ -148,6 +154,15 @@ ${err.stack?.substring(0, 500) || ''}</pre>
     }
 
     document.querySelectorAll('[data-px]').forEach(el => { el.innerHTML = px(el.dataset.px) })
+
+    // Enter/Space activate the focused sidebar item, like a real link/button
+    document.querySelector('.sidebar').addEventListener('keydown', (e) => {
+      const item = e.target.closest('[data-page]')
+      if (item && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault()
+        loadPage(item.dataset.page)
+      }
+    })
 
     const SHORTCUT_PAGES = ['notifications', 'dashboard', 'goals', 'checkmarked', 'completed_goals', 'failed_goals', 'badges', 'journal', 'ollama_journal']
     document.querySelectorAll('.nav-links li').forEach((li, i) => { li.title = `Ctrl+${i + 1}` })
@@ -175,13 +190,27 @@ ${err.stack?.substring(0, 500) || ''}</pre>
         completed_goals: renderCompletedGoals,
         goals: renderGoals,
         notifications: renderNotifications,
-        dashboard: renderDashboard
+        dashboard: renderDashboard,
+        journal: renderJournal
       }
       const refresh = refreshers[currentPage]
       if (refresh) {
         refresh().catch(err => console.error(`Error reloading ${currentPage}:`, err))
       }
     }
+
+    window.refreshCurrentPage = refreshCurrentGoalPage
+
+    /** Apply 'dark' | 'light' | 'system' to <html data-theme>; 'system' follows the OS live */
+    const systemLight = window.matchMedia('(prefers-color-scheme: light)')
+    function applyTheme(theme = window.kaizenSettings?.theme || 'dark') {
+      const light = theme === 'light' || (theme === 'system' && systemLight.matches)
+      document.documentElement.dataset.theme = light ? 'light' : 'dark'
+    }
+    systemLight.addEventListener('change', () => applyTheme())
+
+    // Main process asks to open a page (e.g. clicking the Sunday review notification)
+    window.ipcRenderer?.on('open-page', (page) => loadPage(page))
 
     if (window.ipcRenderer) {
       window.ipcRenderer.on('goals-updated', () => {
@@ -211,6 +240,7 @@ ${err.stack?.substring(0, 500) || ''}</pre>
         console.error('Failed to load settings:', err)
         window.kaizenSettings = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00', companion: 'kai' }
       }
+      applyTheme()
       loadPage('dashboard')
     })
 

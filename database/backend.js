@@ -177,8 +177,10 @@ async function getDB() {
  */
 function saveDB() {
   if (!db) return
-  const data = db.export()
-  fs.writeFileSync(DB_PATH, Buffer.from(data))
+  // Write a temp file then rename over the DB: rename is atomic, so a crash mid-save can't corrupt it
+  const tmp = DB_PATH + '.tmp'
+  fs.writeFileSync(tmp, Buffer.from(db.export()))
+  fs.renameSync(tmp, DB_PATH)
 }
 
 /**
@@ -1243,6 +1245,54 @@ async function getBadgeStats() {
 }
 
 /**
+ * ==================== JOURNAL EXPORT (Markdown / PDF) ====================
+ */
+
+/** Rows for export, oldest first: [date, time, mood, content, goalTitle] */
+async function getJournalForExport() {
+  const database = await getDB()
+  const res = database.exec(`
+    SELECT j.date, j.time, j.mood, j.content, g.title
+    FROM journal j LEFT JOIN goals g ON g.id = j.goal_id
+    ORDER BY j.date ASC, j.created_at ASC
+  `)
+  return res.length > 0 ? res[0].values : []
+}
+
+function entryHeading(time, mood, goal) {
+  return [time, mood, goal].filter(Boolean).join(' · ')
+}
+
+function journalToMarkdown(rows) {
+  let md = `# Kaizen Journal\n\n_${rows.length} entries · exported ${getLocalDateString()}_\n`
+  let lastDate = null
+  for (const [date, time, mood, content, goal] of rows) {
+    if (date !== lastDate) { md += `\n## ${date}\n`; lastDate = date }
+    md += `\n### ${entryHeading(time, mood, goal) || 'Entry'}\n\n${content}\n`
+  }
+  return md
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+
+/** Printable HTML (for printToPDF): one section per day */
+function journalToHtml(rows) {
+  let body = ''
+  let lastDate = null
+  for (const [date, time, mood, content, goal] of rows) {
+    if (date !== lastDate) { body += `<h2>${escapeHtml(date)}</h2>`; lastDate = date }
+    body += `<h3>${escapeHtml(entryHeading(time, mood, goal) || 'Entry')}</h3><p>${escapeHtml(content).replace(/\n/g, '<br>')}</p>`
+  }
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Kaizen Journal</title><style>
+    body { font-family: Georgia, serif; color: #222; margin: 40px; line-height: 1.55; }
+    h1 { color: #17694d; } h2 { border-bottom: 1px solid #ccc; margin-top: 32px; }
+    h3 { color: #666; font-size: 0.95rem; margin-bottom: 4px; } p { margin-top: 0; }
+  </style></head><body><h1>Kaizen Journal</h1><p><em>${rows.length} entries · exported ${getLocalDateString()}</em></p>${body}</body></html>`
+}
+
+/**
  * ==================== EXPORT / IMPORT ====================
  */
 
@@ -1393,5 +1443,8 @@ module.exports = {
   getBadgeStats,
   exportAllData,
   importAllData,
+  getJournalForExport,
+  journalToMarkdown,
+  journalToHtml,
   resetAllData
 }

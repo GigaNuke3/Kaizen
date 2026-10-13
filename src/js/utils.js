@@ -100,3 +100,43 @@ function pageHeader(icon, title, subtitle = '', actions = '') {
       ${actions ? `<div class="page-actions">${actions}</div>` : ''}
     </div>`
 }
+
+/**
+ * Delete with an Undo toast instead of "Are you sure?": hides `el` now and runs `commit` after 6s unless undone.
+ * ponytail: the pending delete lives in memory, so quitting within 6s cancels it (the safe direction).
+ */
+function undoableDelete(message, el, commit) {
+  if (el) el.style.display = 'none'
+  let host = document.getElementById('kz-toasts')
+  if (!host) {
+    host = document.createElement('div')
+    host.id = 'kz-toasts'
+    document.body.appendChild(host)
+  }
+  const toast = document.createElement('div')
+  toast.className = 'kz-toast'
+  toast.setAttribute('role', 'status')
+  toast.innerHTML = `${px('trash')}<span>${escapeHtml(message)}</span><button type="button" class="btn btn-secondary btn-sm">Undo</button>`
+  let settled = false
+  const finish = async (undo) => {
+    if (settled) return
+    settled = true
+    clearTimeout(timer)
+    toast.remove()
+    if (undo) {
+      if (el) el.style.display = ''
+      return
+    }
+    try {
+      await commit()
+      window.refreshCurrentPage?.()
+    } catch (err) {
+      if (el) el.style.display = ''
+      kzAlert('Could not delete: ' + err.message)
+    }
+  }
+  const timer = setTimeout(() => finish(false), 6000)
+  toast.querySelector('button').addEventListener('click', () => finish(true))
+  host.appendChild(toast)
+}
+

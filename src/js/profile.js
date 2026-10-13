@@ -114,6 +114,13 @@ async function renderProfile() {
           <h3>Settings</h3>
           <div class="settings-list">
             <div class="setting-item">
+              <span>Theme</span>
+              <select class="theme-select" onchange="setTheme(this.value)" aria-label="Theme">
+                ${[['dark', 'Dark'], ['light', 'Light'], ['system', 'Match system']].map(([v, t]) =>
+                  `<option value="${v}" ${(settings.theme || 'dark') === v ? 'selected' : ''}>${t}</option>`).join('')}
+              </select>
+            </div>
+            <div class="setting-item">
               <span>Companion</span>
               <div class="companion-picker">
                 ${['kai', 'zun'].map(c => `
@@ -151,7 +158,8 @@ async function renderProfile() {
             ${[
               ['closeToTray', 'Keep running in the tray when the window is closed (reminders keep working)'],
               ['launchAtLogin', 'Launch Kaizen at login (starts in the tray)'],
-              ['autoBackup', 'Back up automatically every day (keeps the last 7)']
+              ['autoBackup', 'Back up automatically every day (keeps the last 7)'],
+              ['weeklyReview', 'Sunday weekly review notification (at your reminder time)']
             ].map(([key, text]) => `
             <div class="setting-item">
               <label>
@@ -269,6 +277,12 @@ async function saveProfile(event) {
 async function toggleNotificationsSetting(enabled) {
   await window.api.setSettings({ notifications: enabled })
   if (window.kaizenSettings) window.kaizenSettings.notifications = enabled
+}
+
+async function setTheme(theme) {
+  await window.api.setSettings({ theme })
+  if (window.kaizenSettings) window.kaizenSettings.theme = theme
+  applyTheme(theme)
 }
 
 async function toggleAppSetting(key, enabled) {

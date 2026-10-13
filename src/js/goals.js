@@ -570,14 +570,8 @@ async function saveGoal(event) {
 async function deleteGoalConfirm(goalId) {
   const goal = allGoals.find(g => g[0] === goalId)
   if (!goal) return
-  if (await kzConfirm('This cannot be undone. Journal entries linked to it will be kept.', { title: `Delete "${goal[1]}"?`, danger: true, okText: 'Delete' })) {
-    deleteGoal(goalId)
-  }
-}
-
-async function deleteGoal(goalId) {
-  await window.api.deleteGoal(goalId)
-  renderGoals()
+  const card = document.querySelector(`[onclick="deleteGoalConfirm(${goalId})"]`)?.closest('.goal-card')
+  undoableDelete(`Deleted "${goal[1]}"`, card, () => window.api.deleteGoal(goalId))
 }
 
 function updateLabelDropdown() {

@@ -1,13 +1,15 @@
 {
   "name": "kaizen",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Kaizen (改善) — a local-first self-improvement companion built with Electron.",
   "main": "main.js",
   "scripts": {
     "start": "electron . --ozone-platform=x11",
-    "start:win": "electron .",
+    "test": "node --test",
     "build": "electron-builder",
-    "test": "node --test"
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux AppImage deb rpm"
   },
   "keywords": [],
   "author": "User <user@example.com>",
@@ -36,7 +38,16 @@
         "AppImage",
         "deb"
       ],
-      "icon": "assets/icons/desktop/kaizen_desktop_icon.png"
+      "icon": "assets/icons/desktop/kaizen_desktop_icon.png",
+      "category": "Utility"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "assets/icons/desktop/kaizen_desktop_icon.png",
+      "category": "public.app-category.productivity"
     },
     "win": {
       "target": [

@@ -1,8 +1,8 @@
 # 改善 Kaizen — Project Status
 
-**Last Updated:** September 10, 2026
-**Version:** 1.1.0
-**Status:** ✅ v1.1 FEATURE WAVE COMPLETE — streaks, mood analytics, badges, backup/restore, reminders, Kai chat, rest days, sounds
+**Last Updated:** October 13, 2026
+**Version:** 1.2.0
+**Status:** ✅ v1.2 — pixel UI, tray, daily backups, weekly review, journal export, light theme
 
 ---
 
@@ -13,7 +13,7 @@ All core systems have been audited and fixed. The app is past initial scaffoldin
 ---
 
 
-##Process
+## Process
 
 Goals (created here)
     ↓
@@ -84,42 +84,7 @@ Journal (written per goal, per day)
 
 ## 📁 Current File Structure
 
-```
-/home/eco/Kaizen/
-├── main.js                        # Electron main process
-├── index.html                     # App shell
-├── package.json
-├── src/
-│   ├── preload.js                 # contextBridge API exposed to renderer
-│   ├── js/
-│   │   ├── utils.js               # Shared helpers (dates, HTML escaping)
-│   │   ├── dashboard.js           # Dashboard
-│   │   ├── goals.js               # Goals + modal with date validation
-│   │   ├── checkmarked.js         # CheckMarked grid
-│   │   ├── completed_goals.js     # Completed Goals (cg-* classes)
-│   │   ├── failed_goals.js        # Failed Goals (failure rate display)
-│   │   ├── journal.js             # Journal (goal_id linked entries)
-│   │   ├── notification.js        # Notifications
-│   │   ├── profile.js             # Profile + settings
-│   │   ├── sidebar-badges.js      # Sidebar badge counts
-│   │   ├── ollama.js              # Kai AI core
-│   │   └── ollama_journal.js      # Kai page renderer
-│   └── css/
-│       ├── style.css
-│       ├── dashboard.css
-│       ├── goals.css
-│       ├── checkmarked.css
-│       ├── completed_goals.css
-│       ├── failed_goals.css
-│       ├── journal.css
-│       ├── notification.css
-│       └── profile.css
-├── database/
-│   ├── backend.js
-│   └── kaizen.db                  # Auto-created on first run
-└── assets/
-    └── icons/
-```
+See the File Structure section in `README.md`.
 
 ---
 
@@ -134,6 +99,18 @@ Journal (written per goal, per day)
 | `notifications` | `id, goal_id, message, type, created_at, read` | type = 'completed' or 'failed' |
 | `user_profile` | `id, name, tagline` | Single row |
 | `kai_chat` | `id, role, content, created_at` | Kai companion chat history |
+
+### v1.2 Additions (October 13, 2026)
+
+- ✅ Pixel UI: animated 16×16 sprite icons, Mt Fuji logo/app icon, Kai/Zun mood faces, pixel scrollbars
+- ✅ Shared page header on every page; redesigned Goals and Failed Goals; dark / light / system theme
+- ✅ Tray + close-to-tray, single instance, launch at login (XDG autostart on Linux)
+- ✅ Daily auto-backup (last 7), atomic DB saves, Content-Security-Policy
+- ✅ Kai knows your goals; Ollama server auto-start; real Ollama errors shown
+- ✅ Companion ranks, Year in Pixels, Weekly Review page + Sunday notification
+- ✅ Journal export (Markdown / PDF), Undo toasts for deletes, in-app dialogs (fixes overdue-goal restore)
+- ✅ Keyboard shortcuts and keyboard-accessible sidebar
+- ✅ `npm test`: companion, pixel icons, journal export, weekly review
 
 ### v1.1 Additions (September 10, 2026)
 
@@ -165,7 +142,9 @@ Journal (written per goal, per day)
 
 - Single-user only — no authentication
 - Profile name/tagline stored in `localStorage` (survives DB reset; excluded from JSON backup)
-- Reminders only fire while the app is running (no OS-level scheduled tasks)
+- Reminders fire while Kaizen runs (window or tray); with launch-at-login on, that's whenever you're logged in
+- Light theme is the dark theme inverted, so its colors aren't hand-tuned
+- A delete is applied 6s after the Undo toast appears; quitting within those seconds cancels it
 - Goal evaluation runs on a `setInterval` loop — time-based reminders use the same loop
 - Ollama requires manual install and `ollama serve` to be running for Kai
 
@@ -191,12 +170,9 @@ npx electron --version
 
 ## 🔜 Next Steps
 
-1. **Test run** on Fedora KDE Plasma — `rm database/kaizen.db && rm -rf node_modules && npm install && npm start`
-2. Verify CheckMarked grid slot locking and journal gate end-to-end
-3. Verify goal date validation in create/edit modal
-4. Verify spider chart populates with real label data
-5. Verify sidebar badges update correctly
-6. Extended testing before any distribution consideration
+1. Rebuild installers: `npm run build` (the old ones in `dist/` contain personal data)
+2. If the repo is ever shared: remove `database/kaizen.db` from git history (`git filter-repo --path database/kaizen.db --invert-paths`)
+3. Hand-tune the light theme by moving hardcoded colors into CSS variables
 
 ---
 

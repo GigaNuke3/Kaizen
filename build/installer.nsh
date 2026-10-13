@@ -7,7 +7,8 @@
   
   ${If} $0 == ""
   ${AndIf} $1 == ""
-    ; Ollama not found — install silently from bundled resources
+  ${AndIf} ${FileExists} "$INSTDIR\resources\ollama\OllamaSetup.exe"
+    ; Ollama not found and its installer is bundled — install silently
     DetailPrint "Setting up Ollama (this may take a moment)..."
     ExecWait '"$INSTDIR\resources\ollama\OllamaSetup.exe" /S' $2
     ${If} $2 == 0
@@ -15,8 +16,11 @@
     ${Else}
       DetailPrint "⚠️ Ollama install failed — Kai will set up on first launch"
     ${EndIf}
-  ${Else}
+  ${ElseIf} $0 != ""
+  ${OrIf} $1 != ""
     DetailPrint "✅ Ollama already installed — skipping"
+  ${Else}
+    DetailPrint "Ollama not bundled — install it from ollama.com to use Kai"
   ${EndIf}
   
   ; AI model will be pulled on first Kaizen launch (handled by main.js)

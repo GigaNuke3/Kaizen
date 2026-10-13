@@ -1535,3 +1535,160 @@ img.kai-avatar {
   color: #888;
   font-size: 0.8rem;
 }
+
+/* Keyboard focus for the sidebar and buttons */
+.nav-links li:focus-visible,
+.sidebar-footer:focus-visible,
+.btn:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid #6ee7b7;
+  outline-offset: 2px;
+}
+
+/* ===== Undo toasts (undoableDelete in utils.js) ===== */
+#kz-toasts {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10000;
+}
+
+.kz-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 16px;
+  background: #1a1a1a;
+  border: 2px solid #6ee7b7;
+  border-radius: 10px;
+  color: #ddd;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: kzDialogIn 0.18s steps(3);
+}
+
+/* ===== Weekly review (review.js) ===== */
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-head h3 {
+  margin: 0;
+}
+
+.review-container .section {
+  margin-bottom: 20px;
+}
+
+.review-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 640px;
+}
+
+.review-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.review-day-cell {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #222;
+  border-radius: 6px;
+}
+
+.review-day-cell .mood-face {
+  width: 60%;
+  height: 60%;
+}
+
+.review-today .review-day-cell {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.review-future .review-day-cell {
+  background: transparent;
+  outline: 1px dashed #333;
+}
+
+.review-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review-goal {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.review-goal-title {
+  color: #ddd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.review-goal-rate {
+  color: #aaa;
+  font-size: 0.85rem;
+  min-width: 90px;
+  text-align: right;
+}
+
+.review-adjust p,
+.review-insight p {
+  color: #ccc;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.review-insight-text {
+  white-space: pre-wrap;
+}
+
+/* ===== Light theme =====
+   ponytail: light = the dark theme inverted with hues kept; art, charts and mood colors are flipped back.
+   Ceiling: light colors aren't hand-tuned. Upgrade path: move the hardcoded hex colors into CSS variables. */
+html[data-theme="light"] {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+html[data-theme="light"] :is(img, .px, canvas, .yip-cell[style], .yip-legend i, .review-day-cell[style], .profile-avatar) {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* The avatar circle is already flipped back; don't flip the sprite inside it a second time */
+html[data-theme="light"] .profile-avatar .px {
+  filter: none;
+}
+
+/* <dialog> renders in the top layer, outside <html>'s filter, so it gets the same inversion itself */
+html[data-theme="light"] .kz-dialog {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.theme-select {
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #fff;
+  font: inherit;
+}

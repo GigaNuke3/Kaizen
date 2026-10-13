@@ -134,6 +134,9 @@ const api = {
   importData: () =>
     ipcRenderer.invoke('import-data'),
 
+  exportJournal: () =>
+    ipcRenderer.invoke('export-journal'),
+
   resetAllData: () =>
     ipcRenderer.invoke('reset-all-data'),
 

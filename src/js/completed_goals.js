@@ -246,11 +246,7 @@ function attachCGEvents(content) {
     if (deleteBtn) {
       const id = Number(deleteBtn.dataset.id)
       const title = deleteBtn.dataset.title
-      if (!(await kzConfirm('This cannot be undone. Journal entries linked to it will be kept.', { title: `Permanently delete "${title}"?`, danger: true, okText: 'Delete' }))) return
-      try {
-        await window.api.deleteGoal(id)
-        renderCompletedGoals()
-      } catch (err) { kzAlert('Could not delete: ' + err.message) }
+      undoableDelete(`Deleted "${title}"`, deleteBtn.closest('.cg-card'), () => window.api.deleteGoal(id))
     }
   })
 }

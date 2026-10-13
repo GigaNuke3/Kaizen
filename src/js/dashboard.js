@@ -64,7 +64,10 @@ async function renderDashboard() {
         </div>
 
         <div class="section">
-          <h3>This Week</h3>
+          <div class="section-head">
+            <h3>This Week</h3>
+            <button class="btn btn-secondary btn-sm" onclick="loadPage('review')">${px('calendar')} Weekly review</button>
+          </div>
           <div id="weekly-summary"></div>
         </div>
 

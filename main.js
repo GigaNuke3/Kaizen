@@ -17,7 +17,7 @@ function settingsFilePath() {
 
 function loadAppSettings() {
   if (settingsCache) return settingsCache
-  const defaults = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00', companion: 'kai', closeToTray: true, launchAtLogin: false, autoBackup: true }
+  const defaults = { notifications: true, soundEnabled: true, remindersEnabled: false, reminderTime: '20:00', companion: 'kai', closeToTray: true, launchAtLogin: false, autoBackup: true, weeklyReview: true, theme: 'dark' }
   try {
     const file = settingsFilePath()
     if (fs.existsSync(file)) {
@@ -58,11 +58,13 @@ async function createWindow() {
     console.error('Startup evaluateGoals error:', err)
   }
 
-  // Remove menu bar completely
-  Menu.setApplicationMenu(null)
+  // No menu bar on Windows/Linux. macOS keeps a minimal menu: without it Cmd+C/V/X/A/Q stop working
+  Menu.setApplicationMenu(process.platform === 'darwin'
+    ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }])
+    : null)
 
   const win = mainWindow = new BrowserWindow({
-    show: !process.argv.includes('--hidden'), // autostart launches straight to the tray
+    show: !startHidden(), // autostart launches straight to the tray
     width: 1280,
     height: 800,
     minWidth: 900,
@@ -132,6 +134,14 @@ async function createWindow() {
 }
 
 // App event listeners
+if (process.platform === 'win32') app.setAppUserModelId('com.kaizen.app') // Windows needs this for notifications
+
+/** Launched by login autostart? (Windows/Linux pass --hidden; macOS reports it via login item settings) */
+function startHidden() {
+  return process.argv.includes('--hidden') ||
+    (process.platform === 'darwin' && app.getLoginItemSettings().wasOpenedAsHidden)
+}
+
 // One instance only: launching Kaizen again just shows the running window
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -153,7 +163,8 @@ function showMainWindow() {
 
 function createTray() {
   if (tray) return
-  tray = new Tray(nativeImage.createFromPath(ICON_PATH).resize({ width: 22, height: 22 }))
+  const size = process.platform === 'linux' ? 22 : 16 // Windows tray and macOS menu bar use 16px icons
+  tray = new Tray(nativeImage.createFromPath(ICON_PATH).resize({ width: size, height: size }))
   tray.setToolTip('Kaizen')
   tray.on('click', showMainWindow)
   updateTrayMenu().catch(err => console.error('Tray update error:', err))
@@ -178,7 +189,7 @@ async function updateTrayMenu() {
 
 function applyLaunchAtLogin(enabled) {
   if (process.platform !== 'linux') {
-    app.setLoginItemSettings({ openAtLogin: enabled, args: ['--hidden'] })
+    app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: enabled, args: ['--hidden'] }) // args: Windows, openAsHidden: macOS
     return
   }
   // Linux has no login-item API; use an XDG autostart entry
@@ -244,8 +255,18 @@ async function runReminderCheck(win) {
   const isDue = (t) => !!t && prev < t && t <= hm
 
   const settings = loadAppSettings()
-  if (!settings.remindersEnabled) return
   if (!Notification.isSupported()) return
+
+  // Sunday weekly review, at the reminder time; clicking opens the review page
+  const reviewKey = `review_${today}`
+  if (settings.weeklyReview && new Date().getDay() === 0 && isDue(settings.reminderTime) && !reminderSentKeys.has(reviewKey)) {
+    reminderSentKeys.add(reviewKey)
+    const n = new Notification({ title: '🗓 Your weekly review is ready', body: 'Two minutes to look back and adjust one thing.' })
+    n.on('click', () => { showMainWindow(); mainWindow?.webContents.send('open-page', 'review') })
+    n.show()
+  }
+
+  if (!settings.remindersEnabled) return
 
   const open = await backend.getTodayOpenGoals()
 
@@ -277,11 +298,19 @@ async function runReminderCheck(win) {
 
 let ollamaServer = null // the `ollama serve` we started (stopped when Kaizen quits)
 
+// Apps opened from the Dock/Start menu don't get the shell's PATH, so check the usual install locations first
+const OLLAMA_PATHS = {
+  win32: [
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Ollama', 'ollama.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Ollama', 'ollama.exe'),
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Ollama', 'ollama.exe')
+  ],
+  darwin: ['/Applications/Ollama.app/Contents/Resources/ollama', '/opt/homebrew/bin/ollama', '/usr/local/bin/ollama'],
+  linux: ['/usr/local/bin/ollama', '/usr/bin/ollama', path.join(app.getPath('home'), '.local', 'bin', 'ollama'), '/snap/bin/ollama']
+}
+
 function findOllama() {
-  const ollamaPaths = process.platform === 'win32'
-    ? [`${process.env.LOCALAPPDATA}\\Programs\\Ollama\\ollama.exe`, `${process.env.LOCALAPPDATA}\\Ollama\\ollama.exe`]
-    : ['/usr/local/bin/ollama', '/usr/bin/ollama', `${process.env.HOME}/.local/bin/ollama`]
-  return ollamaPaths.find(p => fs.existsSync(p)) || 'ollama' // fall back to PATH
+  return (OLLAMA_PATHS[process.platform] || OLLAMA_PATHS.linux).find(p => fs.existsSync(p)) || 'ollama' // fall back to PATH
 }
 
 async function isOllamaServing() {
@@ -387,7 +416,7 @@ async function setupKaiFirstLaunch(win) {
 
 ipcMain.handle('check-ollama-installed', () => {
   return new Promise((resolve) => {
-    execFile('ollama', ['--version'], (error) => {
+    execFile(findOllama(), ['--version'], (error) => {
       resolve(!error) // true = installed, false = not installed
     })
   })
@@ -480,6 +509,29 @@ ipcMain.handle('export-data', async () => {
   return { canceled: false, ...result }
 })
 
+ipcMain.handle('export-journal', async () => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Export journal',
+    defaultPath: `kaizen-journal-${backend.getLocalDateString()}.md`,
+    filters: [{ name: 'Markdown', extensions: ['md'] }, { name: 'PDF', extensions: ['pdf'] }]
+  })
+  if (canceled || !filePath) return { canceled: true }
+  const rows = await backend.getJournalForExport()
+  if (filePath.toLowerCase().endsWith('.pdf')) {
+    // Render the HTML in a hidden window and let Chromium print it
+    const pdfWin = new BrowserWindow({ show: false, webPreferences: { javascript: false } })
+    try {
+      await pdfWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(backend.journalToHtml(rows)))
+      fs.writeFileSync(filePath, await pdfWin.webContents.printToPDF({ printBackground: true }))
+    } finally {
+      pdfWin.destroy()
+    }
+  } else {
+    fs.writeFileSync(filePath, backend.journalToMarkdown(rows), 'utf8')
+  }
+  return { canceled: false, filePath, entries: rows.length }
+})
+
 ipcMain.handle('import-data', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     title: 'Restore Kaizen data',
@@ -501,7 +553,9 @@ ipcMain.handle('get-settings', () => {
     companion: s.companion,
     closeToTray: s.closeToTray,
     launchAtLogin: s.launchAtLogin,
-    autoBackup: s.autoBackup
+    autoBackup: s.autoBackup,
+    weeklyReview: s.weeklyReview,
+    theme: s.theme
   }
 })
 ipcMain.handle('set-settings', (_event, settings) => {
@@ -511,7 +565,8 @@ ipcMain.handle('set-settings', (_event, settings) => {
   if (typeof settings.remindersEnabled === 'boolean') patch.remindersEnabled = settings.remindersEnabled
   if (typeof settings.reminderTime === 'string') patch.reminderTime = settings.reminderTime
   if (settings.companion === 'kai' || settings.companion === 'zun') patch.companion = settings.companion
-  for (const key of ['closeToTray', 'launchAtLogin', 'autoBackup']) {
+  if (['dark', 'light', 'system'].includes(settings.theme)) patch.theme = settings.theme
+  for (const key of ['closeToTray', 'launchAtLogin', 'autoBackup', 'weeklyReview']) {
     if (typeof settings[key] === 'boolean') patch[key] = settings[key]
   }
   if ('launchAtLogin' in patch) applyLaunchAtLogin(patch.launchAtLogin)
@@ -525,7 +580,9 @@ ipcMain.handle('set-settings', (_event, settings) => {
     companion: s.companion,
     closeToTray: s.closeToTray,
     launchAtLogin: s.launchAtLogin,
-    autoBackup: s.autoBackup
+    autoBackup: s.autoBackup,
+    weeklyReview: s.weeklyReview,
+    theme: s.theme
   }
 })
 

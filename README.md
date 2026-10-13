@@ -33,10 +33,17 @@ Your personal self-improvement companion built with Electron. Track goals, journ
 - Each journal entry is tied to a goal when written from the CheckMarked flow
 - Kai AI companion responds below each saved entry (requires Ollama running locally)
 
+### 🎨 Pixel Look
+- Every icon is an animated 16×16 pixel sprite (`src/js/pixel-icons.js`); edit the row strings to change the art
+- Mood emojis are Kai/Zun faces; dark, light, or match-system theme (Profile → Settings)
+- Pixel-styled dialogs and an Undo toast instead of "Are you sure?" for deletes
+
 ### 🌱 Living Companion & Kaizen Compounding
 - Pick Kai or Zun in Profile — a pixel companion whose mood reacts to your real progress on the Dashboard
 - Journal replies mirror the mood you chose for the entry
 - Kaizen meter: 1% better on every day you check in, compounded (`1.01^days`)
+- Companion ranks up at 7 / 30 / 100 / 365 check-in days (Apprentice → Adept → Master → Sensei)
+- Year in Pixels: 12 months × 31 days, each square colored by that day's mood
 
 ### 🤖 Kai — AI Companion
 - Powered by Ollama running `llama3.2:latest` locally
@@ -83,17 +90,30 @@ Your personal self-improvement companion built with Electron. Track goals, journ
 - Mark any past missed or today's scheduled slot as a rest day (reversible)
 - Excused days are removed from goal progress — missed days no longer permanently sink a goal
 
-### 💾 Backup & Restore
+### 🖥️ Desktop Integration
+- Closing the window keeps Kaizen in the tray (today's open goals in the tray menu) so reminders keep firing
+- Optional launch at login (starts in the tray); only one Kaizen runs at a time
+- Keyboard: Ctrl+1–9 switch pages, Ctrl+0 Profile, Ctrl+N new journal entry; sidebar works with Tab + Enter
+
+### 💾 Backup, Restore & Export
 - Export all data (goals, check-ins, journal, labels, notifications, Kai chat) to a JSON file
 - Restore from a backup file — replaces current data after confirmation
+- Automatic daily backup, last 7 kept (Profile → Open daily backups folder)
+- Export the journal to Markdown or PDF (Journal → Export)
 
 ### ⏰ Daily Reminders
 - Optional daily summary reminder at a time you choose
 - Per-goal reminder at each goal's own time window
 
+### 🗓️ Weekly Review
+- Week at a glance, a 7-day pixel strip, per-goal results, the one goal worth adjusting, and Kai's take
+- Open it from the dashboard's This Week card, or from the Sunday notification
+
 ### 🤖 Kai Chat
 - Persistent multi-turn chat with Kai on the Companion page
 - Weekly Insight button — Kai summarizes your last 7 days of journal + stats
+- Kai knows your active goals, today's check-ins and your streak
+- Kaizen starts the local Ollama server itself when Kai needs it
 
 ### 🔊 Navigation Sounds
 - Synthesized page-click sounds (bell, digital, arrow, pencil, trophy, fail, book, robot) via Web Audio — no audio files needed
@@ -103,11 +123,15 @@ Your personal self-improvement companion built with Electron. Track goals, journ
 
 ## 🚀 Getting Started
 
+### Download
+Grab the installer for your OS from the [Releases page](https://github.com/GigaNuke3/Kaizen/releases/latest) — `.exe` (Windows), `.dmg` (macOS; `arm64` = Apple Silicon), `.AppImage` / `.deb` / `.rpm` (Linux).
+
 ### Installation
 ```bash
-cd /home/eco/Kaizen
 npm install
-npm start
+npm start      # run the app
+npm test       # run the checks
+npm run build  # build installers into dist/
 ```
 
 ### Fresh Start (reset database)
@@ -118,25 +142,34 @@ npm start
 
 ---
 
-## 🔄 Switching Between Operating Systems
+## 💻 Windows, macOS & Linux
 
-Electron bundles a platform-specific binary. When switching OS, always refresh `node_modules`:
+Kaizen runs on all three. `npm start` works everywhere (the `--ozone-platform=x11` flag only affects Linux).
 
-**Windows → Linux (Fish shell):**
-```fish
-rm -rf node_modules
-npm install
-npm start
-```
+### Installers
 
-**Linux → Windows (CMD):**
-```cmd
-rd /s /q node_modules
-npm install
-npm start
-```
+| OS | Installer | Build command |
+|----|-----------|---------------|
+| Windows | `Kaizen Setup x.y.z.exe` (NSIS) | `npm run build:win` |
+| macOS | `.dmg` + `.zip` | `npm run build:mac` (must run on a Mac) |
+| Linux | `.AppImage` (any distro), `.deb` (Debian/Ubuntu), `.rpm` (Fedora) | `npm run build:linux` (`.rpm` needs `rpm-build`) |
 
-Your code, database, and assets are untouched — only `node_modules` needs to be rebuilt.
+`npm run build` builds for the OS you're on. To get **all three at once**, use GitHub Actions
+(`.github/workflows/build.yml`): push a tag (`git tag v1.2.0 && git push --tags`) or run
+"Build installers" from the Actions tab, then download the installers from the run's Artifacts.
+
+### Per-OS notes
+
+- **Windows:** the installer is unsigned, so SmartScreen may warn — click *More info → Run anyway*.
+- **macOS:** the app is unsigned — the first time, right-click Kaizen → *Open*. Keeps a minimal menu bar so Cmd+C/V/Q work.
+- **Linux (GNOME):** the tray icon needs the *AppIndicator* extension; KDE and most other desktops show it natively.
+- **Kai (Ollama):** found automatically in the default install locations on every OS (Ollama.app and Homebrew on macOS).
+
+### Moving the project between computers
+
+Electron downloads a platform-specific binary, so after copying the project to another OS, reinstall dependencies:
+`rm -rf node_modules && npm install` (Windows CMD: `rd /s /q node_modules && npm install`).
+Your code, database and assets are untouched.
 
 ---
 
@@ -150,10 +183,10 @@ Your code, database, and assets are untouched — only `node_modules` needs to b
 5. Repeat for each goal that has an open slot today
 
 ### Weekly Review
-1. Go to **Goals** — review active goals and progress percentages
-2. Go to **Completed Goals** — see what you've achieved
-3. Go to **Failed Goals** — review missed slots and failure rates
-4. Adjust or restore goals as needed
+1. On Sunday, click the **weekly review** notification (or Dashboard → This Week → Weekly review)
+2. Look at the week's pixel strip and per-goal results
+3. Adjust the one goal it suggests, if any
+4. Ask Kai for a weekly insight
 
 ### Creating a Goal
 1. Go to **Goals** → click **+ New Goal**
@@ -167,10 +200,11 @@ Your code, database, and assets are untouched — only `node_modules` needs to b
 
 ## 💾 Data Storage
 
-All data is stored locally in `database/kaizen.db` using SQLite via `sql.js`:
-- No cloud uploads, no tracking, no accounts
-- Back up by copying `database/kaizen.db`
-- Delete `kaizen.db` to start completely fresh
+All data is stored locally in SQLite via `sql.js` — no cloud, no tracking, no accounts:
+- Development (`npm start`): `database/kaizen.db` (git-ignored)
+- Installed app: `kaizen.db` in the app's user-data folder (`~/.config/Kaizen` on Linux)
+- Daily backups: `backups/` next to the database (last 7 kept)
+- Saves are atomic (temp file + rename), so a crash mid-save can't corrupt the database
 
 ---
 
@@ -210,46 +244,31 @@ The renderer runs with `contextIsolation: true` and `nodeIntegration: false`; al
 | `journal` | Journal entries linked to goals via `goal_id` |
 | `notifications` | Goal completed/failed notification log |
 | `user_profile` | Name and tagline |
+| `kai_chat` | Kai companion chat history |
 
 ---
 
 ## 📁 File Structure
 
 ```
-/home/eco/Kaizen/
-├── main.js                        # Electron main process + IPC handlers
-├── index.html                     # App shell + page loader
-├── package.json
+Kaizen/
+├── main.js                  # Electron main process: IPC, tray, reminders, backups, Ollama
+├── index.html               # App shell, sidebar, page router, shortcuts, theme
 ├── src/
-│   ├── preload.js                 # contextBridge API exposed to renderer
+│   ├── preload.js           # contextBridge API exposed to the renderer
 │   ├── js/
-│   │   ├── utils.js               # Shared helpers (dates, HTML escaping)
-│   │   ├── dashboard.js           # Dashboard page
-│   │   ├── goals.js               # Goals page + create/edit modal
-│   │   ├── checkmarked.js         # CheckMarked tracking grid
-│   │   ├── completed_goals.js     # Completed Goals page
-│   │   ├── failed_goals.js        # Failed Goals page
-│   │   ├── journal.js             # Journal page
-│   │   ├── notification.js        # Notifications page
-│   │   ├── profile.js             # Profile page
-│   │   ├── sidebar-badges.js      # Live badge counts on sidebar nav
-│   │   ├── ollama.js              # Ollama API + Kai response streaming
-│   │   └── ollama_journal.js      # Kai companion page renderer
-│   └── css/
-│       ├── style.css              # Base/global styles + app layout
-│       ├── dashboard.css
-│       ├── goals.css
-│       ├── checkmarked.css
-│       ├── completed_goals.css
-│       ├── failed_goals.css
-│       ├── journal.css
-│       ├── notification.css
-│       └── profile.css
-├── database/
-│   ├── backend.js                 # All DB functions (50+ async)
-│   └── kaizen.db                  # Auto-created SQLite database
-└── assets/
-    └── icons/
+│   │   ├── utils.js         # Shared helpers: dates, escaping, dialogs, undo, page header
+│   │   ├── pixel-icons.js   # Pixel sprite art + px() renderer
+│   │   ├── dashboard.js     # Dashboard, companion ranks, Year in Pixels
+│   │   ├── review.js        # Weekly Review page
+│   │   ├── goals.js · checkmarked.js · completed_goals.js · failed_goals.js
+│   │   ├── journal.js · notification.js · badges.js · profile.js
+│   │   ├── ollama.js · ollama_journal.js   # Kai (Ollama) chat + journal replies
+│   │   └── sidebar-badges.js · sounds.js
+│   └── css/                 # style.css (global) + one stylesheet per page
+├── database/backend.js      # All DB functions (sql.js)
+├── test/                    # npm test (node:test)
+└── assets/                  # Kai/Zun sprites, Pixelify Sans font, app icon
 ```
 
 ---
@@ -259,16 +278,17 @@ The renderer runs with `contextIsolation: true` and `nodeIntegration: false`; al
 | Issue | Solution |
 |-------|---------|
 | App won't start | `rm -rf node_modules && npm install && npm start` |
-| Blank screen / JS error | Open DevTools in `main.js` by uncommenting `win.webContents.openDevTools()` |
+| Blank screen / JS error | Add `win.webContents.openDevTools()` after `win.loadFile(...)` in `main.js` |
 | Database errors | `rm database/kaizen.db` then `npm start` for a fresh schema |
-| Kai is offline | Run `ollama serve` in a terminal, then restart the app |
+| Kai is offline | Install Ollama; Kaizen starts its server. If it still fails, run `ollama serve` to see why |
 | Wrong platform binary | `rm -rf node_modules && npm install` after switching OS |
+| No tray icon on GNOME | Install the AppIndicator extension |
 
 ---
 
 ## 📈 Planned Future Features
 
-- 🎨 Multiple theme options
+- 🎨 Hand-tuned light theme (today's is the dark theme inverted)
 - 📱 Mobile companion app
 
 ---
@@ -283,5 +303,5 @@ Built on the philosophy of **Kaizen** (改善) — continuous improvement throug
 
 ---
 
-*Last Updated: September 10, 2026*
-*Version: 1.1.0*
+*Last Updated: October 13, 2026*
+*Version: 1.2.0*

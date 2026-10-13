@@ -193,10 +193,8 @@ async function renderFailedGoals() {
 
       const deleteGoalBtn = e.target.closest('.delete-goal-btn')
       if (deleteGoalBtn) {
-        if (await kzConfirm('Journal entries linked to it will be kept.', { title: 'Permanently delete this goal?', danger: true, okText: 'Delete' })) {
-          await window.api.deleteGoal(Number(deleteGoalBtn.dataset.id))
-          renderFailedGoals()
-        }
+        const id = Number(deleteGoalBtn.dataset.id)
+        undoableDelete('Goal deleted', deleteGoalBtn.closest('.failed-goal-card'), () => window.api.deleteGoal(id))
       }
     })
 
