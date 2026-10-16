@@ -91,6 +91,12 @@
   .cta .sprites img + img { animation-delay: .7s; }
   .cta h2 { margin-bottom: 20px; }
 
+  .support { display: grid; grid-template-columns: 1fr 240px; gap: 40px; align-items: center; max-width: 760px; margin: 0 auto; padding: 32px; }
+  .support h2 { text-align: left; } .support h2 .px { width: 1em; height: 1em; margin-right: 10px; vertical-align: -0.1em; }
+  .support p { color: var(--muted); margin: 0 0 8px; }
+  .support img { width: 240px; height: auto; background: #fff; padding: 8px; image-rendering: auto; }
+  @media (max-width: 860px) { .support { grid-template-columns: 1fr; text-align: center; justify-items: center; } .support h2 { text-align: center; } }
+
   footer { margin-top: 64px; padding: 28px 0; border-top: 1px solid var(--line); text-align: center; color: var(--muted); }
 
   /* Scroll reveal, stepped like a sprite */
@@ -117,7 +123,7 @@
 <div class="wrap">
   <nav>
     <a class="brand" href="#"><img src="assets/icon.png" alt="">改善 Kaizen</a>
-    <div class="links"><a href="#features">Features</a><a href="#how">How it works</a><a class="gh" href="https://github.com/GigaNuke3/Kaizen">GitHub</a></div>
+    <div class="links"><a href="#features">Features</a><a href="#how">How it works</a><a href="#support">Support</a><a class="gh" href="https://github.com/GigaNuke3/Kaizen">GitHub</a></div>
   </nav>
 
   <header class="hero">
@@ -184,6 +190,17 @@
       <h2>Start your first streak today</h2>
       <a class="dl dl-auto" href="https://github.com/GigaNuke3/Kaizen/releases/latest">Download Kaizen</a>
       <p class="others">Free forever · <a href="https://github.com/GigaNuke3/Kaizen">Open source on GitHub</a></p>
+    </div>
+  </section>
+
+  <section id="support">
+    <div class="support pixbox reveal">
+      <div>
+        <h2 data-px="star">Support Kaizen</h2>
+        <p>Kaizen is free and always will be. If it's helping you build better habits, a small tip on PayPal keeps the updates coming.</p>
+        <p class="others">Scan with your phone's camera or PayPal app.</p>
+      </div>
+      <img src="assets/paypal-qr.jpg" alt="PayPal QR code to support Kaizen" width="400" height="421" loading="lazy">
     </div>
   </section>
 </main>
