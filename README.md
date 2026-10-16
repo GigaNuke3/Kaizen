@@ -295,7 +295,7 @@ Kaizen/
 
 ## 📄 License
 
-Personal project — free to use and modify.
+[MIT](LICENSE) — free to use, modify and share.
 
 ## 🙏 Philosophy
 
