@@ -6,96 +6,236 @@
 <title>Kaizen 改善 — Free Self-Improvement App</title>
 <meta name="description" content="Kaizen is a free, local-first self-improvement app. Track goals, journal your progress, no cloud, no tracking.">
 <link rel="icon" href="assets/icon.png">
+<!-- px.css / px.js are copies of the app's src/css/style.css "Pixel icons" section and src/js/pixel-icons.js -->
+<link rel="stylesheet" href="assets/px.css">
 <style>
   @font-face { font-family: "Pixelify"; src: url(assets/pixelify.ttf) format("truetype"); font-weight: 400 700; font-display: swap; }
-  :root { --bg: #121212; --card: #1b1b1b; --line: #2a2a2a; --text: #e6e6e6; --muted: #9a9a9a; --accent: #6ee7b7; --accent-ink: #0b1f17; }
+  :root { --bg: #0f1013; --card: #191a1f; --line: #2c2e36; --text: #e8e8ec; --muted: #9a9ca8; --accent: #6ee7b7; --accent-dk: #2fb487; --accent-ink: #0b1f17; --px: 4px; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Pixelify", system-ui, sans-serif; line-height: 1.5; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Pixelify", system-ui, sans-serif; line-height: 1.55; overflow-x: hidden; }
   img { image-rendering: pixelated; max-width: 100%; }
   a { color: var(--accent); }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
 
-  header { padding: 72px 0 48px; text-align: center; }
-  .sprites { display: flex; justify-content: center; gap: 16px; }
-  .sprites img { width: 96px; }
-  h1 { font-size: clamp(2.5rem, 8vw, 4rem); margin: 16px 0 0; color: var(--accent); }
-  .tag { font-size: 1.2rem; color: var(--muted); margin: 8px 0 32px; }
+  /* Drifting pixel grid behind everything */
+  body::before { content: ""; position: fixed; inset: -64px; z-index: -1; pointer-events: none;
+    background-image: linear-gradient(#ffffff08 1px, transparent 1px), linear-gradient(90deg, #ffffff08 1px, transparent 1px);
+    background-size: 32px 32px; animation: drift 12s linear infinite; }
+  @keyframes drift { to { transform: translate(32px, 32px); } }
 
-  .dl { display: inline-block; background: var(--accent); color: var(--accent-ink); text-decoration: none; font-size: 1.3rem; font-weight: 700; padding: 14px 28px; border-radius: 4px; box-shadow: 4px 4px 0 #2e7d62; }
-  .dl:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #2e7d62; }
+  /* Notched pixel corners: border drawn with box-shadow, no radius */
+  .pixbox { background: var(--card); box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 1.3rem; font-weight: 700; color: var(--accent); text-decoration: none; }
+  .brand img { width: 32px; }
+  nav .links a { color: var(--muted); text-decoration: none; margin-left: 20px; }
+  nav .links a:hover { color: var(--accent); }
+
+  .hero { display: grid; grid-template-columns: 1fr 1.25fr; gap: 56px; align-items: center; padding: 48px 0 80px; }
+  .badge { display: inline-flex; gap: 8px; align-items: center; color: var(--accent); background: #6ee7b714; padding: 4px 12px; font-size: .9rem; }
+  h1 { font-size: clamp(2.4rem, 5vw, 3.6rem); line-height: 1.05; margin: 18px 0 12px; }
+  h1 span { color: var(--accent); }
+  .type { color: var(--muted); font-size: 1.2rem; min-height: 3.4em; margin: 0 0 28px; }
+  .type::after { content: "█"; color: var(--accent); animation: px-blink 1s steps(1) infinite; margin-left: 2px; }
+
+  .dl { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: var(--accent-ink); text-decoration: none; font-size: 1.3rem; font-weight: 700; padding: 14px 28px; box-shadow: 0 6px 0 var(--accent-dk), 0 6px 0 2px #0006; transition: transform .06s steps(1), box-shadow .06s steps(1); }
+  .dl:hover { transform: translateY(2px); box-shadow: 0 4px 0 var(--accent-dk); }
+  .dl:active { transform: translateY(6px); box-shadow: 0 0 0 var(--accent-dk); }
   .dl[aria-disabled="true"] { background: var(--line); color: var(--muted); box-shadow: none; pointer-events: none; }
-  .others { margin-top: 16px; color: var(--muted); font-size: .95rem; }
-  .others a { margin: 0 6px; }
-  .note { color: var(--muted); font-size: .85rem; margin-top: 12px; }
+  .others { margin-top: 22px; color: var(--muted); font-size: .92rem; }
+  .others a { margin-right: 10px; white-space: nowrap; }
+  .note { color: var(--muted); font-size: .82rem; margin-top: 10px; max-width: 46ch; }
 
-  h2 { color: var(--accent); text-align: center; margin: 64px 0 24px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
-  .card h3 { margin: 0 0 8px; }
-  .card p { margin: 0; color: var(--muted); }
-  .shot { display: block; margin: 0 auto; border: 1px solid var(--line); border-radius: 8px; image-rendering: auto; }
+  .stage { position: relative; }
+  .window { padding: 0; overflow: hidden; }
+  .titlebar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #23252c; color: var(--muted); font-size: .85rem; }
+  .titlebar i { width: 10px; height: 10px; background: var(--line); }
+  .titlebar i:nth-child(1) { background: #ff5c6c; } .titlebar i:nth-child(2) { background: #ffd84a; } .titlebar i:nth-child(3) { background: var(--accent); }
+  .titlebar span { margin-left: auto; margin-right: auto; }
+  .window video { display: block; width: 100%; aspect-ratio: 1280 / 842; background: #111; }
+  .mascot { position: absolute; width: 84px; animation: hop 1.4s steps(1) infinite; filter: drop-shadow(0 4px 0 #0008); }
+  .mascot.kai { left: -36px; bottom: -34px; }
+  .mascot.zun { right: -30px; top: -52px; animation-delay: .7s; }
+  @keyframes hop { 50% { transform: translateY(-6px); } }
 
-  footer { margin-top: 80px; padding: 32px 0; border-top: 1px solid var(--line); text-align: center; color: var(--muted); }
+  section { padding: 72px 0; }
+  h2 { font-size: clamp(1.8rem, 4vw, 2.4rem); text-align: center; margin: 0 0 8px; }
+  .sub { text-align: center; color: var(--muted); margin: 0 auto 48px; max-width: 56ch; }
+
+  .feature { display: grid; grid-template-columns: 220px 1fr; gap: 40px; align-items: center; max-width: 860px; margin: 0 auto 40px; }
+  .feature:nth-child(even) { grid-template-columns: 1fr 220px; }
+  .feature:nth-child(even) .art { order: 2; }
+  .art { display: grid; place-items: center; aspect-ratio: 1; }
+  .art .px { width: 128px; height: 128px; }
+  .feature h3 { font-size: 1.6rem; margin: 0 0 8px; color: var(--accent); }
+  .feature p { margin: 0; color: var(--muted); font-size: 1.08rem; }
+
+  .pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: 56px; }
+  .pills span { display: inline-flex; gap: 8px; align-items: center; padding: 8px 16px; }
+
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; counter-reset: s; }
+  .step { padding: 28px 24px; position: relative; }
+  .step::before { counter-increment: s; content: counter(s); position: absolute; top: -18px; left: 20px; background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 2px 12px; }
+  .step .px { width: 48px; height: 48px; }
+  .step h3 { margin: 12px 0 6px; } .step p { margin: 0; color: var(--muted); }
+
+  .contrib { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column; gap: 4px; justify-content: center; margin: 48px auto 0; max-width: 100%; overflow: hidden; }
+  .contrib i { width: 14px; height: 14px; background: #1f2128; transition: background .2s steps(1); }
+  .contrib i.l1 { background: #17694d; } .contrib i.l2 { background: #2fb487; } .contrib i.l3 { background: #6ee7b7; }
+
+  .cta { text-align: center; padding: 56px 24px; margin: 0 auto; max-width: 760px; }
+  .cta .sprites { display: flex; justify-content: center; gap: 12px; margin-bottom: 16px; }
+  .cta .sprites img { width: 72px; animation: hop 1.4s steps(1) infinite; }
+  .cta .sprites img + img { animation-delay: .7s; }
+  .cta h2 { margin-bottom: 20px; }
+
+  footer { margin-top: 64px; padding: 28px 0; border-top: 1px solid var(--line); text-align: center; color: var(--muted); }
+
+  /* Scroll reveal, stepped like a sprite */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .4s steps(4), transform .4s steps(4); }
+  .reveal.in { opacity: 1; transform: none; }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; gap: 64px; padding-top: 24px; text-align: center; }
+    .note { margin-left: auto; margin-right: auto; }
+    .mascot { width: 60px; } .mascot.kai { left: -8px; bottom: -28px; } .mascot.zun { right: -6px; top: -40px; }
+    nav .links a:not(.gh) { display: none; }
+    .feature, .feature:nth-child(even) { grid-template-columns: 1fr; gap: 20px; text-align: center; }
+    .feature:nth-child(even) .art { order: 0; }
+    .art { width: 160px; margin: 0 auto; } .art .px { width: 96px; height: 96px; }
+    .steps { grid-template-columns: 1fr; gap: 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1; transform: none; }
+  }
 </style>
 </head>
 <body>
-<header class="wrap">
-  <div class="sprites"><img src="assets/kai.png" alt="Kai"><img src="assets/zun.png" alt="Zun"></div>
-  <h1>改善 Kaizen</h1>
-  <p class="tag">Small steps, every day. A free self-improvement companion that lives on your computer.</p>
-  <a id="dl" class="dl" href="https://github.com/GigaNuke3/Kaizen/releases/latest">Download Kaizen</a>
-  <p class="others">
-    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-Setup.exe">Windows</a>·
-    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen.AppImage">Linux AppImage</a>·
-    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen.deb">Linux .deb</a>·
-    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-arm64.dmg">macOS Apple Silicon</a>·
-    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-x64.dmg">macOS Intel</a>·
-    <a href="https://github.com/GigaNuke3/Kaizen/releases">All releases</a>
-  </p>
-  <p class="note" id="note"></p>
-</header>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#"><img src="assets/icon.png" alt="">改善 Kaizen</a>
+    <div class="links"><a href="#features">Features</a><a href="#how">How it works</a><a class="gh" href="https://github.com/GigaNuke3/Kaizen">GitHub</a></div>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <span class="badge pixbox" data-px="sparkle">Free · Windows · macOS · Linux</span>
+      <h1>Get <span>1% better</span> every day.</h1>
+      <p class="type" id="type" data-text="Track goals, journal every step, and watch your grid turn green. A pixel companion that lives on your computer, not the cloud."></p>
+      <a class="dl dl-auto" href="https://github.com/GigaNuke3/Kaizen/releases/latest">Download Kaizen</a>
+      <p class="others">
+        <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-Setup.exe">Windows</a>
+        <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-arm64.dmg">macOS Apple Silicon</a>
+        <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-x64.dmg">macOS Intel</a>
+        <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen.AppImage">Linux AppImage</a>
+        <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen.deb">.deb</a>
+        <a href="https://github.com/GigaNuke3/Kaizen/releases">All releases</a>
+      </p>
+      <p class="note" id="note"></p>
+    </div>
+    <div class="stage">
+      <div class="window pixbox">
+        <div class="titlebar"><i></i><i></i><i></i><span>Kaizen</span></div>
+        <video src="assets/demo.webm" poster="assets/demo-poster.jpg" autoplay muted loop playsinline aria-label="Kaizen app walkthrough"></video>
+      </div>
+      <img class="mascot kai" src="assets/kai.png" alt="">
+      <img class="mascot zun" src="assets/zun.png" alt="">
+    </div>
+  </header>
+</div>
 
 <main class="wrap">
-  <h2>What's inside</h2>
-  <div class="grid">
-    <div class="card"><h3>🎯 Goals</h3><p>Daily, weekdays, weekends, 3× a week or custom days, each with its own time window and label.</p></div>
-    <div class="card"><h3>✅ CheckMarked</h3><p>A tracking grid where every check needs a journal entry. Checks are permanent; missed days close at midnight.</p></div>
-    <div class="card"><h3>📓 Journal + Kai</h3><p>Write reflections with a mood. Kai, your AI companion, replies locally via Ollama.</p></div>
-    <div class="card"><h3>📊 Dashboard</h3><p>A 12-month activity grid, a radar chart of your goal labels and live stats.</p></div>
-    <div class="card"><h3>🔒 Local-first</h3><p>Everything stays on your machine. No account, no cloud, no tracking. Daily backups included.</p></div>
-    <div class="card"><h3>🎨 Pixel look</h3><p>Animated pixel sprites, dark and light themes, and a weekly review to look back on.</p></div>
-  </div>
+  <section id="features">
+    <h2 class="reveal">Everything you need to keep going</h2>
+    <p class="sub reveal">No accounts, no subscriptions. Just you, your goals and a couple of pixel friends cheering you on.</p>
 
-  <h2>See it</h2>
-  <img class="shot" src="assets/screenshot.png" alt="Kaizen dashboard" width="1285" height="842" loading="lazy">
+    <div class="feature reveal"><div class="art pixbox" data-px="target"></div><div><h3>Goals that fit your week</h3><p>Daily, weekdays, weekends, 3× a week or custom days, each with its own time window, colour and label.</p></div></div>
+    <div class="feature reveal"><div class="art pixbox" data-px="clipboard"></div><div><h3>CheckMarked: earn every tick</h3><p>Every check needs a journal entry for that goal. Checks are permanent, and missed days close at midnight. No cheating yourself.</p></div></div>
+    <div class="feature reveal"><div class="art pixbox" data-px="book"></div><div><h3>Journal with moods</h3><p>Write a reflection, pick how you feel, and look back on how your mood moves over time. Export it any time.</p></div></div>
+    <div class="feature reveal"><div class="art pixbox" data-px="chat"></div><div><h3>Kai &amp; Zun, your companions</h3><p>They reply to your entries and give weekly insights, running locally through Ollama. Nothing leaves your machine.</p></div></div>
+    <div class="feature reveal"><div class="art pixbox" data-px="dashboard"></div><div><h3>A dashboard that grows with you</h3><p>A 12-month activity grid, a radar chart of your goal labels, live stats and a weekly review.</p></div></div>
+    <div class="feature reveal"><div class="art pixbox" data-px="trophy"></div><div><h3>Badges &amp; ranks</h3><p>Hit milestones, unlock badges and level up your companion's rank as your streaks pile up.</p></div></div>
+
+    <div class="pills reveal">
+      <span class="pixbox" data-px="box">100% local</span>
+      <span class="pixbox" data-px="refresh">Daily backups</span>
+      <span class="pixbox" data-px="sun">Dark &amp; light themes</span>
+      <span class="pixbox" data-px="bell">Reminders</span>
+    </div>
+  </section>
+
+  <section id="how">
+    <h2 class="reveal">How it works</h2>
+    <p class="sub reveal">Three steps. Repeat daily. That's kaizen.</p>
+    <div class="steps">
+      <div class="step pixbox reveal" data-px="flag"><h3>Set a goal</h3><p>Pick what, how often, and for how long.</p></div>
+      <div class="step pixbox reveal" data-px="pencil"><h3>Show up &amp; write</h3><p>Each day, write a short entry and check the slot.</p></div>
+      <div class="step pixbox reveal" data-px="flame"><h3>Watch it grow</h3><p>Your grid fills in, square by square.</p></div>
+    </div>
+    <div class="contrib reveal" id="contrib" aria-hidden="true"></div>
+  </section>
+
+  <section>
+    <div class="cta pixbox reveal">
+      <div class="sprites"><img src="assets/kai.png" alt=""><img src="assets/zun.png" alt=""></div>
+      <h2>Start your first streak today</h2>
+      <a class="dl dl-auto" href="https://github.com/GigaNuke3/Kaizen/releases/latest">Download Kaizen</a>
+      <p class="others">Free forever · <a href="https://github.com/GigaNuke3/Kaizen">Open source on GitHub</a></p>
+    </div>
+  </section>
 </main>
 
 <footer class="wrap">
-  <p>Kaizen is free. <a href="https://github.com/GigaNuke3/Kaizen">Source on GitHub</a></p>
+  <p>改善 Kaizen. Small steps, every day.</p>
 </footer>
 
+<script src="assets/px.js"></script>
 <script>
+  // Pixel sprites from the app: data-px="name" gets the animated icon prepended
+  document.querySelectorAll("[data-px]").forEach(el => el.insertAdjacentHTML("afterbegin", px(el.dataset.px)));
+
+  // OS-detected download buttons
   const base = "https://github.com/GigaNuke3/Kaizen/releases/latest/download/";
   const ua = navigator.userAgent.toLowerCase();
-  const dl = document.getElementById("dl"), note = document.getElementById("note");
-  if (/android|iphone|ipad/.test(ua)) {
-    dl.textContent = "Kaizen is a desktop app";
-    dl.setAttribute("aria-disabled", "true");
-    note.textContent = "Open this page on Windows or Linux to download.";
-  } else if (ua.includes("win")) {
-    dl.href = base + "Kaizen-Setup.exe";
-    dl.textContent = "Download for Windows";
-    note.textContent = "Windows may show a SmartScreen warning (the app isn't code-signed). Click “More info” → “Run anyway”.";
-  } else if (ua.includes("mac")) {
-    // ponytail: browsers don't expose Mac CPU type; default to Apple Silicon, Intel link sits below
-    dl.href = base + "Kaizen-arm64.dmg";
-    dl.textContent = "Download for Mac";
-    note.textContent = "Intel Mac? Use the “macOS Intel” link. First launch: System Settings → Privacy & Security → “Open Anyway” (the app isn't code-signed).";
-  } else if (ua.includes("linux")) {
-    dl.href = base + "Kaizen.AppImage";
-    dl.textContent = "Download for Linux";
-    note.textContent = "Make it executable: chmod +x Kaizen.AppImage, then run it.";
-  }
+  const note = document.getElementById("note");
+  let file, label, msg = "", off = false;
+  if (/android|iphone|ipad/.test(ua)) { label = "Kaizen is a desktop app"; off = true; msg = "Open this page on Windows, macOS or Linux to download."; }
+  else if (ua.includes("win")) { file = "Kaizen-Setup.exe"; label = "Download for Windows"; msg = "Windows may show a SmartScreen warning (the app isn't code-signed). Click “More info” → “Run anyway”."; }
+  // ponytail: browsers don't expose Mac CPU type; default to Apple Silicon, Intel link sits below
+  else if (ua.includes("mac")) { file = "Kaizen-arm64.dmg"; label = "Download for Mac"; msg = "Intel Mac? Use the “macOS Intel” link. First launch: System Settings → Privacy & Security → “Open Anyway” (the app isn't code-signed)."; }
+  else if (ua.includes("linux")) { file = "Kaizen.AppImage"; label = "Download for Linux"; msg = "Make it executable: chmod +x Kaizen.AppImage, then run it."; }
+  if (label) document.querySelectorAll(".dl-auto").forEach(a => {
+    a.innerHTML = px("rocket") + label;
+    if (file) a.href = base + file;
+    if (off) a.setAttribute("aria-disabled", "true");
+  });
+  note.textContent = msg;
+
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Typed tagline
+  const t = document.getElementById("type"), text = t.dataset.text;
+  if (still) t.textContent = text;
+  else { let i = 0; const tick = setInterval(() => { t.textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(tick); }, 28); }
+
+  // Contribution grid that fills in once visible
+  const grid = document.getElementById("contrib"), cols = innerWidth < 600 ? 20 : 52;
+  for (let i = 0; i < cols * 7; i++) grid.append(document.createElement("i"));
+  const fill = () => [...grid.children].forEach((c, i) => setTimeout(() => {
+    const r = Math.random() + i / (cols * 7) * 0.6; // greener toward "today"
+    c.className = r > 1.2 ? "l3" : r > .95 ? "l2" : r > .7 ? "l1" : "";
+  }, still ? 0 : (i / 7 | 0) * 40));
+
+  // Scroll reveal
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add("in"); io.unobserve(e.target);
+    if (e.target === grid) fill();
+  }), { threshold: .15 });
+  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
 </script>
 </body>
 </html>

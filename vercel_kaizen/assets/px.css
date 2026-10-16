@@ -1,0 +1,128 @@
+/* ===== Pixel icons (src/js/pixel-icons.js) ===== */
+.px {
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: -0.25em;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.px g {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* steps() keeps motion choppy like real sprite frames */
+.px-a-bob { animation: px-bob 1.4s steps(1) infinite; }
+
+.px-a-rise { animation: px-rise 2.4s steps(1) infinite; }
+
+.px-a-pop { animation: px-pop 1.6s steps(1) infinite; }
+
+.px-a-shake { animation: px-shake 2s steps(1) infinite; }
+
+.px-a-ring { animation: px-ring 1.6s steps(1) infinite; transform-origin: 50% 0; }
+
+.px-a-swing { animation: px-swing 1.6s steps(1) infinite; transform-origin: 50% 0; }
+
+.px-a-sway { animation: px-swing 2.2s steps(1) infinite; transform-origin: 50% 100%; }
+
+.px-a-thunk { animation: px-thunk 1.8s steps(1) infinite; }
+
+.px-a-grow { animation: px-grow 1.8s steps(1) infinite; transform-origin: 50% 100%; }
+
+.px-a-twinkle { animation: px-twinkle 1.6s steps(1) infinite; }
+
+.px-a-blink { animation: px-blink 1.2s steps(1) infinite; }
+
+.px-a-flash { animation: px-flash 1.4s steps(1) infinite; }
+
+.px-a-spin { animation: px-spin 2s steps(4) infinite; }
+
+.px-a-type { animation: px-type 1.2s steps(1) infinite; }
+
+.px-a-flutter { animation: px-flutter 0.8s steps(1) infinite; }
+
+.px-a-lid { animation: px-lid 2s steps(1) infinite; }
+
+.px-a-write { animation: px-write 1s steps(1) infinite; }
+
+.px-a-down { animation: px-down 1.2s steps(1) infinite; }
+
+.px-a-up { animation: px-up 1.2s steps(1) infinite; }
+
+.px-a-right { animation: px-right 1.2s steps(1) infinite; }
+
+.px-a-left { animation: px-left 1.2s steps(1) infinite; }
+
+.px-a-f1 { animation: px-f1 0.6s steps(1) infinite; }
+
+.px-a-f2 { animation: px-f2 0.6s steps(1) infinite; opacity: 0; }
+
+@keyframes px-bob     { 50% { transform: translateY(-1px); }
+ }
+@keyframes px-rise    { 50% { transform: translateY(-1px); }
+ }
+@keyframes px-pop     { 50% { transform: scale(1.12); }
+ }
+@keyframes px-shake   { 70% { transform: translateX(-1px); }
+ 80% { transform: translateX(1px); }
+ 90% { transform: translateX(-1px); }
+ }
+@keyframes px-ring    { 25% { transform: rotate(-10deg); }
+ 50% { transform: rotate(0); }
+ 75% { transform: rotate(10deg); }
+ }
+@keyframes px-swing   { 25% { transform: translateX(-1px); }
+ 75% { transform: translateX(1px); }
+ }
+@keyframes px-thunk   { 60% { transform: translate(2px, -2px); }
+ 70% { transform: translate(1px, -1px); }
+ }
+@keyframes px-grow    { 50% { transform: scaleY(0.75); }
+ }
+@keyframes px-twinkle { 50% { transform: scale(0.85); opacity: 0.7; }
+ }
+@keyframes px-blink   { 50% { opacity: 0; }
+ }
+@keyframes px-flash   { 50% { opacity: 0.55; }
+ }
+@keyframes px-spin    { to { transform: rotate(360deg); }
+ }
+@keyframes px-type    { 0% { transform: translateY(0); }
+ 33% { transform: translateY(-1px); }
+ 66% { transform: translateY(0); }
+ }
+@keyframes px-flutter { 50% { transform: translate(1px, 1px); }
+ }
+@keyframes px-lid     { 60% { transform: translateY(-2px) rotate(-8deg); }
+ 80% { transform: translateY(0); }
+ }
+@keyframes px-write   { 50% { transform: translate(1px, -1px); }
+ }
+@keyframes px-down    { 50% { transform: translateY(1px); }
+ }
+@keyframes px-up      { 50% { transform: translateY(-1px); }
+ }
+@keyframes px-right   { 50% { transform: translateX(1px); }
+ }
+@keyframes px-left    { 50% { transform: translateX(-1px); }
+ }
+@keyframes px-f1      { 0% { opacity: 1; }
+ 50% { opacity: 0; }
+ }
+@keyframes px-f2      { 0% { opacity: 0; }
+ 50% { opacity: 1; }
+ }
+
+/* Sidebar icons rest until hovered or active, like the old GIFs */
+.sidebar .px g { animation-play-state: paused; }
+.sidebar li:hover .px g,
+.sidebar li.active .px g,
+.sidebar-footer:hover .px g,
+.sidebar-footer.active .px g,
+.sidebar-logo .px g { animation-play-state: running; }
+
+@media (prefers-reduced-motion: reduce) {
+  .px g { animation: none !important; }
+}
