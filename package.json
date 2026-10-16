@@ -1,6 +1,6 @@
 {
   "name": "kaizen",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Kaizen (改善) — a local-first self-improvement companion built with Electron.",
   "main": "main.js",
   "scripts": {
@@ -39,7 +39,8 @@
         "deb"
       ],
       "icon": "assets/icons/desktop/kaizen_desktop_icon.png",
-      "category": "Utility"
+      "category": "Utility",
+      "artifactName": "Kaizen.${ext}"
     },
     "mac": {
       "target": [
@@ -47,7 +48,8 @@
         "zip"
       ],
       "icon": "assets/icons/desktop/kaizen_desktop_icon.png",
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "artifactName": "Kaizen-${arch}.${ext}"
     },
     "win": {
       "target": [
@@ -60,7 +62,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "include": "build/installer.nsh"
+      "include": "build/installer.nsh",
+      "artifactName": "Kaizen-Setup.${ext}"
     }
   }
 }

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kaizen 改善 — Free Self-Improvement App</title>
+<meta name="description" content="Kaizen is a free, local-first self-improvement app. Track goals, journal your progress, no cloud, no tracking.">
+<link rel="icon" href="assets/icon.png">
+<style>
+  @font-face { font-family: "Pixelify"; src: url(assets/pixelify.ttf) format("truetype"); font-weight: 400 700; font-display: swap; }
+  :root { --bg: #121212; --card: #1b1b1b; --line: #2a2a2a; --text: #e6e6e6; --muted: #9a9a9a; --accent: #6ee7b7; --accent-ink: #0b1f17; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Pixelify", system-ui, sans-serif; line-height: 1.5; }
+  img { image-rendering: pixelated; max-width: 100%; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+
+  header { padding: 72px 0 48px; text-align: center; }
+  .sprites { display: flex; justify-content: center; gap: 16px; }
+  .sprites img { width: 96px; }
+  h1 { font-size: clamp(2.5rem, 8vw, 4rem); margin: 16px 0 0; color: var(--accent); }
+  .tag { font-size: 1.2rem; color: var(--muted); margin: 8px 0 32px; }
+
+  .dl { display: inline-block; background: var(--accent); color: var(--accent-ink); text-decoration: none; font-size: 1.3rem; font-weight: 700; padding: 14px 28px; border-radius: 4px; box-shadow: 4px 4px 0 #2e7d62; }
+  .dl:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #2e7d62; }
+  .dl[aria-disabled="true"] { background: var(--line); color: var(--muted); box-shadow: none; pointer-events: none; }
+  .others { margin-top: 16px; color: var(--muted); font-size: .95rem; }
+  .others a { margin: 0 6px; }
+  .note { color: var(--muted); font-size: .85rem; margin-top: 12px; }
+
+  h2 { color: var(--accent); text-align: center; margin: 64px 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
+  .card h3 { margin: 0 0 8px; }
+  .card p { margin: 0; color: var(--muted); }
+  .shot { display: block; margin: 0 auto; border: 1px solid var(--line); border-radius: 8px; image-rendering: auto; }
+
+  footer { margin-top: 80px; padding: 32px 0; border-top: 1px solid var(--line); text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <div class="sprites"><img src="assets/kai.png" alt="Kai"><img src="assets/zun.png" alt="Zun"></div>
+  <h1>改善 Kaizen</h1>
+  <p class="tag">Small steps, every day. A free self-improvement companion that lives on your computer.</p>
+  <a id="dl" class="dl" href="https://github.com/GigaNuke3/Kaizen/releases/latest">Download Kaizen</a>
+  <p class="others">
+    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-Setup.exe">Windows</a>·
+    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen.AppImage">Linux AppImage</a>·
+    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen.deb">Linux .deb</a>·
+    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-arm64.dmg">macOS Apple Silicon</a>·
+    <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-x64.dmg">macOS Intel</a>·
+    <a href="https://github.com/GigaNuke3/Kaizen/releases">All releases</a>
+  </p>
+  <p class="note" id="note"></p>
+</header>
+
+<main class="wrap">
+  <h2>What's inside</h2>
+  <div class="grid">
+    <div class="card"><h3>🎯 Goals</h3><p>Daily, weekdays, weekends, 3× a week or custom days, each with its own time window and label.</p></div>
+    <div class="card"><h3>✅ CheckMarked</h3><p>A tracking grid where every check needs a journal entry. Checks are permanent; missed days close at midnight.</p></div>
+    <div class="card"><h3>📓 Journal + Kai</h3><p>Write reflections with a mood. Kai, your AI companion, replies locally via Ollama.</p></div>
+    <div class="card"><h3>📊 Dashboard</h3><p>A 12-month activity grid, a radar chart of your goal labels and live stats.</p></div>
+    <div class="card"><h3>🔒 Local-first</h3><p>Everything stays on your machine. No account, no cloud, no tracking. Daily backups included.</p></div>
+    <div class="card"><h3>🎨 Pixel look</h3><p>Animated pixel sprites, dark and light themes, and a weekly review to look back on.</p></div>
+  </div>
+
+  <h2>See it</h2>
+  <img class="shot" src="assets/screenshot.png" alt="Kaizen dashboard" width="1285" height="842" loading="lazy">
+</main>
+
+<footer class="wrap">
+  <p>Kaizen is free. <a href="https://github.com/GigaNuke3/Kaizen">Source on GitHub</a></p>
+</footer>
+
+<script>
+  const base = "https://github.com/GigaNuke3/Kaizen/releases/latest/download/";
+  const ua = navigator.userAgent.toLowerCase();
+  const dl = document.getElementById("dl"), note = document.getElementById("note");
+  if (/android|iphone|ipad/.test(ua)) {
+    dl.textContent = "Kaizen is a desktop app";
+    dl.setAttribute("aria-disabled", "true");
+    note.textContent = "Open this page on Windows or Linux to download.";
+  } else if (ua.includes("win")) {
+    dl.href = base + "Kaizen-Setup.exe";
+    dl.textContent = "Download for Windows";
+    note.textContent = "Windows may show a SmartScreen warning (the app isn't code-signed). Click “More info” → “Run anyway”.";
+  } else if (ua.includes("mac")) {
+    // ponytail: browsers don't expose Mac CPU type; default to Apple Silicon, Intel link sits below
+    dl.href = base + "Kaizen-arm64.dmg";
+    dl.textContent = "Download for Mac";
+    note.textContent = "Intel Mac? Use the “macOS Intel” link. First launch: System Settings → Privacy & Security → “Open Anyway” (the app isn't code-signed).";
+  } else if (ua.includes("linux")) {
+    dl.href = base + "Kaizen.AppImage";
+    dl.textContent = "Download for Linux";
+    note.textContent = "Make it executable: chmod +x Kaizen.AppImage, then run it.";
+  }
+</script>
+</body>
+</html>
