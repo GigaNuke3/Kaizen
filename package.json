@@ -1,6 +1,6 @@
 {
   "name": "kaizen",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Kaizen (改善) — a local-first self-improvement companion built with Electron.",
   "main": "main.js",
   "scripts": {

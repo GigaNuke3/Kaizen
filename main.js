@@ -147,7 +147,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', showMainWindow)
-  app.on('ready', createWindow)
+  app.on('ready', () => { installAppImageLauncher(); createWindow() })
 }
 
 app.on('before-quit', () => { isQuitting = true })
@@ -202,7 +202,28 @@ function applyLaunchAtLogin(enabled) {
   const flags = process.argv.slice(1).filter(a => a.startsWith('--') && a !== '--hidden').join(' ') // e.g. --ozone-platform=x11
   const cmd = (app.isPackaged ? `"${exe}"` : `"${exe}" "${app.getAppPath()}"`) + (flags ? ' ' + flags : '')
   fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=Kaizen\nExec=${cmd} --hidden\nIcon=${ICON_PATH}\nX-GNOME-Autostart-enabled=true\n`)
+  fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=Kaizen\nExec=${cmd} --hidden\nIcon=${desktopIcon()}\nX-GNOME-Autostart-enabled=true\n`)
+}
+
+/** Icon copied out of the app: an AppImage's own files vanish once it exits */
+function desktopIcon() {
+  if (!process.env.APPIMAGE) return ICON_PATH
+  const icon = path.join(app.getPath('home'), '.local', 'share', 'icons', 'kaizen.png')
+  fs.mkdirSync(path.dirname(icon), { recursive: true })
+  fs.copyFileSync(ICON_PATH, icon)
+  return icon
+}
+
+/** AppImages don't show up in the app launcher; add (or refresh, if the file moved) a menu entry on each run */
+function installAppImageLauncher() {
+  if (process.platform !== 'linux' || !process.env.APPIMAGE) return
+  try {
+    const file = path.join(app.getPath('home'), '.local', 'share', 'applications', 'kaizen.desktop')
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=Kaizen\nComment=Get 1% better every day\nExec="${process.env.APPIMAGE}" %U\nIcon=${desktopIcon()}\nTerminal=false\nCategories=Utility;\nStartupWMClass=Kaizen\n`)
+  } catch (err) {
+    console.error('Could not add launcher entry:', err)
+  }
 }
 
 // ==================== DAILY AUTO-BACKUP ====================

@@ -138,6 +138,7 @@
         <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen-x64.dmg">macOS Intel</a>
         <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen.AppImage">Linux AppImage</a>
         <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen.deb">.deb</a>
+        <a href="https://github.com/GigaNuke3/Kaizen/releases/latest/download/Kaizen.rpm">.rpm</a>
         <a href="https://github.com/GigaNuke3/Kaizen/releases">All releases</a>
       </p>
       <p class="note" id="note"></p>
@@ -224,7 +225,7 @@
   else if (ua.includes("win")) { file = "Kaizen-Setup.exe"; label = "Download for Windows"; msg = "Windows may show a SmartScreen warning (the app isn't code-signed). Click “More info” → “Run anyway”."; }
   // ponytail: browsers don't expose Mac CPU type; default to Apple Silicon, Intel link sits below
   else if (ua.includes("mac")) { file = "Kaizen-arm64.dmg"; label = "Download for Mac"; msg = "Intel Mac? Use the “macOS Intel” link. First launch: System Settings → Privacy & Security → “Open Anyway” (the app isn't code-signed)."; }
-  else if (ua.includes("linux")) { file = "Kaizen.AppImage"; label = "Download for Linux"; msg = "Make it executable: chmod +x Kaizen.AppImage, then run it."; }
+  else if (ua.includes("linux")) { file = "Kaizen.AppImage"; label = "Download for Linux"; msg = "Make it executable (chmod +x Kaizen.AppImage) and run it once; after that Kaizen is in your app launcher. Prefer an installer? Grab the .deb (Ubuntu/Debian) or .rpm (Fedora) below."; }
   if (label) document.querySelectorAll(".dl-auto").forEach(a => {
     a.innerHTML = px("rocket") + label;
     if (file) a.href = base + file;
